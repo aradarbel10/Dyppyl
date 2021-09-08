@@ -8,6 +8,7 @@
 #include <variant>
 #include <iostream>
 #include <fstream>
+#include <array>
 
 namespace dpl {
 
@@ -32,35 +33,62 @@ namespace dpl {
 	}
 
 	class Tokenizer {
-	private:
+	public:
 
-		const std::unordered_multimap<std::string, std::string> hiders{ {"//", "\n"}, {"/*", "*/"} };
+		const std::vector<std::pair<std::string, std::string>> hiders{ {"//", "\n"}, {"/*", "*/"} };
+		std::array<int, 2> hiders_states;
+		unsigned int inside_hider = 2;
+
 		const std::unordered_set<std::string> keywords{ "void", "int", "true", "false", "if", "while" };
 		const std::unordered_set<std::string> symbols{ "+", "-", "*", "/", "%", "(", ")" };
+		const std::unordered_set<char> whitespaces{ ' ', '\n', '\t' };
 
 		std::string lexeme_buff;
 
-	public:
+	
 
-		void nextToken(char c) {
-			static bool taking_symbols = false;
+		Tokenizer() {
+			hiders_states.fill(0);
+		}
 
-			static std::string in_hider = "";
+		void operator<<(char c) {
+			passHiders(c);
+		}
 
-			lexeme_buff.push_back(c);
+		void passHiders(char c) {
+			if (inside_hider == hiders.size()) { //not inside any hider
+				for (int i = 0; i < hiders.size(); i++) {
+					if (c == hiders[i].first.at( hiders_states[i] )) {
+						hiders_states[i]++;
+					}
 
-			if (in_hider.empty()) {
-				if (hiders.contains(lexeme_buff)) {
-					in_hider = lexeme_buff;
-				} else {
-					//lex tokens
+					if (hiders_states[i] == hiders[i].first.size()) {
+						inside_hider = i;
+						hiders_states.fill(0);
 
-					std::cout << c;
+						lexeme_buff.erase(lexeme_buff.size() - hiders[i].first.size() + 1);
 
+						return;
+					}
 				}
+
+				nextLetter(c);
+
 			} else {
-				//handle escaping from hider
+				if (c == hiders[inside_hider].second.at( hiders_states[inside_hider] )) {
+					hiders_states[inside_hider]++;
+				}
+				
+				if (hiders_states[inside_hider] == hiders[inside_hider].second.size()) {
+					hiders_states[inside_hider] = 0;
+					inside_hider = hiders.size();
+					return;
+				}
 			}
+		}
+
+		void nextLetter(char c) {
+			lexeme_buff.push_back(c);
 		}
 
 		constexpr double parseNumber(std::string_view num) {
@@ -77,7 +105,7 @@ namespace dpl {
 			if (in.is_open()) {
 				char c;
 				while (in >> std::noskipws >> c) {
-					t.nextToken(c);
+					base << c;
 				}
 			} else {
 				throw "Could not open file!";
@@ -86,13 +114,11 @@ namespace dpl {
 
 		void tokenizeString(std::string_view src) {
 			for (const auto& c : src) {
-				t.nextToken(c);
+				base << c;
 			}
 		}
 
-	private:
-
-		Tokenizer t;
+		Tokenizer base;
 
 	};
 }

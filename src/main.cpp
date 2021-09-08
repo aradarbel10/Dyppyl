@@ -8,11 +8,8 @@ int main() {
 
 	dpl::TokenizerInterface tokenizer;
 
-	tokenizer.tokenizeString("abcdefg:\n\t123+456");
-
-	for (const auto& t : result) {
-		std::cout << t << '\n';
-	}
+	tokenizer.tokenizeString("abc//defg:\n\t/*123+456*/moretext");
+	std::cout << tokenizer.base.lexeme_buff;
 
 	return 0;
 }
