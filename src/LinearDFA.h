@@ -16,6 +16,10 @@ namespace dpl {
 			states = s_;
 		}
 
+		LinearDFA(const char* s_) : states(s_) {
+
+		}
+
 		void step(char c) {
 			if (isAlive()) {
 				if (states[current_state] == c) {
@@ -40,6 +44,10 @@ namespace dpl {
 			return current_state != -1 && !isAccepted();
 		}
 
+		int getAge() {
+			return age;
+		}
+
 		friend std::ostream& operator<<(std::ostream& os, const LinearDFA& dfa) {
 			for (int i = 0; i < dfa.states.size(); i++) {
 				if (dfa.current_state == i) os << '[';
@@ -51,6 +59,8 @@ namespace dpl {
 
 			return os;
 		}
+
+	private:
 
 		std::string states = "";
 		int current_state = -1;

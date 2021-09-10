@@ -39,18 +39,14 @@ namespace dpl {
 	class Tokenizer {
 	public:
 
-		// #TASK : initialize NFAs directly with all the strings
-		const std::array<std::pair<std::string, std::string>, 2> hiders{{ {"//", "\n"}, {"/*", "*/"} }};
-		std::array<std::array<dpl::LinearDFA, 2>, 2> hider_nfas;
+		std::array<std::array<dpl::LinearDFA, 2>, 2> hiders{{ {"//", "\n"}, {"/*", "*/"} }};
 		int inside_hider = -1;
 		std::string hiders_queue = "";
 		// #TASK : should probably implement custom queue with size max(hiders.first...)-1, save tons of allocations
 
 		// #TASK : constexpr hash tables
-		const std::array<std::string, 5> keywords{ "do", "double", "u", "b", "l" };
+		std::array<dpl::LinearDFA, 5> keywords{ "do", "double", "u", "b", "l" };
 		const std::unordered_set<char> whitespaces{ ' ', '\n', '\t', '\0'};
-
-		std::array<dpl::LinearDFA, 5> keyword_nfas;
 
 		int length_of_longest = 0;
 		std::string lexeme_buff = "", lexer_queue = "";
@@ -59,12 +55,7 @@ namespace dpl {
 
 		Tokenizer() {
 			for (int i = 0; i < keywords.size(); i++) {
-				keyword_nfas[i] = { keywords[i] };
-			}
-			
-			for (int i = 0; i < hiders.size(); i++) {
-				hider_nfas[0][i] = { hiders[i].first };
-				hider_nfas[1][i] = { hiders[i].second };
+				keywords[i] = { keywords[i] };
 			}
 		}
 
@@ -76,12 +67,12 @@ namespace dpl {
 			if (inside_hider == -1) {
 				int possible_hiders = 0;
 				for (int i = 0; i < hiders.size(); i++) {
-					if (hiders_queue.empty()) hider_nfas[0][i].setAlive();
-					hider_nfas[0][i].step(c);
+					if (hiders_queue.empty()) hiders[i][0].setAlive();
+					hiders[i][0].step(c);
 
-					if (hider_nfas[0][i].isAlive()) possible_hiders++;
+					if (hiders[i][0].isAlive()) possible_hiders++;
 
-					if (hider_nfas[0][i].isAccepted()) {
+					if (hiders[i][0].isAccepted()) {
 						inside_hider = i;
 						hiders_queue.clear();
 
@@ -102,10 +93,10 @@ namespace dpl {
 				}
 
 			} else {
-				if(!hider_nfas[1][inside_hider].isAlive()) hider_nfas[1][inside_hider].setAlive();
-				hider_nfas[1][inside_hider].step(c);
+				if(!hiders[inside_hider][1].isAlive()) hiders[inside_hider][1].setAlive();
+				hiders[inside_hider][1].step(c);
 
-				if (hider_nfas[1][inside_hider].isAccepted()) {
+				if (hiders[inside_hider][1].isAccepted()) {
 					inside_hider = -1;
 					return;
 				}
@@ -127,15 +118,15 @@ namespace dpl {
 			int alive_words = 0;
 			int accepted_nfa = -1;
 
-			for (int i = 0; i < keyword_nfas.size(); i++) {
-				if (lexeme_buff.empty()) keyword_nfas[i].setAlive();
-				keyword_nfas[i].step(c);
+			for (int i = 0; i < keywords.size(); i++) {
+				if (lexeme_buff.empty()) keywords[i].setAlive();
+				keywords[i].step(c);
 
-				if (keyword_nfas[i].isAccepted()) {
-					length_of_longest = keyword_nfas[i].age;
+				if (keywords[i].isAccepted()) {
+					length_of_longest = keywords[i].getAge();
 					accepted_nfa = i;
 				}
-				if (keyword_nfas[i].isAlive()) alive_words++;
+				if (keywords[i].isAlive()) alive_words++;
 			}
 
 			lexeme_buff.push_back(c);
