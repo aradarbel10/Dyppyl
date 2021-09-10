@@ -10,9 +10,9 @@ int main() {
 
 	dpl::TokenizerInterface tokenizer;
 
-	tokenizer.tokenizeString("doubdouble");
+	tokenizer.tokenizeString("doub//another line\ndouble");
 
-	std::for_each(tokenizer.base.tokens_out.begin(), tokenizer.base.tokens_out.end(), [](std::string_view s) { std::cout << s << ", "; });
+	std::for_each(tokenizer.base.tokens_out.begin(), tokenizer.base.tokens_out.end(), [](const auto& s) { std::cout << s << "\n"; });
 
 	return 0;
 }
