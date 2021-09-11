@@ -9,6 +9,7 @@
 int main() {
 
 	const std::string test_code = "int main(int argc, char **argv) {\n\t std::cout << \"Num Of Args:\" << argc << \"\\n\";\n\t return -3.14159;\n }";
+	const std::string string_test = "coming up is... a string! \"Inside the string yay\"";
 
 	dpl::TokenizerInterface tokenizer;
 	tokenizer.tokenizeString(test_code);

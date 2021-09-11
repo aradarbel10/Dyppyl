@@ -170,8 +170,73 @@ namespace dpl {
 
 	};
 
+	class StringDFA : public GenericDFA {
+	public:
+
+		bool isAccepted() const override {
+			return current_state == 3;
+		}
+
+		void step(char c) override {
+			if (!isAlive()) return;
+
+			if (current_state == 0) {
+				recent_string.clear();
+
+				if (c == '\"') {
+					age++;
+					current_state = 1;
+				} else {
+					kill();
+				}
+			} else if (current_state == 1) {
+				if (c == '\"') {
+					age++;
+					current_state = 3;
+				} else if (c == '\\') {
+					age++;
+					current_state = 2;
+				} else {
+					age++;
+					recent_string += c;
+				}
+			} else if (current_state == 2) {
+				age++;
+				current_state = 1;
+
+				switch (c) {
+				case 'n':
+					recent_string += '\n';
+					break;
+				case 't':
+					recent_string += '\t';
+					break;
+				case '\"':
+					recent_string += '\"';
+					break;
+				case '\'':
+					recent_string += '\'';
+					break;
+				case '\\':
+					recent_string += '\\';
+					break;
+				case '0':
+					recent_string += '\0';
+					break;
+				default:
+					break;
+				}
+			} else if (current_state == 3) {
+				kill();
+			}
+		}
+
+		inline static std::string recent_string = "";
+
+	};
+
+
 	// string DFA = "letters numbers ,!./\n \\ \""
-	// number DFA = +-digits.digits
 	// symbol DFA = basially the same as the identifier DFA but even simpler
 	//				or --- use linear ones for that, just hard-code possible operators & delimeters
 	//				(note: rumtime tokenizer will still have to use a soft-coded symbol lexer (but maybe still not I'll need to try it out first))

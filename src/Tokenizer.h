@@ -62,16 +62,17 @@ namespace dpl {
 
 		
 		// stage 2 - lexing
-		std::array<std::unique_ptr<dpl::GenericDFA>, 64> automata{
+		std::array<std::unique_ptr<dpl::GenericDFA>, 65> automata{
 			std::make_unique<dpl::IdentifierDFA>(), //i = 0;
 			std::make_unique<dpl::NumberDFA>(), //i = 1
-			"("_ldfa, ")"_ldfa, "{"_ldfa, "}"_ldfa, "*"_ldfa, "::"_ldfa, ";"_ldfa, "<<"_ldfa, ">>"_ldfa, ","_ldfa, // 2 - 11
-			"^"_ldfa, "++"_ldfa, "--"_ldfa, "<"_ldfa, ">"_ldfa, "+"_ldfa, "-"_ldfa, "/"_ldfa, "%"_ldfa, "@"_ldfa, // 12 - 21
-			"!"_ldfa, "~"_ldfa, "#"_ldfa, "$"_ldfa, "&"_ldfa, "&&"_ldfa, "^^"_ldfa, "|"_ldfa, "||"_ldfa, "&="_ldfa, // 22 - 31
-			"^="_ldfa, "|="_ldfa, "+="_ldfa, "-="_ldfa, "*="_ldfa, "/="_ldfa, "["_ldfa, "]"_ldfa, ":"_ldfa, "?"_ldfa, // 32 - 41
-			">>="_ldfa, "<<="_ldfa, ":="_ldfa, "<="_ldfa, ">="_ldfa, "<=>"_ldfa, "="_ldfa, "=="_ldfa, "**"_ldfa, "%="_ldfa, // 42 - 51
-			"!="_ldfa, "->"_ldfa, "..."_ldfa, "`"_ldfa, // 52 - 55
-			"int"_ldfa, "return"_ldfa, "Bitfield"_ldfa, "true"_ldfa, "false"_ldfa, "if"_ldfa, "else"_ldfa, "while"_ldfa // 56 - 63
+			std::make_unique<dpl::StringDFA>(), //i = 2
+			"("_ldfa, ")"_ldfa, "{"_ldfa, "}"_ldfa, "*"_ldfa, "::"_ldfa, ";"_ldfa, "<<"_ldfa, ">>"_ldfa, ","_ldfa, // 3 - 12
+			"^"_ldfa, "++"_ldfa, "--"_ldfa, "<"_ldfa, ">"_ldfa, "+"_ldfa, "-"_ldfa, "/"_ldfa, "%"_ldfa, "@"_ldfa, // 13 - 22
+			"!"_ldfa, "~"_ldfa, "#"_ldfa, "$"_ldfa, "&"_ldfa, "&&"_ldfa, "^^"_ldfa, "|"_ldfa, "||"_ldfa, "&="_ldfa, // 23 - 32
+			"^="_ldfa, "|="_ldfa, "+="_ldfa, "-="_ldfa, "*="_ldfa, "/="_ldfa, "["_ldfa, "]"_ldfa, ":"_ldfa, "?"_ldfa, // 33 - 42
+			">>="_ldfa, "<<="_ldfa, ":="_ldfa, "<="_ldfa, ">="_ldfa, "<=>"_ldfa, "="_ldfa, "=="_ldfa, "**"_ldfa, "%="_ldfa, // 43 - 52
+			"!="_ldfa, "->"_ldfa, "..."_ldfa, "`"_ldfa, // 53 - 56
+			"int"_ldfa, "return"_ldfa, "Bitfield"_ldfa, "true"_ldfa, "false"_ldfa, "if"_ldfa, "else"_ldfa, "while"_ldfa // 57 - 64
 		};
 		const std::unordered_set<char> whitespaces{ ' ', '\n', '\t', '\0' };
 		// #TASK : constexpr hash tables
@@ -161,6 +162,8 @@ namespace dpl {
 					if (length_of_longest != lexeme_buff.size())
 						lexer_queue = lexeme_buff.substr(length_of_longest, std::string::npos) + lexer_queue;
 					else automata[longest_accepted]->kill();
+
+					std::cout << tokens_out.back() << '\n';
 				}
 
 				lexeme_buff.clear();
@@ -177,10 +180,12 @@ namespace dpl {
 				tokens_out.emplace_back(Token{ Token::Type::Identifier, str });
 			} else if (machine == 1) {
 				tokens_out.emplace_back(Token{ Token::Type::Number, std::stod(str) });
-			} else if (machine <= 55) {
-				tokens_out.emplace_back(Token{ Token::Type::Symbol, magic_enum::enum_value<Token::Symbol>(machine - 2) });
-			} else if (machine <= 63) {
-				tokens_out.emplace_back(Token{ Token::Type::Keyword, magic_enum::enum_value<Token::Keyword>(machine - 56) });
+			} else if (machine == 2) {
+				tokens_out.emplace_back(Token{ Token::Type::String, dpl::StringDFA::recent_string });
+			} else if (machine <= 56) {
+				tokens_out.emplace_back(Token{ Token::Type::Symbol, magic_enum::enum_value<Token::Symbol>(machine - 3) });
+			} else if (machine <= 64) {
+				tokens_out.emplace_back(Token{ Token::Type::Keyword, magic_enum::enum_value<Token::Keyword>(machine - 57) });
 			}
 		}
 
