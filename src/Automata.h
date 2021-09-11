@@ -112,14 +112,14 @@ namespace dpl {
 			if (!isAlive()) return;
 
 			if (current_state == 0) { // waiting for init
-				if (isLetter(c) || c == '_') {
+				if (isLetter(c) || c == '_' || c == '\'') {
 					age++;
 					current_state++;
 				} else {
 					kill();
 				}
 			} else if (current_state == 1) { // waiting for init / any
-				if (isLetter(c) || c == '_' || isDigit(c)) {
+				if (isLetter(c) || c == '_' || c == '\'' || isDigit(c)) {
 					age++;
 				} else {
 					current_state = 2;
@@ -141,7 +141,6 @@ namespace dpl {
 	};
 
 	// string DFA = "letters numbers ,!./\n \\ \""
-	// char DFA = ''
 	// number DFA = +-digits.digits
 	// symbol DFA = basially the same as the identifier DFA but even simpler
 	//				or --- use linear ones for that, just hard-code possible operators & delimeters

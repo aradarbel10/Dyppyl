@@ -20,8 +20,15 @@ namespace dpl {
 	struct Token {
 		enum class Type { Identifier, Number, String, Symbol, Keyword, Whitespace, Unknown };
 
-		enum class Symbol { LeftParen, RightParen, LeftCurly, RightCurly, Asterisk, Scope, LeftShift, Semicolon, Comma };
-		enum class Keyword { Int, Return };
+		enum class Symbol {
+			LeftParen, RightParen, LeftCurly, RightCurly, Asterisk, Scope, Semicolon, LeftShift, RightShift, Comma,
+			Caret, PlusPlus, MinusMinus, LeftAngle, RightAngle, Plus, Minus, Slash, Percentage, At,
+			Exclamation, Tilda, Hash, Dollar, Ampersand, DoubleAmpersand, DoubleCaret, UprightSlash, DoubleUprightSlash, AmpersandEqual,
+			CaretEqual, UprightSlashEqual, PlusEqual, MinusEqual, AsteriskEqual, SlashEqual, LeftSquare, RightSquare, Colon, Question,
+			RightShiftEqual, LeftShiftEqual, ColonEqual, LessEqual, GreaterEqual, Spaceship, Equal, DoubleEqual, DoubleAsterisk, PercentageEqual,
+			ExclamationEqual, Arrow, Ellipsis, Tick
+		};
+		enum class Keyword { Int, Return, Bitfield, True, False, If, Else, While };
 
 		Type type;
 		std::variant<std::string, double, Symbol, Keyword> value;
@@ -47,18 +54,23 @@ namespace dpl {
 	class Tokenizer {
 	public:
 
-		//	stage 1 - hiders
+		// stage 1 - hiders
 		std::array<std::array<dpl::LinearDFA, 2>, 2> hiders{{ {"//", "\n"}, {"/*", "*/"} }};
 		int inside_hider = -1;
 		std::string hiders_queue = "";
 		// #TASK : should probably implement custom queue with size max(hiders.first...)-1, save tons of allocations
 
 		
-		//	stage 2 - lexing
-		std::array<std::unique_ptr<dpl::GenericDFA>, 12> automata{
-			std::make_unique<dpl::IdentifierDFA>(),
-			"("_ldfa, ")"_ldfa, "{"_ldfa, "}"_ldfa, "*"_ldfa, "::"_ldfa, ";"_ldfa, "<<"_ldfa, ","_ldfa,
-			"int"_ldfa, "return"_ldfa
+		// stage 2 - lexing
+		std::array<std::unique_ptr<dpl::GenericDFA>, 63> automata{
+			std::make_unique<dpl::IdentifierDFA>(), //i = 0;
+			"("_ldfa, ")"_ldfa, "{"_ldfa, "}"_ldfa, "*"_ldfa, "::"_ldfa, ";"_ldfa, "<<"_ldfa, ">>"_ldfa, ","_ldfa, // 1 - 10
+			"^"_ldfa, "++"_ldfa, "--"_ldfa, "<"_ldfa, ">"_ldfa, "+"_ldfa, "-"_ldfa, "/"_ldfa, "%"_ldfa, "@"_ldfa, // 11 - 20
+			"!"_ldfa, "~"_ldfa, "#"_ldfa, "$"_ldfa, "&"_ldfa, "&&"_ldfa, "^^"_ldfa, "|"_ldfa, "||"_ldfa, "&="_ldfa, // 21 - 30
+			"^="_ldfa, "|="_ldfa, "+="_ldfa, "-="_ldfa, "*="_ldfa, "/="_ldfa, "["_ldfa, "]"_ldfa, ":"_ldfa, "?"_ldfa, // 31 - 40
+			">>="_ldfa, "<<="_ldfa, ":="_ldfa, "<="_ldfa, ">="_ldfa, "<=>"_ldfa, "="_ldfa, "=="_ldfa, "**"_ldfa, "%="_ldfa, // 41 - 50
+			"!="_ldfa, "->"_ldfa, "..."_ldfa, "`"_ldfa, // 51 - 54
+			"int"_ldfa, "return"_ldfa, "Bitfield"_ldfa, "true"_ldfa, "false"_ldfa, "if"_ldfa, "else"_ldfa, "while"_ldfa // 55 - 62
 		};
 		const std::unordered_set<char> whitespaces{ ' ', '\n', '\t', '\0' };
 		// #TASK : constexpr hash tables
@@ -125,8 +137,6 @@ namespace dpl {
 		}
 
 		void nextLetter(char c) {
-			std::cout << c;
-
 			bool all_dead = true;
 
 			for (int i = 0; i < automata.size(); i++) {
@@ -152,8 +162,6 @@ namespace dpl {
 					else automata[longest_accepted]->kill();
 				}
 
-				std::cout << '\n';
-
 				lexeme_buff.clear();
 				longest_accepted = -1;
 				length_of_longest = 0;
@@ -162,45 +170,14 @@ namespace dpl {
 		}
 
 		void evaluate(int machine, const std::string& str) {
-			switch (machine) {
-			case 0:
-				tokens_out.emplace_back(Token{ Token::Type::Identifier, str });
-				break;
-			case 1:
-				tokens_out.emplace_back(Token{ Token::Type::Symbol, Token::Symbol::LeftParen });
-				break;
-			case 2:
-				tokens_out.emplace_back(Token{ Token::Type::Symbol, Token::Symbol::RightParen });
-				break;
-			case 3:
-				tokens_out.emplace_back(Token{ Token::Type::Symbol, Token::Symbol::LeftCurly });
-				break;
-			case 4:
-				tokens_out.emplace_back(Token{ Token::Type::Symbol, Token::Symbol::RightCurly });
-				break;
-			case 5:
-				tokens_out.emplace_back(Token{ Token::Type::Symbol, Token::Symbol::Asterisk });
-				break;
-			case 6:
-				tokens_out.emplace_back(Token{ Token::Type::Symbol, Token::Symbol::Scope });
-				break;
-			case 7:
-				tokens_out.emplace_back(Token{ Token::Type::Symbol, Token::Symbol::Semicolon });
-				break;
-			case 8:
-				tokens_out.emplace_back(Token{ Token::Type::Symbol, Token::Symbol::LeftShift });
-				break;
-			case 9:
-				tokens_out.emplace_back(Token{ Token::Type::Symbol, Token::Symbol::Comma });
-				break;
-			case 10:
-				tokens_out.emplace_back(Token{ Token::Type::Keyword, Token::Keyword::Int });
-				break;
-			case 11:
-				tokens_out.emplace_back(Token{ Token::Type::Keyword, Token::Keyword::Return });
-				break;
-			default:
+			if (machine == -1) {
 				tokens_out.emplace_back(Token{ Token::Type::Unknown, str });
+			} else if (machine == 0) {
+				tokens_out.emplace_back(Token{ Token::Type::Identifier, str });
+			} else if (machine <= 54) {
+				tokens_out.emplace_back(Token{ Token::Type::Symbol, magic_enum::enum_value<Token::Symbol>(machine - 1) });
+			} else if (machine <= 62) {
+				tokens_out.emplace_back(Token{ Token::Type::Keyword, magic_enum::enum_value<Token::Keyword>(machine - 55) });
 			}
 		}
 
