@@ -8,11 +8,30 @@
 
 int main() {
 
+	const std::string test_code = "int main(int argc, char **argv) {\n\t std::cout << \"Num Of Args:\" << argc << '\\n';\n\t return -3.14159;\n }";
+
 	dpl::TokenizerInterface tokenizer;
-
-	tokenizer.tokenizeString("doub//another line\ndouble");
-
+	tokenizer.tokenizeString(test_code);
 	std::for_each(tokenizer.base.tokens_out.begin(), tokenizer.base.tokens_out.end(), [](const auto& s) { std::cout << s << "\n"; });
+
+	//dpl::LinearDFA testDFA ("h");
+
+	//while (true) {
+	//	char c;
+	//	std::cin >> c;
+
+	//	if (c == '!') {
+	//		testDFA.setAlive();
+
+	//		std::cout << "Set To Alive...\n\n\n";
+	//	} else {
+	//		testDFA.step(c);
+
+	//		std::cout << "Age: " << testDFA.getAge() << '\n';
+	//		std::cout << "Accepted: " << testDFA.isAccepted() << '\n';
+	//		std::cout << "Alive: " << testDFA.isAlive() << "\n\n\n";
+	//	}
+	//}
 
 	return 0;
 }
