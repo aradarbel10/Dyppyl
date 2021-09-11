@@ -11,20 +11,20 @@ namespace dpl {
 		virtual void step(char c) = 0;
 		virtual bool isAccepted() const = 0;
 
-		void setAlive() {
+		virtual void setAlive() {
 			alive = true;
 			current_state = 0;
 		}
 
-		bool isAlive() const {
+		virtual bool isAlive() const {
 			return alive;
 		}
 
-		int getAge() const {
+		virtual int getAge() const {
 			return age;
 		}
 
-		void kill() {
+		virtual void kill() {
 			current_state = -1;
 			age = 0;
 			alive = false;
@@ -33,8 +33,18 @@ namespace dpl {
 	protected:
 
 		int current_state = 0;
-		bool alive = false;
+		bool alive = false; // #TASK : this variable could probably be removed, use state == -1 instead
 		int age = 0;
+
+		static bool isLetter(char c) {
+			//65-90, 97-122
+			return (c >= 65 && c <= 90) || (c >= 97 && c <= 122);
+		}
+
+		static bool isDigit(char c) {
+			//48-57
+			return c >= 48 && c <= 57;
+		}
 
 	};
 
@@ -61,23 +71,6 @@ namespace dpl {
 			} else {
 				kill();
 			}
-
-			//if (current_state == 0) { // waiting for init
-			//	if (isLetter(c) || c == '_') {
-			//		age++;
-			//		current_state++;
-			//	} else {
-			//		kill();
-			//	}
-			//} else if (current_state == 1) { // waiting for init / any
-			//	if (isLetter(c) || c == '_' || isDigit(c)) {
-			//		age++;
-			//	} else {
-			//		current_state = 2;
-			//	}
-			//} else if (current_state == 2) {
-			//	kill();
-			//}
 		}
 
 		friend std::ostream& operator<<(std::ostream& os, const LinearDFA& dfa) {
@@ -102,8 +95,6 @@ namespace dpl {
 	class IdentifierDFA : public GenericDFA { // regex = [a-z,A-Z,_][a-z,A-Z,_,0-9]*
 	public:
 
-		IdentifierDFA() { }
-
 		bool isAccepted() const override {
 			return current_state == 2;
 		}
@@ -124,20 +115,59 @@ namespace dpl {
 				} else {
 					current_state = 2;
 				}
+			} else if (current_state == 2) { // accept
+				kill();
+			}
+		}
+	};
+
+	class NumberDFA : public GenericDFA { // regex = [+,-]?[0-9]+(.[0-9]+)?
+	public:
+
+		bool isAccepted() const override {
+			return current_state == 4;
+		}
+
+		void step(char c) override {
+			if (!isAlive()) return;
+
+			if (current_state == 0) {
+				if (c == '+' || c == '-') {
+					age++;
+					current_state = 1;
+				} else if (isDigit(c)) {
+					age++;
+					current_state = 2;
+				} else {
+					kill();
+				}
+			} else if (current_state == 1) {
+				if (isDigit(c)) {
+					age++;
+					current_state = 2;
+				} else {
+					kill();
+				}
 			} else if (current_state == 2) {
+				if (isDigit(c)) {
+					age++;
+				} else if (c == '.') {
+					age++;
+					current_state = 3;
+				} else {
+					current_state = 4;
+				}
+			} else if (current_state == 3) {
+				if (isDigit(c)) {
+					age++;
+				} else {
+					current_state = 4;
+				}
+			} else if (current_state == 4) {
 				kill();
 			}
 		}
 
-		static bool isLetter(char c) {
-			//65-90, 97-122
-			return (c >= 65 && c <= 90) || (c >= 97 && c <= 122);
-		}
-
-		static bool isDigit(char c) {
-			//48-57
-			return c >= 48 && c <= 57;
-		}
 	};
 
 	// string DFA = "letters numbers ,!./\n \\ \""

@@ -62,15 +62,16 @@ namespace dpl {
 
 		
 		// stage 2 - lexing
-		std::array<std::unique_ptr<dpl::GenericDFA>, 63> automata{
+		std::array<std::unique_ptr<dpl::GenericDFA>, 64> automata{
 			std::make_unique<dpl::IdentifierDFA>(), //i = 0;
-			"("_ldfa, ")"_ldfa, "{"_ldfa, "}"_ldfa, "*"_ldfa, "::"_ldfa, ";"_ldfa, "<<"_ldfa, ">>"_ldfa, ","_ldfa, // 1 - 10
-			"^"_ldfa, "++"_ldfa, "--"_ldfa, "<"_ldfa, ">"_ldfa, "+"_ldfa, "-"_ldfa, "/"_ldfa, "%"_ldfa, "@"_ldfa, // 11 - 20
-			"!"_ldfa, "~"_ldfa, "#"_ldfa, "$"_ldfa, "&"_ldfa, "&&"_ldfa, "^^"_ldfa, "|"_ldfa, "||"_ldfa, "&="_ldfa, // 21 - 30
-			"^="_ldfa, "|="_ldfa, "+="_ldfa, "-="_ldfa, "*="_ldfa, "/="_ldfa, "["_ldfa, "]"_ldfa, ":"_ldfa, "?"_ldfa, // 31 - 40
-			">>="_ldfa, "<<="_ldfa, ":="_ldfa, "<="_ldfa, ">="_ldfa, "<=>"_ldfa, "="_ldfa, "=="_ldfa, "**"_ldfa, "%="_ldfa, // 41 - 50
-			"!="_ldfa, "->"_ldfa, "..."_ldfa, "`"_ldfa, // 51 - 54
-			"int"_ldfa, "return"_ldfa, "Bitfield"_ldfa, "true"_ldfa, "false"_ldfa, "if"_ldfa, "else"_ldfa, "while"_ldfa // 55 - 62
+			std::make_unique<dpl::NumberDFA>(), //i = 1
+			"("_ldfa, ")"_ldfa, "{"_ldfa, "}"_ldfa, "*"_ldfa, "::"_ldfa, ";"_ldfa, "<<"_ldfa, ">>"_ldfa, ","_ldfa, // 2 - 11
+			"^"_ldfa, "++"_ldfa, "--"_ldfa, "<"_ldfa, ">"_ldfa, "+"_ldfa, "-"_ldfa, "/"_ldfa, "%"_ldfa, "@"_ldfa, // 12 - 21
+			"!"_ldfa, "~"_ldfa, "#"_ldfa, "$"_ldfa, "&"_ldfa, "&&"_ldfa, "^^"_ldfa, "|"_ldfa, "||"_ldfa, "&="_ldfa, // 22 - 31
+			"^="_ldfa, "|="_ldfa, "+="_ldfa, "-="_ldfa, "*="_ldfa, "/="_ldfa, "["_ldfa, "]"_ldfa, ":"_ldfa, "?"_ldfa, // 32 - 41
+			">>="_ldfa, "<<="_ldfa, ":="_ldfa, "<="_ldfa, ">="_ldfa, "<=>"_ldfa, "="_ldfa, "=="_ldfa, "**"_ldfa, "%="_ldfa, // 42 - 51
+			"!="_ldfa, "->"_ldfa, "..."_ldfa, "`"_ldfa, // 52 - 55
+			"int"_ldfa, "return"_ldfa, "Bitfield"_ldfa, "true"_ldfa, "false"_ldfa, "if"_ldfa, "else"_ldfa, "while"_ldfa // 56 - 63
 		};
 		const std::unordered_set<char> whitespaces{ ' ', '\n', '\t', '\0' };
 		// #TASK : constexpr hash tables
@@ -174,10 +175,12 @@ namespace dpl {
 				tokens_out.emplace_back(Token{ Token::Type::Unknown, str });
 			} else if (machine == 0) {
 				tokens_out.emplace_back(Token{ Token::Type::Identifier, str });
-			} else if (machine <= 54) {
-				tokens_out.emplace_back(Token{ Token::Type::Symbol, magic_enum::enum_value<Token::Symbol>(machine - 1) });
-			} else if (machine <= 62) {
-				tokens_out.emplace_back(Token{ Token::Type::Keyword, magic_enum::enum_value<Token::Keyword>(machine - 55) });
+			} else if (machine == 1) {
+				tokens_out.emplace_back(Token{ Token::Type::Number, std::stod(str) });
+			} else if (machine <= 55) {
+				tokens_out.emplace_back(Token{ Token::Type::Symbol, magic_enum::enum_value<Token::Symbol>(machine - 2) });
+			} else if (machine <= 63) {
+				tokens_out.emplace_back(Token{ Token::Type::Keyword, magic_enum::enum_value<Token::Keyword>(machine - 56) });
 			}
 		}
 
