@@ -15,37 +15,37 @@
 
 #include <magic_enum/magic_enum.hpp>
 
+#ifndef SYMBOLS_MACRO
+#define SYMBOLS_MACRO
+#endif
+
+#ifndef KEYWORDS_MACRO
+#define KEYWORDS_MACRO
+#endif
+
 namespace dpl {
 
-	struct Token {
-		enum class Type { Identifier, Number, String, Symbol, Keyword, Whitespace, Unknown };
-
-		enum class Symbol {
-			LeftParen, RightParen, LeftCurly, RightCurly, Asterisk, Scope, Semicolon, LeftShift, RightShift, Comma,
-			Caret, PlusPlus, MinusMinus, LeftAngle, RightAngle, Plus, Minus, Slash, Percentage, At,
-			Exclamation, Tilda, Hash, Dollar, Ampersand, DoubleAmpersand, DoubleCaret, UprightSlash, DoubleUprightSlash, AmpersandEqual,
-			CaretEqual, UprightSlashEqual, PlusEqual, MinusEqual, AsteriskEqual, SlashEqual, LeftSquare, RightSquare, Colon, Question,
-			RightShiftEqual, LeftShiftEqual, ColonEqual, LessEqual, GreaterEqual, Spaceship, Equal, DoubleEqual, DoubleAsterisk, PercentageEqual,
-			ExclamationEqual, Arrow, Ellipsis, Tick
-		};
-		enum class Keyword { Int, Return, Bitfield, True, False, If, Else, While };
+	template<typename KwdT, typename SymT>
+	struct IToken {
+		enum class Type { Identifier, Number, String, Symbol, SoftSymbol, Keyword, Whitespace, Unknown };
 
 		Type type;
-		std::variant<std::string, double, Symbol, Keyword> value;
+		std::variant<std::string, double, SymT, KwdT> value;
 	};
 
-	std::ostream& operator<<(std::ostream& os, const Token& t) {
+	template<typename KwdT, typename SymT>
+	std::ostream& operator<<(std::ostream& os, const IToken<KwdT, SymT>& t) {
 		const auto* sval = std::get_if<std::string>(&t.value);
 		const auto* dval = std::get_if<double>(&t.value);
-		const auto* smval = std::get_if<Token::Symbol>(&t.value);
-		const auto* kwval = std::get_if<Token::Keyword>(&t.value);
+		const auto* smval = std::get_if<SymT>(&t.value);
+		const auto* kwval = std::get_if<KwdT>(&t.value);
 
 		os << "[" << magic_enum::enum_name(t.type) << ", ";
 
 		if (sval) os << *sval;
-		else if (dval) os << *dval;
-		else if (smval) os << magic_enum::enum_name(*smval);
-		else if (kwval) os << magic_enum::enum_name(*kwval);
+		if (dval) os << *dval;
+		if (smval) os << magic_enum::enum_name(*smval);
+		if (kwval) os << magic_enum::enum_name(*kwval);
 
 		os << "]";
 		return os;
@@ -60,20 +60,35 @@ namespace dpl {
 		std::string hiders_queue = "";
 		// #TASK : should probably implement custom queue with size max(hiders.first...)-1, save tons of allocations
 
-		
-		// stage 2 - lexing
-		std::array<std::unique_ptr<dpl::GenericDFA>, 65> automata{
-			std::make_unique<dpl::IdentifierDFA>(), //i = 0;
-			std::make_unique<dpl::NumberDFA>(), //i = 1
-			std::make_unique<dpl::StringDFA>(), //i = 2
-			"("_ldfa, ")"_ldfa, "{"_ldfa, "}"_ldfa, "*"_ldfa, "::"_ldfa, ";"_ldfa, "<<"_ldfa, ">>"_ldfa, ","_ldfa, // 3 - 12
-			"^"_ldfa, "++"_ldfa, "--"_ldfa, "<"_ldfa, ">"_ldfa, "+"_ldfa, "-"_ldfa, "/"_ldfa, "%"_ldfa, "@"_ldfa, // 13 - 22
-			"!"_ldfa, "~"_ldfa, "#"_ldfa, "$"_ldfa, "&"_ldfa, "&&"_ldfa, "^^"_ldfa, "|"_ldfa, "||"_ldfa, "&="_ldfa, // 23 - 32
-			"^="_ldfa, "|="_ldfa, "+="_ldfa, "-="_ldfa, "*="_ldfa, "/="_ldfa, "["_ldfa, "]"_ldfa, ":"_ldfa, "?"_ldfa, // 33 - 42
-			">>="_ldfa, "<<="_ldfa, ":="_ldfa, "<="_ldfa, ">="_ldfa, "<=>"_ldfa, "="_ldfa, "=="_ldfa, "**"_ldfa, "%="_ldfa, // 43 - 52
-			"!="_ldfa, "->"_ldfa, "..."_ldfa, "`"_ldfa, // 53 - 56
-			"int"_ldfa, "return"_ldfa, "Bitfield"_ldfa, "true"_ldfa, "false"_ldfa, "if"_ldfa, "else"_ldfa, "while"_ldfa // 57 - 64
+		#define X(name, symbol) name,
+		enum class Symbols {
+			SYMBOLS_MACRO
 		};
+		#undef X
+
+		#define Y(name) name,
+		enum class Keywords { KEYWORDS_MACRO };
+		#undef Y
+
+		using Token = IToken<Keywords, Symbols>;
+
+		const int symbols_count = magic_enum::enum_count<Symbols>();
+		const int keywords_count = magic_enum::enum_count<Keywords>();
+
+		#define X(name, symbol) symbol##_ldfa,
+		#define Y(name) #name##_ldfa,
+		const std::array<std::unique_ptr<dpl::GenericDFA>, 73> automata{
+			std::make_unique<dpl::IdentifierDFA>(),
+			std::make_unique<dpl::NumberDFA>(),
+			std::make_unique<dpl::StringDFA>(),
+			SYMBOLS_MACRO
+			KEYWORDS_MACRO
+		};
+		#undef X
+		#undef Y
+
+		const int misc_automata_count = automata.size() - symbols_count - keywords_count;
+
 		const std::unordered_set<char> whitespaces{ ' ', '\n', '\t', '\0' };
 		// #TASK : constexpr hash tables
 
@@ -181,11 +196,11 @@ namespace dpl {
 			} else if (machine == 1) {
 				tokens_out.emplace_back(Token{ Token::Type::Number, std::stod(str) });
 			} else if (machine == 2) {
-				tokens_out.emplace_back(Token{ Token::Type::String, dpl::StringDFA::recent_string });
-			} else if (machine <= 56) {
-				tokens_out.emplace_back(Token{ Token::Type::Symbol, magic_enum::enum_value<Token::Symbol>(machine - 3) });
-			} else if (machine <= 64) {
-				tokens_out.emplace_back(Token{ Token::Type::Keyword, magic_enum::enum_value<Token::Keyword>(machine - 57) });
+				tokens_out.emplace_back(Token{ Token::Type::String, std::move(dpl::StringDFA::recent_string) });
+			} else if (machine <= symbols_count - 1 + misc_automata_count) {
+				tokens_out.emplace_back(Token{ Token::Type::Symbol, magic_enum::enum_value<Symbols>(machine - misc_automata_count) });
+			} else if (machine <= keywords_count - 1 + misc_automata_count + symbols_count) {
+				tokens_out.emplace_back(Token{ Token::Type::Keyword, magic_enum::enum_value<Keywords>(machine - misc_automata_count - symbols_count) });
 			}
 		}
 
@@ -219,3 +234,6 @@ namespace dpl {
 
 	};
 }
+
+#undef SYMBOLS_MACRO
+#undef KEYWORDS_MACRO

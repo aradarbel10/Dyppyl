@@ -52,7 +52,7 @@ namespace dpl {
 	public:
 
 		LinearDFA(const std::string& s_) : states(s_) { }
-		LinearDFA(const char* s_) : states(s_) { }
+		LinearDFA(const char* s_) : states(std::move(s_)) { }
 
 		bool isAccepted() const override {
 			return current_state == states.size();
@@ -235,11 +235,7 @@ namespace dpl {
 
 	};
 
-
-	// string DFA = "letters numbers ,!./\n \\ \""
 	// symbol DFA = basially the same as the identifier DFA but even simpler
-	//				or --- use linear ones for that, just hard-code possible operators & delimeters
-	//				(note: rumtime tokenizer will still have to use a soft-coded symbol lexer (but maybe still not I'll need to try it out first))
 
 }
 
