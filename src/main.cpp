@@ -1,6 +1,11 @@
 #include <iostream>
 #include <algorithm>
 
+#include "Tokenizer.h"
+#include "LL1Parser.h"
+
+// search this solution for "#TASK" to find places where optimizations/refactoring/improvements may be worth implementing
+
 #define SYMBOLS_MACRO \
 	X(LeftParen, "(") \
 	X(RightParen, ")") \
@@ -63,30 +68,46 @@
 	X(Question, "?") \
 	X(Slash, "/") \
 	X(Arrow, "->") \
+	X(LongArrow, "-->") \
+	X(SquigglyArrow, "~>") \
 	X(WideArrow, "=>")
 
 #define KEYWORDS_MACRO \
 	Y(Int) \
-	Y(Return) \
+	X(Return, "return") \
 	Y(Bitfield) \
 	Y(True) \
 	Y(False) \
-	Y(If) \
-	Y(Else) \
-	Y(While)
-
-#include "Tokenizer.h"
-
-// search this solution for "#TASK" to find places where optimizations/refactoring/improvements may be worth implementing
+	X(If, "if") \
+	X(Else, "else") \
+	X(While, "while")
 
 int main() {
 
-	const std::string test_code = "int main(int argc, char **argv) {\n\t std::cout << \"Num Of Args:\" << argc << \"\\n\";\n\t return -3.14159;\n }";
-	const std::string string_test = "coming up is... a string! \"Inside the string yay\"";
+	#define X(name, symbol) name,
+	#define Y(name) name,
+	enum class Symbols { SYMBOLS_MACRO };
+	enum class Keywords { KEYWORDS_MACRO };
+	#undef X
+	#undef Y
 
-	dpl::TokenizerInterface tokenizer;
-	tokenizer.tokenizeString(test_code);
-	std::for_each(tokenizer.base.tokens_out.begin(), tokenizer.base.tokens_out.end(), [](const auto& s) { std::cout << s << "\n"; });
+	#define X(name, symbol) symbol,
+	#define Y(name) #name,
+	const std::vector<std::string_view> symbols{ SYMBOLS_MACRO };
+	const std::vector<std::string_view> keywords{ KEYWORDS_MACRO };
+	#undef X
+	#undef Y
+
+	dpl::Tokenizer<Keywords, Symbols> tokenizer{ keywords, symbols };
+
+	//const std::string test_code = "int main(int argc, char **argv) {\n\t std::cout << \"Num Of Args:\" << argc << \"\\n\";\n\t return -3.14159;\n }";
+	//tokenizer.tokenizeString(test_code);
+
+	tokenizer.tokenizeFile("snippets/python.py");
+	std::for_each(tokenizer.tokens_out.begin(), tokenizer.tokens_out.end(), [](const auto& s) { std::cout << s << "\n"; });
 
 	return 0;
 }
+
+#undef SYMBOLS_MACRO
+#undef KEYWORDS_MACRO

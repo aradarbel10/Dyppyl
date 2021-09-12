@@ -23,7 +23,13 @@
     <ClInclude Include="src\Tokenizer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\LinearDFA.h">
+    <ClInclude Include="src\Token.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\LL1Parser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Automata.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

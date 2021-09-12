@@ -1,13 +1,16 @@
 #pragma once
 
 #include "Automata.h"
+#include "Token.h"
 
 #include <utility>
 #include <variant>
 #include <string>
+#include <iterator>
 
 #include <unordered_set>
 #include <array>
+#include <queue>
 
 #include <filesystem>
 #include <fstream>
@@ -15,88 +18,72 @@
 
 #include <magic_enum/magic_enum.hpp>
 
-#ifndef SYMBOLS_MACRO
-#define SYMBOLS_MACRO
-#endif
-
-#ifndef KEYWORDS_MACRO
-#define KEYWORDS_MACRO
-#endif
-
 namespace dpl {
-
-	template<typename KwdT, typename SymT>
-	struct IToken {
-		enum class Type { Identifier, Number, String, Symbol, SoftSymbol, Keyword, Whitespace, Unknown };
-
-		Type type;
-		std::variant<std::string, double, SymT, KwdT> value;
-	};
-
-	template<typename KwdT, typename SymT>
-	std::ostream& operator<<(std::ostream& os, const IToken<KwdT, SymT>& t) {
-		const auto* sval = std::get_if<std::string>(&t.value);
-		const auto* dval = std::get_if<double>(&t.value);
-		const auto* smval = std::get_if<SymT>(&t.value);
-		const auto* kwval = std::get_if<KwdT>(&t.value);
-
-		os << "[" << magic_enum::enum_name(t.type) << ", ";
-
-		if (sval) os << *sval;
-		if (dval) os << *dval;
-		if (smval) os << magic_enum::enum_name(*smval);
-		if (kwval) os << magic_enum::enum_name(*kwval);
-
-		os << "]";
-		return os;
-	}
-
+	template<typename KwdT, typename SymT> requires std::is_enum_v<KwdT> && std::is_enum_v<SymT>
 	class Tokenizer {
-	public:
+	private:
 
-		// stage 1 - hiders
+		using Token = Token<KwdT, SymT>;
+
 		std::array<std::array<dpl::LinearDFA, 2>, 2> hiders{{ {"//", "\n"}, {"/*", "*/"} }};
+		const std::unordered_set<char> whitespaces{ ' ', '\n', '\t', '\0' };
 		int inside_hider = -1;
 		std::string hiders_queue = "";
 		// #TASK : should probably implement custom queue with size max(hiders.first...)-1, save tons of allocations
+		
+		const size_t keywords_count = magic_enum::enum_count<KwdT>();
+		const size_t symbols_count = magic_enum::enum_count<SymT>();
 
-		#define X(name, symbol) name,
-		enum class Symbols {
-			SYMBOLS_MACRO
-		};
-		#undef X
+		dpl::IdentifierDFA identifier_automaton;
+		dpl::NumberDFA number_automaton;
+		dpl::StringDFA string_automaton;
+		std::array<LinearDFA, magic_enum::enum_count<KwdT>()> keywords_automata;
+		std::array<LinearDFA, magic_enum::enum_count<SymT>()> symbols_automata;
 
-		#define Y(name) name,
-		enum class Keywords { KEYWORDS_MACRO };
-		#undef Y
+		std::array<GenericDFA*, magic_enum::enum_count<KwdT>() + magic_enum::enum_count<SymT>() + 3>
+			automata { &identifier_automaton, &number_automaton, &string_automaton };
+		
+		const size_t misc_automata_count = automata.size() - symbols_count - keywords_count;
 
-		using Token = IToken<Keywords, Symbols>;
-
-		const int symbols_count = magic_enum::enum_count<Symbols>();
-		const int keywords_count = magic_enum::enum_count<Keywords>();
-
-		#define X(name, symbol) symbol##_ldfa,
-		#define Y(name) #name##_ldfa,
-		const std::array<std::unique_ptr<dpl::GenericDFA>, 73> automata{
-			std::make_unique<dpl::IdentifierDFA>(),
-			std::make_unique<dpl::NumberDFA>(),
-			std::make_unique<dpl::StringDFA>(),
-			SYMBOLS_MACRO
-			KEYWORDS_MACRO
-		};
-		#undef X
-		#undef Y
-
-		const int misc_automata_count = automata.size() - symbols_count - keywords_count;
-
-		const std::unordered_set<char> whitespaces{ ' ', '\n', '\t', '\0' };
-		// #TASK : constexpr hash tables
-
-		// #TASK : use more appropriate data structure to hold queues
+		// #TASK : find more appropriate data structure to hold queues
 		int longest_accepted = -1, length_of_longest = 0;
 		std::string lexeme_buff = "", lexer_queue = "";
 
+	public:
 		std::list<Token> tokens_out;
+
+		constexpr Tokenizer(const std::vector<std::string_view>& keywords, const std::vector<std::string_view>& symbols) {
+			std::transform(symbols.begin(), symbols.end(), symbols_automata.begin(), std::identity{});
+			std::transform(keywords.begin(), keywords.end(), keywords_automata.begin(), std::identity{});
+			
+			std::transform(symbols_automata.begin(), symbols_automata.end(), automata.begin() + 3, [](auto& elm) { return &elm; });
+			std::transform(keywords_automata.begin(), keywords_automata.end(), automata.begin() + symbols_automata.size() + 3, [](auto& elm) { return &elm; });
+		}
+		
+		void tokenizeFile(std::filesystem::path src) {
+			std::ifstream in{ src };
+
+			if (in.is_open()) {
+				std::string line;
+
+				while (std::getline(in, line)) {
+					tokenizeString(line);
+				}
+
+				in.close();
+			} else {
+				throw "Could not open file!";
+			}
+		}
+
+		void tokenizeString(std::string_view src) {
+			for (const auto& c : src) {
+				*this << c;
+			}
+			*this << '\n';
+		}
+
+	private:
 
 		void operator<<(char c) {
 			passHiders(c);
@@ -177,15 +164,12 @@ namespace dpl {
 					if (length_of_longest != lexeme_buff.size())
 						lexer_queue = lexeme_buff.substr(length_of_longest, std::string::npos) + lexer_queue;
 					else automata[longest_accepted]->kill();
-
-					std::cout << tokens_out.back() << '\n';
 				}
 
 				lexeme_buff.clear();
 				longest_accepted = -1;
 				length_of_longest = 0;
 			}
-
 		}
 
 		void evaluate(int machine, const std::string& str) {
@@ -198,42 +182,11 @@ namespace dpl {
 			} else if (machine == 2) {
 				tokens_out.emplace_back(Token{ Token::Type::String, std::move(dpl::StringDFA::recent_string) });
 			} else if (machine <= symbols_count - 1 + misc_automata_count) {
-				tokens_out.emplace_back(Token{ Token::Type::Symbol, magic_enum::enum_value<Symbols>(machine - misc_automata_count) });
+				tokens_out.emplace_back(Token{ Token::Type::Symbol, magic_enum::enum_value<SymT>(machine - misc_automata_count) });
 			} else if (machine <= keywords_count - 1 + misc_automata_count + symbols_count) {
-				tokens_out.emplace_back(Token{ Token::Type::Keyword, magic_enum::enum_value<Keywords>(machine - misc_automata_count - symbols_count) });
+				tokens_out.emplace_back(Token{ Token::Type::Keyword, magic_enum::enum_value<KwdT>(machine - misc_automata_count - symbols_count) });
 			}
 		}
-
-	};
-
-	class TokenizerInterface {
-	public:
-
-		void tokenizeString(std::string_view src) {
-			for (const auto& c : src) {
-				base << c;
-			}
-			base << '\n';
-		}
-
-		// #TASK : tokenize files in terms of tokenizeString (do it line by line)
-		void tokenizeFile(std::filesystem::path src) {
-			std::ifstream in(src);
-
-			if (in.is_open()) {
-				char c;
-				while (in >> std::noskipws >> c) {
-					base << c;
-				}
-			} else {
-				throw "Could not open file!";
-			}
-		}
-
-		Tokenizer base;
 
 	};
 }
-
-#undef SYMBOLS_MACRO
-#undef KEYWORDS_MACRO

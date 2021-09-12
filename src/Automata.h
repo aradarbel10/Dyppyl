@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+
 #include <iostream>
 
 namespace dpl {
@@ -51,8 +52,9 @@ namespace dpl {
 	class LinearDFA : public GenericDFA { // regex = specificword
 	public:
 
-		LinearDFA(const std::string& s_) : states(s_) { }
-		LinearDFA(const char* s_) : states(std::move(s_)) { }
+		LinearDFA() { }
+		LinearDFA(const char* s_) : states(s_) { }
+		LinearDFA& operator=(std::string_view s_) { states = s_; return *this; }
 
 		bool isAccepted() const override {
 			return current_state == states.size();
@@ -87,7 +89,7 @@ namespace dpl {
 
 	private:
 
-		std::string states = "";
+		std::string_view states;
 
 	};
 
@@ -239,6 +241,6 @@ namespace dpl {
 
 }
 
-std::unique_ptr<dpl::LinearDFA> operator"" _ldfa(const char* c_, std::size_t s) {
-	return std::make_unique<dpl::LinearDFA>(c_);
-}
+//std::unique_ptr<dpl::LinearDFA> operator"" _ldfa(const char* c_, std::size_t s) {
+//	return std::make_unique<dpl::LinearDFA>(c_);
+//}
