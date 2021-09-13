@@ -9,16 +9,21 @@
 #include "magic_enum/magic_enum.hpp"
 
 namespace dpl {
-	namespace impl {
-		enum class Type { Identifier, Number, String, Symbol, SoftSymbol, Keyword, Whitespace, Unknown };
-	}
+
+	enum class TokenType { Identifier, Number, String, Symbol, Keyword, Whitespace, Unknown };
 
 	template<typename KwdT, typename SymT> requires std::is_enum_v<KwdT> && std::is_enum_v<SymT>
 	struct Token {
-		using Type = impl::Type;
+		using Type = TokenType;
 
 		Type type;
-		std::variant<std::string, double, SymT, KwdT> value;
+		std::variant<std::monostate, std::string, double, SymT, KwdT> value;
+
+		constexpr Token() = default;
+		constexpr Token(Type t, auto v) : type(t), value(v) { }
+		constexpr Token(Type t) : type(t), value(std::monostate()) { }
+		constexpr Token(KwdT t) : type(Type::Keyword), value(t) { }
+		constexpr Token(SymT t) : type(Type::Symbol), value(t) { }
 	};
 
 	template<typename KwdT, typename SymT>

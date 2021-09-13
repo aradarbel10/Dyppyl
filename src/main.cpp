@@ -2,6 +2,7 @@
 #include <algorithm>
 
 #include "Tokenizer.h"
+#include "Token.h"
 #include "LL1Parser.h"
 
 // search this solution for "#TASK" to find places where optimizations/refactoring/improvements may be worth implementing
@@ -105,6 +106,29 @@ int main() {
 
 	tokenizer.tokenizeFile("snippets/python.py");
 	std::for_each(tokenizer.tokens_out.begin(), tokenizer.tokens_out.end(), [](const auto& s) { std::cout << s << "\n"; });
+	std::cout << "\n\n\n\n";
+
+
+	using ProductionRule = dpl::ProductionRule<Keywords, Symbols>;
+	using Nonterminal = dpl::Nonterminal<Keywords, Symbols>;
+	using Token = dpl::Token<Keywords, Symbols>;
+	using Self = dpl::Self;
+	
+	Nonterminal Op{
+		{ Symbols::Plus },
+		{ Symbols::Minus },
+		{ Symbols::Asterisk },
+		{ Symbols::Slash }
+	};
+
+	Nonterminal E{
+		{ Keywords::Int },
+		{ Self(), &Op, Self() },
+		{ Symbols::LeftParen, Self(), Symbols::RightParen }
+	};
+
+	std::cout << Op << '\n';
+	std::cout << E << '\n';
 
 	return 0;
 }
