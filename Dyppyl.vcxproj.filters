@@ -26,10 +26,13 @@
     <ClInclude Include="src\Token.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\LL1Parser.h">
+    <ClInclude Include="src\Grammar.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\Automata.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\LL1.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

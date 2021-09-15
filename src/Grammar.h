@@ -3,24 +3,29 @@
 #include <string_view>
 #include <variant>
 #include <vector>
-#include <array>
+#include <unordered_set>
 
 #include "Token.h"
 
 namespace dpl {
 
-	template<typename KwdT, typename SymT> requires std::is_enum_v<KwdT>&& std::is_enum_v<SymT>
+	template<typename KwdT, typename SymT> class LL1;
+
+	template<typename KwdT, typename SymT> requires std::is_enum_v<KwdT> && std::is_enum_v<SymT>
 	class Nonterminal;
 
-	struct Self {};
+	template<typename KwdT, typename SymT> requires std::is_enum_v<KwdT>&& std::is_enum_v<SymT>
+	class Grammar;
 
 	template<typename KwdT, typename SymT> requires std::is_enum_v<KwdT> && std::is_enum_v<SymT>
 	class ProductionRule {
 	public:
 
+		enum class Special { Epsilon, Self };
+
 		using Token = Token<KwdT, SymT>;
-		using Atom = std::variant<std::monostate, Self, Token, Nonterminal<KwdT, SymT>*>;
-		
+		using Atom = std::variant<Special, Token, std::string_view>;
+
 		constexpr ProductionRule(std::initializer_list<Atom> l) : definition(l) {
 			//std::replace_if(definition.begin(), definition.end(), [](const Atom& a) {
 			//	return std::holds_alternative<Self>(a);
@@ -31,6 +36,18 @@ namespace dpl {
 
 		template<typename KwdT, typename SymT>
 		friend std::ostream& operator<<(std::ostream& os, const ProductionRule<KwdT, SymT>& t);
+
+		constexpr decltype(auto) size() {
+			return definition.size();
+		}
+
+		constexpr decltype(auto) operator[](size_t i) {
+			return definition[i];
+		}
+
+		constexpr std::vector<Atom>& getDefinition() {
+			return definition;
+		}
 
 	private:
 
@@ -44,14 +61,35 @@ namespace dpl {
 		
 		using ProductionRule = ProductionRule<KwdT, SymT>;
 
-		constexpr Nonterminal(std::initializer_list<ProductionRule> l) : productions(l) { }
+		constexpr Nonterminal() = default;
+		constexpr Nonterminal(std::string_view n, std::initializer_list<ProductionRule> l) : productions(l), name(n) { }
 
 		template<typename KwdT, typename SymT>
 		friend std::ostream& operator<<(std::ostream& os, const Nonterminal<KwdT, SymT>& t);
 
+		constexpr decltype(auto) size() {
+			return productions.size();
+		}
+
+		constexpr decltype(auto) operator[](size_t i) {
+			return productions[i];
+		}
+
+		constexpr std::vector<ProductionRule>& getProductions() {
+			return productions;
+		}
+
+		constexpr std::string_view getName() const {
+			return name;
+		}
+
+		friend class LL1<typename KwdT, typename SymT>;
+		friend class Grammar<typename KwdT, typename SymT>;
+
 	private:
 
 		std::vector<ProductionRule> productions;
+		std::string_view name;
 
 	};
 
@@ -59,13 +97,21 @@ namespace dpl {
 	class Grammar {
 	public:
 
+		using ProductionRule = ProductionRule<KwdT, SymT>;
 		using Nonterminal = Nonterminal<KwdT, SymT>;
+		using Token = Token<KwdT, SymT>;
 
-		constexpr Grammar(std::initializer_list<Nonterminal> l) : nonterminals(l) { }
+		constexpr Grammar(std::initializer_list<Nonterminal> l) {
+			std::for_each(l.begin(), l.end(), [&](const auto& e) {
+				nonterminals[e.name] = e;
+			});
+		}
+
+		friend class LL1<typename KwdT, typename SymT>;
 
 	private:
 
-		std::vector<Nonterminal> nonterminals;
+		std::unordered_map<std::string_view, Nonterminal> nonterminals;
 
 	};
 
@@ -80,27 +126,18 @@ namespace dpl {
 		for (const auto& e : t.definition) {
 			os << ' ';
 
-			const auto* val0 = std::get_if<0>(&e);
-			if (val0) {
-				os << 'e';
+			if (const auto* val = std::get_if<0>(&e)) {
+				os << magic_enum::enum_name<ProductionRule<KwdT, SymT>::Special>(*val);
 				continue;
 			}
 
-			const auto* val1 = std::get_if<1>(&e);
-			if (val1) {
-				os << "[self]";
+			if (const auto* val = std::get_if<1>(&e)) {
+				os << *val;
 				continue;
 			}
 
-			const auto* val2 = std::get_if<2>(&e);
-			if (val2) {
-				os << *val2;
-				continue;
-			}
-
-			const auto* val3 = std::get_if<3>(&e);
-			if (val3) {
-				os << "[nonterminal]";
+			if (const auto* val = std::get_if<2>(&e)) {
+				os << "[nonterminal, " << *val << "]";
 			}
 		}
 

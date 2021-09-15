@@ -3,7 +3,8 @@
 
 #include "Tokenizer.h"
 #include "Token.h"
-#include "LL1Parser.h"
+#include "Grammar.h"
+#include "LL1.h"
 
 // search this solution for "#TASK" to find places where optimizations/refactoring/improvements may be worth implementing
 
@@ -80,8 +81,12 @@
 	Y(True) \
 	Y(False) \
 	X(If, "if") \
+	X(Then, "then") \
 	X(Else, "else") \
-	X(While, "while")
+	X(While, "while") \
+	X(Zero, "zero") \
+	X(Not, "not") \
+	X(Do, "do")
 
 int main() {
 
@@ -112,23 +117,51 @@ int main() {
 	using ProductionRule = dpl::ProductionRule<Keywords, Symbols>;
 	using Nonterminal = dpl::Nonterminal<Keywords, Symbols>;
 	using Token = dpl::Token<Keywords, Symbols>;
-	using Self = dpl::Self;
+	using Special = ProductionRule::Special;
+	using Grammar = dpl::Grammar<Keywords, Symbols>;
+	using LL1 = dpl::LL1<Keywords, Symbols>;
 	
-	Nonterminal Op{
-		{ Symbols::Plus },
-		{ Symbols::Minus },
-		{ Symbols::Asterisk },
-		{ Symbols::Slash }
-	};
+	//Nonterminal Term{ "Term", {
+	//	{ Token::Type::Identifier },
+	//	{ Token::Type::Number }
+	//}};
 
-	Nonterminal E{
-		{ Keywords::Int },
-		{ Self(), &Op, Self() },
-		{ Symbols::LeftParen, Self(), Symbols::RightParen }
-	};
+	//Nonterminal Expr{ "Expr", {
+	//	{ "Term", Symbols::Arrow, Token::Type::Identifier },
+	//	{ Keywords::Zero, Symbols::Question, "Term"},
+	//	{ Keywords::Not, Special::Self },
+	//	{ Symbols::PlusPlus, Token::Type::Identifier },
+	//	{ Symbols::MinusMinus, Token::Type::Identifier }
+	//}};
 
-	std::cout << Op << '\n';
-	std::cout << E << '\n';
+	//Nonterminal Stmt{ "Stmt", {
+	//	{ Keywords::If, "Expr" , Keywords::Then, "Stmt" },
+	//	{ Keywords::While, "Expr", "Stmt" },
+	//	{ "Expr", Symbols::Semicolon }
+	//}};
+
+	Grammar grammar{
+		{ "Term", {
+			{ Token::Type::Identifier },
+			{ Token::Type::Number }
+		}},
+		{ "Expr", {
+			{ "Term", Symbols::Arrow, Token::Type::Identifier },
+			{ Keywords::Zero, Symbols::Question, "Term"},
+			{ Keywords::Not, Special::Self },
+			{ Symbols::PlusPlus, Token::Type::Identifier },
+			{ Symbols::MinusMinus, Token::Type::Identifier }
+		}},
+		{ "Stmt", {
+				{ Keywords::If, "Expr" , Keywords::Then, "Stmt" },
+				{ Keywords::While, "Expr", "Stmt" },
+				{ "Expr", Symbols::Semicolon }
+		}}
+	};
+	LL1 parser{ grammar };
+
+	//std::cout << Op << '\n';
+	//std::cout << E << "\n\n\n";
 
 	return 0;
 }

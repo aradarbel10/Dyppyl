@@ -151,7 +151,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Automata.h" />
-    <ClInclude Include="src\LL1Parser.h" />
+    <ClInclude Include="src\Grammar.h" />
+    <ClInclude Include="src\LL1.h" />
     <ClInclude Include="src\Token.h" />
     <ClInclude Include="src\Tokenizer.h" />
   </ItemGroup>

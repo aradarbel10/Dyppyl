@@ -3,6 +3,7 @@
 #include <type_traits>
 
 #include <variant>
+#include <functional>
 
 #include <iostream>
 
@@ -27,6 +28,11 @@ namespace dpl {
 	};
 
 	template<typename KwdT, typename SymT>
+	inline bool operator==(const Token<KwdT, SymT>& lhs, const Token<KwdT, SymT>& rhs) {
+		return lhs.type == rhs.type && lhs.value == rhs.value;
+	}
+
+	template<typename KwdT, typename SymT>
 	std::ostream& operator<<(std::ostream& os, const Token<KwdT, SymT>& t) {
 		const auto* sval = std::get_if<std::string>(&t.value);
 		const auto* dval = std::get_if<double>(&t.value);
@@ -43,4 +49,18 @@ namespace dpl {
 		os << "]";
 		return os;
 	}
+}
+
+namespace std {
+	template<typename KwdT, typename SymT> class hash<dpl::Token<KwdT, SymT>> {
+	public:
+		//credit to boost::hash_combine
+		std::size_t operator()(dpl::Token<KwdT, SymT> const& t) const noexcept {
+			//size_t intermediate = std::hash<dpl::TokenType>{}(t.type);
+			//intermediate ^= std::hash<std::variant<std::monostate, std::string, double, SymT, KwdT>>{}(t.value)
+			//	+ 0x9e3779b9 + (intermediate << 6) + (intermediate >> 2);
+			//return intermediate;
+			return 42;
+		}
+	};
 }
