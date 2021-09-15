@@ -154,13 +154,26 @@ namespace dpl{
 			for (auto& [name, nt] : grammar.nonterminals) {
 				for (int i = 0; i < nt.productions.size(); i++) {
 					auto& rule = nt.productions[i];
-					if (const auto* v = std::get_if<Token>(&rule[0])) {
-						table[*v][name] = i;
-					} else if (const auto* v = std::get_if<std::string_view>(&rule[0])) {
-						std::for_each(firsts[*v].begin(), firsts[*v].end(), [&](const auto& t) {
-							table[t][name] = i;
-						});
+
+					auto firsts_of_def = first_star(rule.begin(), rule.end());
+
+					for (const auto& f : firsts_of_def) {
+						if (const auto* t = std::get_if<Token>(&f)) {
+							table[*t][name] = i;
+						} else {
+							std::for_each(follows[name].begin(), follows[name].end(), [&](const auto& e) {
+								table[e][name] = i;
+							});
+						}
 					}
+
+					//if (const auto* v = std::get_if<Token>(&rule[0])) {
+					//	table[*v][name] = i;
+					//} else if (const auto* v = std::get_if<std::string_view>(&rule[0])) {
+					//	std::for_each(firsts[*v].begin(), firsts[*v].end(), [&](const auto& t) {
+					//		table[t][name] = i;
+					//	});
+					//}
 				}
 			}
 
