@@ -86,7 +86,11 @@
 	X(While, "while") \
 	X(Zero, "zero") \
 	X(Not, "not") \
-	X(Do, "do")
+	X(Do, "do") \
+	Y(Hello) \
+	Y(Heya) \
+	Y(Yo) \
+	Y(World)
 
 int main() {
 
@@ -117,30 +121,10 @@ int main() {
 	using ProductionRule = dpl::ProductionRule<Keywords, Symbols>;
 	using Nonterminal = dpl::Nonterminal<Keywords, Symbols>;
 	using Token = dpl::Token<Keywords, Symbols>;
-	using Special = ProductionRule::Special;
 	using Grammar = dpl::Grammar<Keywords, Symbols>;
 	using LL1 = dpl::LL1<Keywords, Symbols>;
-	
-	//Nonterminal Term{ "Term", {
-	//	{ Token::Type::Identifier },
-	//	{ Token::Type::Number }
-	//}};
 
-	//Nonterminal Expr{ "Expr", {
-	//	{ "Term", Symbols::Arrow, Token::Type::Identifier },
-	//	{ Keywords::Zero, Symbols::Question, "Term"},
-	//	{ Keywords::Not, Special::Self },
-	//	{ Symbols::PlusPlus, Token::Type::Identifier },
-	//	{ Symbols::MinusMinus, Token::Type::Identifier }
-	//}};
-
-	//Nonterminal Stmt{ "Stmt", {
-	//	{ Keywords::If, "Expr" , Keywords::Then, "Stmt" },
-	//	{ Keywords::While, "Expr", "Stmt" },
-	//	{ "Expr", Symbols::Semicolon }
-	//}};
-
-	Grammar grammar{
+	Grammar math_grammar {
 		{ "Term", {
 			{ Token::Type::Identifier },
 			{ Token::Type::Number }
@@ -148,7 +132,7 @@ int main() {
 		{ "Expr", {
 			{ "Term", Symbols::Arrow, Token::Type::Identifier },
 			{ Keywords::Zero, Symbols::Question, "Term"},
-			{ Keywords::Not, Special::Self },
+			{ Keywords::Not, "Expr" },
 			{ Symbols::PlusPlus, Token::Type::Identifier },
 			{ Symbols::MinusMinus, Token::Type::Identifier }
 		}},
@@ -158,7 +142,23 @@ int main() {
 				{ "Expr", Symbols::Semicolon }
 		}}
 	};
-	LL1 parser{ grammar };
+
+	Grammar hi_grammar{
+		{ "Msg", {
+			{ "Hi", "End" }
+		}},
+		{ "Hi", {
+			{ Keywords::Hello },
+			{ Keywords::Heya },
+			{ Keywords::Yo }
+		}},
+		{ "End", {
+			{ Keywords::World },
+			{ std::monostate() }
+		}}
+	};
+
+	LL1 parser{ hi_grammar };
 
 	//std::cout << Op << '\n';
 	//std::cout << E << "\n\n\n";

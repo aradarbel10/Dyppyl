@@ -21,10 +21,8 @@ namespace dpl {
 	class ProductionRule {
 	public:
 
-		enum class Special { Epsilon, Self };
-
 		using Token = Token<KwdT, SymT>;
-		using Atom = std::variant<Special, Token, std::string_view>;
+		using Atom = std::variant<std::monostate, Token, std::string_view>;
 
 		constexpr ProductionRule(std::initializer_list<Atom> l) : definition(l) {
 			//std::replace_if(definition.begin(), definition.end(), [](const Atom& a) {

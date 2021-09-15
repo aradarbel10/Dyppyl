@@ -22,12 +22,18 @@ namespace dpl{
 		}
 
 		void calcFirstSets() {
-			firsts.reserve(g.nonterminals.size());
-			for (auto& [name, nt] : g.nonterminals) {
+			firsts.reserve(grammar.nonterminals.size());
+			for (auto& [name, nt] : grammar.nonterminals) {
 				firsts[name].reserve(nt.size());
 				for (auto& rule : nt.getProductions()) {
 					if (const Token* t = std::get_if<Token>(&rule[0])) {
 						firsts[name].insert(*t);
+					}
+
+					if (rule.size() == 1) {
+						if (std::holds_alternative<std::monostate>(rule[0])) {
+							firsts[name].insert(std::monostate());
+						}
 					}
 				}
 			}
@@ -36,16 +42,27 @@ namespace dpl{
 			do {
 				changed = false;
 
-				for (auto& [name, nt] : g.nonterminals) {
+				for (auto& [name, nt] : grammar.nonterminals) {
 					for (auto& rule : nt.productions) {
 						auto size_before = firsts[name].size();
 
-						if (const std::string_view* n = std::get_if<std::string_view>(&rule[0])) {
-							if (*n != name) {
-								std::for_each(firsts[*n].begin(), firsts[*n].end(), [&](const auto& e) {
-									firsts[name].insert(e);
-								});
+						int i = 0;
+						for (i = 0; i < rule.size(); i++) {
+							if (const auto* v = std::get_if<Token>(&rule[i])) {
+								firsts[name].insert(*v);
+								break;
+							} else if (const auto* v = std::get_if<std::string_view>(&rule[i])) {
+								if (!firsts[*v].contains(std::monostate())) {
+									std::for_each(firsts[*v].begin(), firsts[*v].end(), [&](const auto& e) {
+										firsts[name].insert(e);
+									});
+									break;
+								}
 							}
+						}
+						
+						if (i == rule.size()) {
+							firsts[name].insert(std::monostate());
 						}
 
 						if (size_before != firsts[name].size()) changed = true;
