@@ -43,6 +43,14 @@ namespace dpl {
 			return definition[i];
 		}
 
+		constexpr auto begin() {
+			return definition.begin();
+		}
+
+		constexpr auto end() {
+			return definition.end();
+		}
+
 		constexpr std::vector<Atom>& getDefinition() {
 			return definition;
 		}

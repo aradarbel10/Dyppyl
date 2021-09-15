@@ -137,9 +137,17 @@ int main() {
 			{ Symbols::MinusMinus, Token::Type::Identifier }
 		}},
 		{ "Stmt", {
-				{ Keywords::If, "Expr" , Keywords::Then, "Stmt" },
-				{ Keywords::While, "Expr", "Stmt" },
-				{ "Expr", Symbols::Semicolon }
+			{ Keywords::If, "Expr" , Keywords::Then, "Block" },
+			{ Keywords::While, "Expr", Keywords::Do, "Block" },
+			{ "Expr", Symbols::Semicolon }
+		}},
+		{ "Block", {
+			{ "Stmt" },
+			{ Symbols::LeftCurly, "Stmt", Symbols::RightCurly }
+		}},
+		{ "Stmts", {
+			{ "Stmt", "Stmts" },
+			{ std::monostate() }
 		}}
 	};
 
@@ -158,7 +166,7 @@ int main() {
 		}}
 	};
 
-	LL1 parser{ hi_grammar };
+	LL1 parser{ math_grammar, "Stmts" };
 
 	//std::cout << Op << '\n';
 	//std::cout << E << "\n\n\n";

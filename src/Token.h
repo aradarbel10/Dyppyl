@@ -11,7 +11,7 @@
 
 namespace dpl {
 
-	enum class TokenType { Identifier, Number, String, Symbol, Keyword, Whitespace, Unknown };
+	enum class TokenType { Identifier, Number, String, Symbol, Keyword, Whitespace, Unknown, EndOfFile };
 
 	template<typename KwdT, typename SymT> requires std::is_enum_v<KwdT> && std::is_enum_v<SymT>
 	struct Token {
