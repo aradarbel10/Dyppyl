@@ -24,11 +24,7 @@ namespace dpl {
 		using Token = Token<KwdT, SymT>;
 		using Atom = std::variant<std::monostate, Token, std::string_view>;
 
-		constexpr ProductionRule(std::initializer_list<Atom> l) : definition(l) {
-			//std::replace_if(definition.begin(), definition.end(), [](const Atom& a) {
-			//	return std::holds_alternative<Self>(a);
-			//}, this);
-		}
+		constexpr ProductionRule(std::initializer_list<Atom> l) : definition(l) { }
 
 		constexpr auto& expand() { return definition; }
 
@@ -120,12 +116,6 @@ namespace dpl {
 		std::unordered_map<std::string_view, Nonterminal> nonterminals;
 
 	};
-
-	// #TASK : implement "+|" syntax for productions and nonterminals:
-	// Nonterminal = (terminal + terminal + terminal)
-	//			   | (terminal + terminal)
-	//			   | (terminal + terminal + terminal + terminal)
-	//			   ...
 
 	template<typename KwdT, typename SymT>
 	std::ostream& operator<<(std::ostream& os, const ProductionRule<KwdT, SymT>& t) {

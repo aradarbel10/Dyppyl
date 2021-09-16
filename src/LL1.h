@@ -5,8 +5,14 @@
 #include <unordered_map>
 #include <algorithm>
 #include <array>
+#include <stack>
 
 namespace dpl{
+
+	// #TASK : proper error handling for parser (and tokenizer!!)
+	enum class ParseResult { Fail, Next, Done };
+
+	// #TASK : better naming for all the variables in this file. especially the super short one-letter ones...
 
 	template<typename KwdT, typename SymT>
 	class LL1 {
@@ -21,6 +27,9 @@ namespace dpl{
 			calcFirstSets();
 			calcFollowSets();
 			generateParseTable();
+
+			parse_stack.push_back(TokenType::EndOfFile);
+			parse_stack.push_back(start_symbol);
 		}
 
 		void calcFirstSets() {
@@ -166,14 +175,6 @@ namespace dpl{
 							});
 						}
 					}
-
-					//if (const auto* v = std::get_if<Token>(&rule[0])) {
-					//	table[*v][name] = i;
-					//} else if (const auto* v = std::get_if<std::string_view>(&rule[0])) {
-					//	std::for_each(firsts[*v].begin(), firsts[*v].end(), [&](const auto& t) {
-					//		table[t][name] = i;
-					//	});
-					//}
 				}
 			}
 
@@ -191,6 +192,73 @@ namespace dpl{
 			}
 		}
 
+		ParseResult operator<<(Token t) {
+			bool terminal_eliminated = false;
+			do {
+				std::cout << "\n" << t << "\n";
+				std::for_each(parse_stack.rbegin(), parse_stack.rend(), [&](const auto& stack_elem) {
+					if (const auto* v = std::get_if<Token>(&stack_elem)) {
+						std::cout << *v << ' ';
+					} else if (const auto* v = std::get_if<std::string_view>(&stack_elem)) {
+						std::cout << *v << ' ';
+					}
+				});
+				std::cout << "\n\t\t\t";
+
+				if (const auto* nontr = std::get_if<std::string_view>(&parse_stack.back())) {
+					if (hasEntry(t, *nontr)) {
+
+						auto& rule = grammar.nonterminals[*nontr][table[t][*nontr]].getDefinition();
+						parse_out.push_back({ *nontr, table[t][*nontr] });
+
+						std::for_each(rule.begin(), rule.end(), [&](const auto& e) {
+							if (const auto* v = std::get_if<Token>(&e)) {
+								std::cout << *v << ' ';
+							} else if (const auto* v = std::get_if<std::string_view>(&e)) {
+								std::cout << *v << ' ';
+							} else {
+								std::cout << "epsilon ";
+							}
+						});
+						std::cout << "\n\n";
+
+						parse_stack.pop_back();
+
+						std::for_each(rule.rbegin(), rule.rend(), [&](const auto& e) {
+							if (const auto* v = std::get_if<Token>(&e)) {
+								parse_stack.push_back(*v);
+							} else if (const auto* v = std::get_if<std::string_view>(&e)) {
+								parse_stack.push_back(*v);
+							}
+						});
+
+					} else {
+						return ParseResult::Fail;
+					}
+				}
+
+				if (const auto* tr = std::get_if<Token>(&parse_stack.back())) {
+					if (tokensCompareType(*tr, t)) {
+						parse_stack.pop_back();
+						terminal_eliminated = true;
+
+						if (parse_stack.empty()) return ParseResult::Done;
+					} else {
+						return ParseResult::Fail;
+					}
+				}
+			} while (!terminal_eliminated);
+
+			return ParseResult::Next;
+		}
+
+		bool hasEntry(const Token& tkn, std::string_view nontr) {
+			return table.contains(getTerminalType(tkn)) && table[getTerminalType(tkn)].contains(nontr);
+		}
+
+
+		std::list<std::pair<std::string_view, int>> parse_out;
+
 	private:
 
 		std::string_view start_symbol;
@@ -199,5 +267,8 @@ namespace dpl{
 		std::unordered_map<std::string_view, std::unordered_set<std::variant<std::monostate, Token>>> firsts;
 		std::unordered_map<std::string_view, std::unordered_set<Token>> follows;
 		std::unordered_map<std::variant<std::monostate, Token>, std::unordered_map<std::string_view, int>> table;
+
+		// #TASK : use list for debug, stack for release
+		std::list<std::variant<std::string_view, Token>> parse_stack;
 	};
 }

@@ -113,11 +113,6 @@ int main() {
 	//const std::string test_code = "int main(int argc, char **argv) {\n\t std::cout << \"Num Of Args:\" << argc << \"\\n\";\n\t return -3.14159;\n }";
 	//tokenizer.tokenizeString(test_code);
 
-	tokenizer.tokenizeFile("snippets/python.py");
-	std::for_each(tokenizer.tokens_out.begin(), tokenizer.tokens_out.end(), [](const auto& s) { std::cout << s << "\n"; });
-	std::cout << "\n\n\n\n";
-
-
 	using ProductionRule = dpl::ProductionRule<Keywords, Symbols>;
 	using Nonterminal = dpl::Nonterminal<Keywords, Symbols>;
 	using Token = dpl::Token<Keywords, Symbols>;
@@ -131,7 +126,7 @@ int main() {
 		}},
 		{ "Expr", {
 			{ "Term", Symbols::Arrow, Token::Type::Identifier },
-			{ Keywords::Zero, Symbols::Question, "Term"},
+			{ Keywords::Zero, "Term"},
 			{ Keywords::Not, "Expr" },
 			{ Symbols::PlusPlus, Token::Type::Identifier },
 			{ Symbols::MinusMinus, Token::Type::Identifier }
@@ -168,8 +163,29 @@ int main() {
 
 	LL1 parser{ math_grammar, "Stmts" };
 
-	//std::cout << Op << '\n';
-	//std::cout << E << "\n\n\n";
+
+	//=================================================================================================================
+
+	std::cout << "\n\n\n\n";
+	tokenizer.tokenizeString("while not zero id do --id;");
+	for (const auto& s : tokenizer.tokens_out) {
+		//std::cout << s << "\n";
+		auto res = parser << s;
+		if (res == dpl::ParseResult::Fail) {
+			std::cout << "Parsing Error Occured!\n";
+			break;
+		} else if (res == dpl::ParseResult::Done) {
+			if (s.type != dpl::TokenType::EndOfFile) {
+				std::cout << "Parsing Finished Too Soon...\n";
+			}
+			break;
+		}
+	}
+	std::cout << "\n\n\n\n";
+
+	std::for_each(parser.parse_out.begin(), parser.parse_out.end(), [&](const auto& e) {
+		std::cout << e.first << ", " << e.second << "\n";
+	});
 
 	return 0;
 }

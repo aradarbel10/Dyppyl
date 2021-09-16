@@ -67,8 +67,10 @@ namespace dpl {
 				std::string line;
 
 				while (std::getline(in, line)) {
-					tokenizeString(line);
+					tokenizeString(line, false);
 				}
+
+				this->endStream();
 
 				in.close();
 			} else {
@@ -76,14 +78,20 @@ namespace dpl {
 			}
 		}
 
-		void tokenizeString(std::string_view src) {
+		void tokenizeString(std::string_view src, bool single_line = true) {
 			for (const auto& c : src) {
 				*this << c;
 			}
 			*this << '\n';
+
+			if (single_line) this->endStream();
 		}
 
 	private:
+
+		void endStream() {
+			tokens_out.push_back(TokenType::EndOfFile);
+		}
 
 		void operator<<(char c) {
 			passHiders(c);
