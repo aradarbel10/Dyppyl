@@ -126,9 +126,6 @@ int main() {
 
 	dpl::Tokenizer<Keywords, Symbols> tokenizer{ keywords, symbols };
 
-	//const std::string test_code = "int main(int argc, char **argv) {\n\t std::cout << \"Num Of Args:\" << argc << \"\\n\";\n\t return -3.14159;\n }";
-	//tokenizer.tokenizeString(test_code);
-
 	using ProductionRule = dpl::ProductionRule<Keywords, Symbols>;
 	using Nonterminal = dpl::Nonterminal<Keywords, Symbols>;
 	using Token = dpl::Token<Keywords, Symbols>;

@@ -28,7 +28,6 @@ namespace dpl {
 				return "unknown enum";
 			} else if (type == TokenType::Identifier) {
 				return std::get<std::string>(value);
-				//else return "invalid identifier";
 			} else if (type == TokenType::EndOfFile) {
 				return "EOF";
 			} else {

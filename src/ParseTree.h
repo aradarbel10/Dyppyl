@@ -31,11 +31,6 @@ namespace dpl {
 				if (auto* const pair_val = std::get_if<std::pair<std::string_view, int>>(&value)) {
 					children.reserve(grammar[(*pair_val).first][(*pair_val).second].size());
 					for (int i = 0; i < children.capacity(); i++) {
-						//if (const auto* terminal = std::get_if<Token>(&grammar[(*pair_val).first][(*pair_val).second][i])) {
-						//	children.emplace_back(std::make_unique<ParseTree>(grammar, *terminal));
-						//} else {
-						//	
-						//}
 						children.push_back(std::make_unique<ParseTree>(grammar));
 					}
 				}
@@ -79,15 +74,6 @@ namespace dpl {
 
 		for (int i = 0; i < node->children.size(); i++) {
 			printTree(prefix + (isLast ? "    " : "|   "), &*node->children[i], i == node->children.size() - 1);
-			//if (const auto* child_node = std::get_if<std::unique_ptr<ParseTree<KwdT, SymT>>>(&node->children[i])) {
-			//	
-			//} else if (const auto* leaf_node = std::get_if<Token<KwdT, SymT>>(&node->children[i])) {
-			//	std::cout << prefix << (isLast ? "    " : "|   ") << (i == node->children.size() - 1 ? "'---" : "|---");
-
-			//	SetConsoleTextAttribute(hConsole, 0x03);
-			//	std::cout << (*leaf_node).stringify() << '\n';
-			//	SetConsoleTextAttribute(hConsole, 0x07);
-			//}
 		}
 	}
 
