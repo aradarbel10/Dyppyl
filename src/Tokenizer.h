@@ -100,7 +100,6 @@ namespace dpl {
 	private:
 
 		void endStream() {
-			//tokens_out.push_back(TokenType::EndOfFile);
 			output(TokenType::EndOfFile);
 		}
 
@@ -208,7 +207,7 @@ namespace dpl {
 				} else if (machine <= keywords_count - 1 + misc_automata_count + symbols_count) {
 					output(Token{ Token::Type::Keyword, magic_enum::enum_value<KwdT>(machine - misc_automata_count - symbols_count) });
 				}
-			} catch (const std::bad_function_call& e) {
+			} catch (const std::bad_function_call&) {
 				if (!printed_error) {
 					std::cout << "ERROR: no output callback set for tokenizer";
 					printed_error = true;

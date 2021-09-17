@@ -35,8 +35,8 @@ namespace dpl{
 		}
 
 		void calcFirstSets() {
-			firsts.reserve(grammar.nonterminals.size());
-			for (auto& [name, nt] : grammar.nonterminals) {
+			firsts.reserve(grammar.size());
+			for (auto& [name, nt] : grammar) {
 				firsts[name].reserve(nt.size());
 				for (auto& rule : nt.getProductions()) {
 					if (const Token* t = std::get_if<Token>(&rule[0])) {
@@ -55,7 +55,7 @@ namespace dpl{
 			do {
 				changed = false;
 
-				for (auto& [name, nt] : grammar.nonterminals) {
+				for (auto& [name, nt] : grammar) {
 					for (auto& rule : nt.productions) {
 						auto size_before = firsts[name].size();
 
@@ -85,7 +85,7 @@ namespace dpl{
 		}
 
 		void calcFollowSets() {
-			for (auto& [name, nt] : grammar.nonterminals) {
+			for (auto& [name, nt] : grammar) {
 				for (auto& rule : nt.productions) {
 					for (int i = 0; i < rule.size() - 1; i++) {
 						if (const auto* n = std::get_if<std::string_view>(&rule[i])) {
@@ -103,7 +103,7 @@ namespace dpl{
 			do {
 				changed = false;
 
-				for (auto& [name, nt] : grammar.nonterminals) {
+				for (auto& [name, nt] : grammar) {
 					for (auto& rule : nt.productions) {
 						for (int i = 0; i < rule.size() - 1; i++) {
 							if (const auto* v = std::get_if<std::string_view>(&rule[i])) {
@@ -162,7 +162,7 @@ namespace dpl{
 		}
 
 		void generateParseTable() {
-			for (auto& [name, nt] : grammar.nonterminals) {
+			for (auto& [name, nt] : grammar) {
 				for (int i = 0; i < nt.productions.size(); i++) {
 					auto& rule = nt.productions[i];
 
@@ -210,8 +210,8 @@ namespace dpl{
 				if (const auto* nontr = std::get_if<std::string_view>(&parse_stack.back())) {
 					if (hasEntry(t, *nontr)) {
 
-						auto& rule = grammar.nonterminals[*nontr][table[t][*nontr]].getDefinition();
-						parse_out.push_back({ *nontr, table[t][*nontr] });
+						auto& rule = grammar[*nontr][table[t][*nontr]].getDefinition();
+						parse_out.push_back(std::pair{ *nontr, table[t][*nontr] });
 
 						std::for_each(rule.begin(), rule.end(), [&](const auto& e) {
 							if (const auto* v = std::get_if<Token>(&e)) {
@@ -241,7 +241,9 @@ namespace dpl{
 
 				if (const auto* tr = std::get_if<Token>(&parse_stack.back())) {
 					if (tokensCompareType(*tr, t)) {
+						parse_out.push_back(t);
 						parse_stack.pop_back();
+
 						terminal_eliminated = true;
 
 						if (parse_stack.empty()) return ParseResult::Done;
@@ -259,13 +261,14 @@ namespace dpl{
 		}
 
 
-		std::list<std::pair<std::string_view, int>> parse_out;
+		std::list<std::variant<Token, std::pair<std::string_view, int>>> parse_out;
 
 	private:
 
 		std::string_view start_symbol;
 		Grammar& grammar;
 
+		// #TASK : possibly employ some more type aliases
 		std::unordered_map<std::string_view, std::unordered_set<std::variant<std::monostate, Token>>> firsts;
 		std::unordered_map<std::string_view, std::unordered_set<Token>> follows;
 		std::unordered_map<std::variant<std::monostate, Token>, std::unordered_map<std::string_view, int>> table;

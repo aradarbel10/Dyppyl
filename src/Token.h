@@ -19,6 +19,25 @@ namespace dpl {
 
 		Type type;
 		std::variant<std::monostate, std::string, double, SymT, KwdT> value;
+		// #TASK : use string_view in place of string in tokens
+
+		std::string_view stringify() const {
+			if (type == TokenType::Symbol || type == TokenType::Keyword) {
+				if (const auto* sym = std::get_if<SymT>(&value)) return magic_enum::enum_name(*sym);
+				else if (const auto* kwd = std::get_if<KwdT>(&value)) return magic_enum::enum_name(*kwd);
+				return "unknown enum";
+			} else if (type == TokenType::Identifier) {
+				return std::get<std::string>(value);
+				//else return "invalid identifier";
+			} else if (type == TokenType::EndOfFile) {
+				return "EOF";
+			} else {
+				std::string type_name(magic_enum::enum_name(type));
+				if (const auto* str = std::get_if<std::string>(&value)) return type_name + " " + *str;
+				else if (const auto* dbl = std::get_if<double>(&value)) return type_name + " " + std::to_string(*dbl);
+				return "unknown non-enum";
+			}
+		}
 
 		constexpr Token() = default;
 		constexpr Token(Type t, auto v) : type(t), value(v) { }
@@ -34,6 +53,8 @@ namespace dpl {
 
 	template<typename KwdT, typename SymT>
 	inline bool tokensCompareType(const Token<KwdT, SymT>& lhs, const Token<KwdT, SymT>& rhs) {
+		// #TASK : change comparison to support identifier-specific matching (strategy: type == type && value == value, with monostate equals to anything)
+
 		if (lhs.type != rhs.type) return false;
 		if (lhs.type == TokenType::Symbol || lhs.type == TokenType::Keyword) {
 			return lhs.value == rhs.value;
@@ -53,6 +74,8 @@ namespace dpl {
 
 	template<typename KwdT, typename SymT>
 	std::ostream& operator<<(std::ostream& os, const Token<KwdT, SymT>& t) {
+		// #TASK : rewrite print code with in-condition get_if declarations
+
 		const auto* sval = std::get_if<std::string>(&t.value);
 		const auto* dval = std::get_if<double>(&t.value);
 		const auto* smval = std::get_if<SymT>(&t.value);

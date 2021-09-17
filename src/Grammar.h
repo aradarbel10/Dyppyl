@@ -109,6 +109,22 @@ namespace dpl {
 			});
 		}
 
+		constexpr decltype(auto) size() {
+			return nonterminals.size();
+		}
+
+		constexpr decltype(auto) operator[](std::string_view key) {
+			return nonterminals[key];
+		}
+
+		constexpr auto begin() {
+			return nonterminals.begin();
+		}
+
+		constexpr auto end() {
+			return nonterminals.end();
+		}
+
 		friend class LL1<typename KwdT, typename SymT>;
 
 	private:
