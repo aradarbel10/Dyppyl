@@ -24,6 +24,8 @@ namespace dpl{
 		using Grammar = Grammar<KwdT, SymT>;
 
 		LL1(Grammar& g, std::string_view s) : grammar(g), start_symbol(s) {
+			// #TASK : decouple firsts & follows calculations from parser
+
 			calcFirstSets();
 			calcFollowSets();
 			generateParseTable();

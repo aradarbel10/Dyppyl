@@ -7,6 +7,7 @@
 #include <variant>
 #include <string>
 #include <iterator>
+#include <functional>
 
 #include <unordered_set>
 #include <array>
@@ -49,6 +50,8 @@ namespace dpl {
 		int longest_accepted = -1, length_of_longest = 0;
 		std::string lexeme_buff = "", lexer_queue = "";
 
+		std::function<void(Token)> output;
+
 	public:
 		std::list<Token> tokens_out;
 
@@ -60,6 +63,10 @@ namespace dpl {
 			std::transform(keywords_automata.begin(), keywords_automata.end(), automata.begin() + symbols_automata.size() + 3, [](auto& elm) { return &elm; });
 		}
 		
+		constexpr void setOutputCallback(std::function<void(Token)> fn) {
+			output = fn;
+		}
+
 		void tokenizeFile(std::filesystem::path src) {
 			std::ifstream in{ src };
 
@@ -67,7 +74,7 @@ namespace dpl {
 				std::string line;
 
 				while (std::getline(in, line)) {
-					tokenizeString(line, false);
+					tokenizeLine(line);
 				}
 
 				this->endStream();
@@ -78,19 +85,23 @@ namespace dpl {
 			}
 		}
 
-		void tokenizeString(std::string_view src, bool single_line = true) {
+		void tokenizeLine(std::string_view src) {
 			for (const auto& c : src) {
 				*this << c;
 			}
 			*this << '\n';
+		}
 
-			if (single_line) this->endStream();
+		void tokenizeString(std::string_view src) {
+			tokenizeLine(src);
+			this->endStream();
 		}
 
 	private:
 
 		void endStream() {
-			tokens_out.push_back(TokenType::EndOfFile);
+			//tokens_out.push_back(TokenType::EndOfFile);
+			output(TokenType::EndOfFile);
 		}
 
 		void operator<<(char c) {
@@ -181,18 +192,27 @@ namespace dpl {
 		}
 
 		void evaluate(int machine, const std::string& str) {
-			if (machine == -1) {
-				tokens_out.emplace_back(Token{ Token::Type::Unknown, str });
-			} else if (machine == 0) {
-				tokens_out.emplace_back(Token{ Token::Type::Identifier, str });
-			} else if (machine == 1) {
-				tokens_out.emplace_back(Token{ Token::Type::Number, std::stod(str) });
-			} else if (machine == 2) {
-				tokens_out.emplace_back(Token{ Token::Type::String, std::move(dpl::StringDFA::recent_string) });
-			} else if (machine <= symbols_count - 1 + misc_automata_count) {
-				tokens_out.emplace_back(Token{ Token::Type::Symbol, magic_enum::enum_value<SymT>(machine - misc_automata_count) });
-			} else if (machine <= keywords_count - 1 + misc_automata_count + symbols_count) {
-				tokens_out.emplace_back(Token{ Token::Type::Keyword, magic_enum::enum_value<KwdT>(machine - misc_automata_count - symbols_count) });
+			static bool printed_error = false;
+
+			try {
+				if (machine == -1) {
+					output(Token{ Token::Type::Unknown, str });
+				} else if (machine == 0) {
+					output(Token{ Token::Type::Identifier, str });
+				} else if (machine == 1) {
+					output(Token{ Token::Type::Number, std::stod(str) });
+				} else if (machine == 2) {
+					output(Token{ Token::Type::String, std::move(dpl::StringDFA::recent_string) });
+				} else if (machine <= symbols_count - 1 + misc_automata_count) {
+					output(Token{ Token::Type::Symbol, magic_enum::enum_value<SymT>(machine - misc_automata_count) });
+				} else if (machine <= keywords_count - 1 + misc_automata_count + symbols_count) {
+					output(Token{ Token::Type::Keyword, magic_enum::enum_value<KwdT>(machine - misc_automata_count - symbols_count) });
+				}
+			} catch (const std::bad_function_call& e) {
+				if (!printed_error) {
+					std::cout << "ERROR: no output callback set for tokenizer";
+					printed_error = true;
+				}
 			}
 		}
 

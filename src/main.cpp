@@ -8,6 +8,17 @@
 
 // search this solution for "#TASK" to find places where optimizations/refactoring/improvements may be worth implementing
 
+// #TASK : hook up all output to some external logger
+// #TASK : abstract away tokenizer and parser inputs as buffered streams
+// #TASK : use callbacks for all stream interactions
+// #TASK : wrap up tokenizer, parser, tree-gen in a separate "front end" object
+// #TASK : carry positional information inside tokens
+// #TASK : use macros to enable/disable debugging features
+// #TASK : profile the entire pipeline, measure time, measure amount of copies perforemd on certain objects
+// #TASK : find better way to handle exceptions
+// #TASK : ensure constexpr-ness of whatever's possible
+// #TASK : write tests
+
 #define SYMBOLS_MACRO \
 	X(LeftParen, "(") \
 	X(RightParen, ")") \
@@ -119,7 +130,7 @@ int main() {
 	using Grammar = dpl::Grammar<Keywords, Symbols>;
 	using LL1 = dpl::LL1<Keywords, Symbols>;
 
-	Grammar math_grammar {
+	Grammar example_grammar {
 		{ "Term", {
 			{ Token::Type::Identifier },
 			{ Token::Type::Number }
@@ -161,26 +172,23 @@ int main() {
 		}}
 	};
 
-	LL1 parser{ math_grammar, "Stmts" };
+	LL1 parser{ example_grammar, "Stmts" };
 
+	tokenizer.setOutputCallback([&parser](const Token& tkn) { 
+		auto res = parser << tkn;
+		if (res == dpl::ParseResult::Fail) {
+			std::cout << "Parsing Error Occured!\n";
+		} else if (res == dpl::ParseResult::Done) {
+			if (tkn.type != dpl::TokenType::EndOfFile) {
+				std::cout << "Parsing Finished Too Soon...\n";
+			}
+		}
+	});
 
 	//=================================================================================================================
 
 	std::cout << "\n\n\n\n";
 	tokenizer.tokenizeString("while not zero id do --id;");
-	for (const auto& s : tokenizer.tokens_out) {
-		//std::cout << s << "\n";
-		auto res = parser << s;
-		if (res == dpl::ParseResult::Fail) {
-			std::cout << "Parsing Error Occured!\n";
-			break;
-		} else if (res == dpl::ParseResult::Done) {
-			if (s.type != dpl::TokenType::EndOfFile) {
-				std::cout << "Parsing Finished Too Soon...\n";
-			}
-			break;
-		}
-	}
 	std::cout << "\n\n\n\n";
 
 	std::for_each(parser.parse_out.begin(), parser.parse_out.end(), [&](const auto& e) {
