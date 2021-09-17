@@ -21,7 +21,7 @@ namespace dpl {
 		std::variant<std::monostate, std::string, double, SymT, KwdT> value;
 		// #TASK : use string_view in place of string in tokens
 
-		std::string_view stringify() const {
+		constexpr std::string_view stringify() const {
 			if (type == TokenType::Symbol || type == TokenType::Keyword) {
 				if (const auto* sym = std::get_if<SymT>(&value)) return magic_enum::enum_name(*sym);
 				else if (const auto* kwd = std::get_if<KwdT>(&value)) return magic_enum::enum_name(*kwd);
@@ -46,19 +46,12 @@ namespace dpl {
 	};
 
 	template<typename KwdT, typename SymT>
-	inline bool operator==(const Token<KwdT, SymT>& lhs, const Token<KwdT, SymT>& rhs) {
-		return lhs.type == rhs.type && lhs.value == rhs.value;
-	}
-
-	template<typename KwdT, typename SymT>
-	inline bool tokensCompareType(const Token<KwdT, SymT>& lhs, const Token<KwdT, SymT>& rhs) {
-		// #TASK : change comparison to support identifier-specific matching (strategy: type == type && value == value, with monostate equals to anything)
-
+	inline constexpr bool operator==(const Token<KwdT, SymT>& lhs, const Token<KwdT, SymT>& rhs) {
 		if (lhs.type != rhs.type) return false;
-		if (lhs.type == TokenType::Symbol || lhs.type == TokenType::Keyword) {
-			return lhs.value == rhs.value;
+		if (std::holds_alternative<std::monostate>(lhs.value) || std::holds_alternative<std::monostate>(rhs.value)) {
+			return true;
 		}
-		return true;
+		return lhs.value == rhs.value;
 	}
 
 	template<typename KwdT, typename SymT>

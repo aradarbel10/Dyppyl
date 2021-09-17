@@ -240,7 +240,7 @@ namespace dpl{
 				}
 
 				if (const auto* tr = std::get_if<Token>(&parse_stack.back())) {
-					if (tokensCompareType(*tr, t)) {
+					if (*tr == t) {
 						parse_out.push_back(t);
 						parse_stack.pop_back();
 

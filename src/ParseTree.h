@@ -64,7 +64,6 @@ namespace dpl {
 		std::cout << prefix;
 		std::cout << (isLast ? "'---" : "|---");
 
-		//std::cout << node->value.first << " (" << node->value.second << ")\n";
 		if (const auto* nt = std::get_if<std::pair<std::string_view, int>>(&node->value)) std::cout << (*nt).first << "(" << (*nt).second << ")\n";
 		else if (const auto* tkn = std::get_if<Token<KwdT, SymT>>(&node->value)) {
 			SetConsoleTextAttribute(hConsole, 0x03);
