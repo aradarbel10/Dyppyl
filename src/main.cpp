@@ -192,9 +192,9 @@ int main() {
 		if (!(tree << e)) std::cout << "Parse Tree Overloaded!";
 	});
 
-	std::cout << "\n\n\n\nInput String:\n========================\n\t" << input_text << "\n\nParse Tree:\n========================\n";
-
+	std::cout << "\n\nParse Tree:\n========================\n";
 	dpl::printTree(&tree);
+	std::cout << "\n\n";
 
 	DplLogPrintTelemetry();
 	DplLogPrintParseErrors();

@@ -8,6 +8,7 @@
 #include <string>
 #include <iterator>
 #include <functional>
+#include <charconv>
 
 #include <unordered_set>
 #include <array>
@@ -218,7 +219,7 @@ namespace dpl {
 				if (automata[i]->isAccepted()) {
 					longest_accepted = i;
 					length_of_longest = automata[i]->getAge();
-					all_dead = true;
+					if (i > misc_automata_count) all_dead = true;
 				}
 			}
 
@@ -227,6 +228,7 @@ namespace dpl {
 			if (all_dead) {
 				if (longest_accepted != -1) {
 					evaluate(longest_accepted, lexeme_buff.substr(0, length_of_longest));
+
 					if (length_of_longest != lexeme_buff.size())
 						lexer_queue = lexeme_buff.substr(length_of_longest, std::string::npos) + lexer_queue;
 					else automata[longest_accepted]->kill();
@@ -238,7 +240,7 @@ namespace dpl {
 			}
 		}
 
-		void evaluate(int machine, const std::string& str) {
+		void evaluate(int machine, std::string_view str) {
 			#ifdef DPL_LOG
 			static bool printed_error = false;
 			token_count++;
@@ -254,9 +256,11 @@ namespace dpl {
 					#endif //DPL_LOG
 
 				} else if (machine == 0) {
-					output(Token{ Token::Type::Identifier, str });
+					output(Token{ Token::Type::Identifier, std::string{ str } });
 				} else if (machine == 1) {
-					output(Token{ Token::Type::Number, std::stod(str) });
+					long double dbl;
+					std::from_chars(str.data(), str.data() + str.size(), dbl);
+					output(Token{ Token::Type::Number, dbl });
 				} else if (machine == 2) {
 					output(Token{ Token::Type::String, std::move(dpl::StringDFA::recent_string) });
 				} else if (machine <= symbols_count - 1 + misc_automata_count) {

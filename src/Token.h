@@ -18,9 +18,10 @@ namespace dpl {
 	template<typename KwdT, typename SymT> requires std::is_enum_v<KwdT> && std::is_enum_v<SymT>
 	struct Token {
 		using Type = TokenType;
+		using value_type = std::variant<std::monostate, std::string, long double, SymT, KwdT>;
 
 		Type type;
-		std::variant<std::monostate, std::string, double, SymT, KwdT> value;
+		value_type value;
 		// #TASK : use string_view in place of string in tokens
 
 		#ifdef DPL_LOG
@@ -36,14 +37,14 @@ namespace dpl {
 			} else {
 				std::string type_name(magic_enum::enum_name(type));
 				if (const auto* str = std::get_if<std::string>(&value)) return type_name + " " + *str;
-				else if (const auto* dbl = std::get_if<double>(&value)) return type_name + " " + std::to_string(*dbl);
+				else if (const auto* dbl = std::get_if<long double>(&value)) return type_name + " " + std::to_string(*dbl);
 				return "unknown non-enum";
 			}
 		}
 		#endif //DPL_LOG
 
 		constexpr Token() = default;
-		constexpr Token(Type t, auto v) : type(t), value(v) { }
+		constexpr Token(Type t, value_type v) : type(t), value(v) { }
 		constexpr Token(Type t) : type(t), value(std::monostate()) { }
 		constexpr Token(KwdT t) : type(Type::Keyword), value(t) { }
 		constexpr Token(SymT t) : type(Type::Symbol), value(t) { }
@@ -91,7 +92,7 @@ namespace std {
 		//credit to boost::hash_combine
 		std::size_t operator()(dpl::Token<KwdT, SymT> const& t) const noexcept {
 			size_t intermediate = std::hash<dpl::TokenType>{}(t.type);
-			intermediate ^= std::hash<std::variant<std::monostate, std::string, double, SymT, KwdT>>{}(t.value)
+			intermediate ^= std::hash<typename dpl::Token<KwdT, SymT>::value_type>{}(t.value)
 				+ 0x9e3779b9 + (intermediate << 6) + (intermediate >> 2);
 			return intermediate;
 		}
