@@ -179,50 +179,17 @@ namespace dpl{
 					}
 				}
 			}
-
-			for (auto& [terminal, row] : table) {
-				if (const auto* v = std::get_if<Token>(&terminal)) {
-					std::cout << *v << ": ";
-				} else {
-					std::cout << "$: ";
-				}
-
-				for (auto& [cell, rulenum] : row) {
-					std::cout << '(' << cell << ", " << rulenum << ") ";
-				}
-				std::cout << '\n';
-			}
 		}
 
 		ParseResult operator<<(Token t) {
 			bool terminal_eliminated = false;
 			do {
-				std::cout << "\n" << t << "\n";
-				std::for_each(parse_stack.rbegin(), parse_stack.rend(), [&](const auto& stack_elem) {
-					if (const auto* v = std::get_if<Token>(&stack_elem)) {
-						std::cout << *v << ' ';
-					} else if (const auto* v = std::get_if<std::string_view>(&stack_elem)) {
-						std::cout << *v << ' ';
-					}
-				});
-				std::cout << "\n\t\t\t";
 
 				if (const auto* nontr = std::get_if<std::string_view>(&parse_stack.back())) {
 					if (hasEntry(t, *nontr)) {
 
 						auto& rule = grammar[*nontr][table[t][*nontr]].getDefinition();
 						parse_out.push_back(std::pair{ *nontr, table[t][*nontr] });
-
-						std::for_each(rule.begin(), rule.end(), [&](const auto& e) {
-							if (const auto* v = std::get_if<Token>(&e)) {
-								std::cout << *v << ' ';
-							} else if (const auto* v = std::get_if<std::string_view>(&e)) {
-								std::cout << *v << ' ';
-							} else {
-								std::cout << "epsilon ";
-							}
-						});
-						std::cout << "\n\n";
 
 						parse_stack.pop_back();
 

@@ -4,6 +4,10 @@
 #include <string_view>
 #include <variant>
 
+#define DPL_LOG
+
+#include "Logger.h"
+
 #include "Tokenizer.h"
 #include "Token.h"
 #include "Grammar.h"
@@ -124,7 +128,7 @@ int main() {
 	#undef X
 	#undef Y
 
-	dpl::Tokenizer<Keywords, Symbols> tokenizer{ keywords, symbols };
+	
 
 	using ProductionRule = dpl::ProductionRule<Keywords, Symbols>;
 	using Nonterminal = dpl::Nonterminal<Keywords, Symbols>;
@@ -160,22 +164,9 @@ int main() {
 		}}
 	};
 
-	Grammar hi_grammar{
-		{ "Msg", {
-			{ "Hi", "End" }
-		}},
-		{ "Hi", {
-			{ Keywords::Hello },
-			{ Keywords::Heya },
-			{ Keywords::Yo }
-		}},
-		{ "End", {
-			{ Keywords::World },
-			{ std::monostate() }
-		}}
-	};
-
 	LL1 parser{ example_grammar, "Stmts" };
+
+	dpl::Tokenizer<Keywords, Symbols> tokenizer{ keywords, symbols };
 
 	tokenizer.setOutputCallback([&parser](const Token& tkn) {
 		auto res = parser << tkn;
@@ -188,23 +179,15 @@ int main() {
 		}
 	});
 
-	//=================================================================================================================
-
 	std::string_view input_text{ "while not zero var do --var;" };
-
-	std::cout << "\n\n\n\n";
 	tokenizer.tokenizeString(input_text);
-	std::cout << "\n\n\n\n";
-
 
 
 	ParseTree tree{example_grammar};
 
 
-	std::for_each(parser.parse_out.begin(), parser.parse_out.end(), [&](const auto& e) {
-		//std::cout << e.first << ", " << e.second << "\n";
-		if (const auto* pair = std::get_if<std::pair<std::string_view, int>>(&e)) std::cout << (*pair).first << ", " << (*pair).second << '\n';
-		else if (const auto* tkn = std::get_if<Token>(&e)) std::cout << *tkn << '\n';
+	std::for_each(parser.parse_out.begin(), parser.parse_out.end(), [&](const std::variant<Token, std::pair<std::string_view, int>>& e) {
+		std::cout << dpl::log::streamer{ e } << '\n';
 
 		if (!(tree << e)) std::cout << "Parse Tree Overloaded!";
 	});
@@ -212,6 +195,9 @@ int main() {
 	std::cout << "\n\n\n\nInput String:\n========================\n\t" << input_text << "\n\nParse Tree:\n========================\n";
 
 	dpl::printTree(&tree);
+
+	DplLogPrintTelemetry();
+	DplLogPrintParseErrors();
 
 	return 0;
 }

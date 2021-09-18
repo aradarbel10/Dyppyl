@@ -5,9 +5,11 @@
 #include <variant>
 #include <functional>
 
+#ifdef DPL_LOG
 #include <iostream>
-
 #include "magic_enum/magic_enum.hpp"
+#include "Logger.h"
+#endif //DPL_LOG
 
 namespace dpl {
 
@@ -21,6 +23,7 @@ namespace dpl {
 		std::variant<std::monostate, std::string, double, SymT, KwdT> value;
 		// #TASK : use string_view in place of string in tokens
 
+		#ifdef DPL_LOG
 		constexpr std::string_view stringify() const {
 			if (type == TokenType::Symbol || type == TokenType::Keyword) {
 				if (const auto* sym = std::get_if<SymT>(&value)) return magic_enum::enum_name(*sym);
@@ -37,6 +40,7 @@ namespace dpl {
 				return "unknown non-enum";
 			}
 		}
+		#endif //DPL_LOG
 
 		constexpr Token() = default;
 		constexpr Token(Type t, auto v) : type(t), value(v) { }
@@ -44,6 +48,22 @@ namespace dpl {
 		constexpr Token(KwdT t) : type(Type::Keyword), value(t) { }
 		constexpr Token(SymT t) : type(Type::Symbol), value(t) { }
 	};
+
+	#ifdef DPL_LOG
+	template<typename KwdT, typename SymT>
+	std::ostream& operator<<(std::ostream& os, const Token<KwdT, SymT>& t) {
+		os << "[" << magic_enum::enum_name(t.type) << ", ";
+
+		//std::visit([&os](const auto& v) {
+		//	if constexpr (std::is_enum_v<decltype(v)>) os << magic_enum::enum_name(v);
+		//	else os << v;
+		//}, t.value);
+		std::cout << dpl::log::streamer{ t.value };
+
+		os << "]";
+		return os;
+	}
+	#endif //DPL_LOG
 
 	template<typename KwdT, typename SymT>
 	inline constexpr bool operator==(const Token<KwdT, SymT>& lhs, const Token<KwdT, SymT>& rhs) {
@@ -62,26 +82,6 @@ namespace dpl {
 			return *kwd;
 		}
 		return tkn.type;
-	}
-
-	template<typename KwdT, typename SymT>
-	std::ostream& operator<<(std::ostream& os, const Token<KwdT, SymT>& t) {
-		// #TASK : rewrite print code with in-condition get_if declarations
-
-		const auto* sval = std::get_if<std::string>(&t.value);
-		const auto* dval = std::get_if<double>(&t.value);
-		const auto* smval = std::get_if<SymT>(&t.value);
-		const auto* kwval = std::get_if<KwdT>(&t.value);
-
-		os << "[" << magic_enum::enum_name(t.type) << ", ";
-
-		if (sval) os << *sval;
-		if (dval) os << *dval;
-		if (smval) os << magic_enum::enum_name(*smval);
-		if (kwval) os << magic_enum::enum_name(*kwval);
-
-		os << "]";
-		return os;
 	}
 }
 

@@ -15,9 +15,11 @@
 
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 
+#ifdef DPL_LOG
+#include <iostream>
 #include <magic_enum/magic_enum.hpp>
+#endif //DPL_LOG
 
 namespace dpl {
 	template<typename KwdT, typename SymT> requires std::is_enum_v<KwdT> && std::is_enum_v<SymT>
@@ -26,6 +28,7 @@ namespace dpl {
 
 		using Token = Token<KwdT, SymT>;
 
+		// #TASK : take hiders and whitespaces as input from user
 		std::array<std::array<dpl::LinearDFA, 2>, 2> hiders{{ {"//", "\n"}, {"/*", "*/"} }};
 		const std::unordered_set<char> whitespaces{ ' ', '\n', '\t', '\0' };
 		int inside_hider = -1;
@@ -52,8 +55,30 @@ namespace dpl {
 
 		std::function<void(Token)> output;
 
+
+		#ifdef DPL_LOG
+		std::chrono::time_point<std::chrono::steady_clock> frontend_clock_begin;
+		std::chrono::time_point<std::chrono::steady_clock> char_clock_begin;
+		std::chrono::duration<long double> char_avg_dur{ 0 };
+
+		unsigned long long char_count{ 0 };
+		unsigned long long token_count{ 0 };
+
+		std::pair<unsigned long long, unsigned long long> pos_in_file{ 0, 0 };
+		#endif //DPL_LOG
+
+		void tokenizeLine(std::string_view src) {
+			for (const auto& c : src) {
+				*this << c;
+
+				#ifdef DPL_LOG
+				pos_in_file.first++;
+				#endif //DPL_LOG
+			}
+			*this << '\n';
+		}
+
 	public:
-		std::list<Token> tokens_out;
 
 		constexpr Tokenizer(const std::vector<std::string_view>& keywords, const std::vector<std::string_view>& symbols) {
 			std::transform(symbols.begin(), symbols.end(), symbols_automata.begin(), std::identity{});
@@ -73,8 +98,18 @@ namespace dpl {
 			if (in.is_open()) {
 				std::string line;
 
+				#ifdef DPL_LOG
+				frontend_clock_begin = std::chrono::steady_clock::now();
+				pos_in_file = { 0, 0 };
+				#endif //DPL_LOG
+
 				while (std::getline(in, line)) {
 					tokenizeLine(line);
+
+					#ifdef DPL_LOG
+					pos_in_file.first = 0;
+					pos_in_file.second++;
+					#endif //DPL_LOG
 				}
 
 				this->endStream();
@@ -85,14 +120,11 @@ namespace dpl {
 			}
 		}
 
-		void tokenizeLine(std::string_view src) {
-			for (const auto& c : src) {
-				*this << c;
-			}
-			*this << '\n';
-		}
-
 		void tokenizeString(std::string_view src) {
+			#ifdef DPL_LOG
+			frontend_clock_begin = std::chrono::steady_clock::now();
+			#endif //DPL_LOG
+
 			tokenizeLine(src);
 			this->endStream();
 		}
@@ -101,10 +133,26 @@ namespace dpl {
 
 		void endStream() {
 			output(TokenType::EndOfFile);
+
+			#ifdef DPL_LOG
+			dpl::log::telemetry_info.add("total time for frontend", std::chrono::steady_clock::now() - frontend_clock_begin);
+			dpl::log::telemetry_info.add("avg. time per character", char_avg_dur);
+			dpl::log::telemetry_info.add("# of characters", char_count);
+			dpl::log::telemetry_info.add("# of tokens", token_count);
+			#endif //DPL_LOG
 		}
 
 		void operator<<(char c) {
+			#ifdef DPL_LOG
+			char_clock_begin = std::chrono::steady_clock::now();
+			char_count++;
+			#endif
 			passHiders(c);
+			#ifdef DPL_LOG
+			char_avg_dur *= char_count - 1;
+			char_avg_dur += std::chrono::steady_clock::now() - char_clock_begin;
+			char_avg_dur /= char_count;
+			#endif
 		}
 
 		void passHiders(char c) {
@@ -191,11 +239,20 @@ namespace dpl {
 		}
 
 		void evaluate(int machine, const std::string& str) {
+			#ifdef DPL_LOG
 			static bool printed_error = false;
+			token_count++;
+			#endif //DPL_LOG
 
+			#ifdef DPL_LOG
 			try {
+			#endif //DPL_LOG
 				if (machine == -1) {
-					output(Token{ Token::Type::Unknown, str });
+					#ifdef DPL_LOG
+					token_count--;
+					dpl::log::error_info.add("Illegal Token", pos_in_file);
+					#endif //DPL_LOG
+
 				} else if (machine == 0) {
 					output(Token{ Token::Type::Identifier, str });
 				} else if (machine == 1) {
@@ -207,12 +264,15 @@ namespace dpl {
 				} else if (machine <= keywords_count - 1 + misc_automata_count + symbols_count) {
 					output(Token{ Token::Type::Keyword, magic_enum::enum_value<KwdT>(machine - misc_automata_count - symbols_count) });
 				}
-			} catch (const std::bad_function_call&) {
+			}
+			#ifdef DPL_LOG
+			catch (const std::bad_function_call&) {
 				if (!printed_error) {
-					std::cout << "ERROR: no output callback set for tokenizer";
+					dpl::log::error_info.add("No output callback set for tokenizer", pos_in_file);
 					printed_error = true;
 				}
 			}
+			#endif //DPL_LOG
 		}
 
 	};

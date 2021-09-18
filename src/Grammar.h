@@ -132,36 +132,4 @@ namespace dpl {
 		std::unordered_map<std::string_view, Nonterminal> nonterminals;
 
 	};
-
-	template<typename KwdT, typename SymT>
-	std::ostream& operator<<(std::ostream& os, const ProductionRule<KwdT, SymT>& t) {
-		for (const auto& e : t.definition) {
-			os << ' ';
-
-			if (const auto* val = std::get_if<0>(&e)) {
-				os << magic_enum::enum_name<ProductionRule<KwdT, SymT>::Special>(*val);
-				continue;
-			}
-
-			if (const auto* val = std::get_if<1>(&e)) {
-				os << *val;
-				continue;
-			}
-
-			if (const auto* val = std::get_if<2>(&e)) {
-				os << "[nonterminal, " << *val << "]";
-			}
-		}
-
-		return os;
-	}
-
-	template<typename KwdT, typename SymT>
-	std::ostream& operator<<(std::ostream& os, const Nonterminal<KwdT, SymT>& t) {
-		for (const auto& e : t.productions) {
-			os << e << '\n';
-		}
-
-		return os;
-	}
 }
