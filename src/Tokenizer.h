@@ -37,19 +37,19 @@ namespace dpl {
 		std::string hiders_queue = "";
 		// #TASK : should probably implement custom queue with size max(hiders.first...)-1, save tons of allocations
 		
-		const size_t keywords_count = magic_enum::enum_count<KwdT>();
 		const size_t symbols_count = magic_enum::enum_count<SymT>();
 
 		dpl::IdentifierDFA identifier_automaton;
 		dpl::NumberDFA number_automaton;
 		dpl::StringDFA string_automaton;
-		std::array<LinearDFA, magic_enum::enum_count<KwdT>()> keywords_automata;
 		std::array<LinearDFA, magic_enum::enum_count<SymT>()> symbols_automata;
 
-		std::array<GenericDFA*, magic_enum::enum_count<KwdT>() + magic_enum::enum_count<SymT>() + 3>
+		std::array<GenericDFA*, magic_enum::enum_count<SymT>() + 3>
 			automata { &identifier_automaton, &number_automaton, &string_automaton };
 		
-		const size_t misc_automata_count = automata.size() - symbols_count - keywords_count;
+		const size_t misc_automata_count = automata.size() - symbols_count;
+
+		std::unordered_map<std::string_view, KwdT> keywords;
 
 		// #TASK : find more appropriate data structure to hold queues
 		int longest_accepted = -1, length_of_longest = 0;
@@ -84,12 +84,12 @@ namespace dpl {
 
 	public:
 
-		constexpr Tokenizer(const std::vector<std::string_view>& keywords, const std::vector<std::string_view>& symbols) {
+		constexpr Tokenizer(const std::unordered_map<std::string_view, KwdT>& keywords_, const std::vector<std::string_view>& symbols) : keywords(keywords_) {
 			std::transform(symbols.begin(), symbols.end(), symbols_automata.begin(), std::identity{});
-			std::transform(keywords.begin(), keywords.end(), keywords_automata.begin(), std::identity{});
+			//std::transform(keywords.begin(), keywords.end(), keywords_automata.begin(), std::identity{});
 			
 			std::transform(symbols_automata.begin(), symbols_automata.end(), automata.begin() + 3, [](auto& elm) { return &elm; });
-			std::transform(keywords_automata.begin(), keywords_automata.end(), automata.begin() + symbols_automata.size() + 3, [](auto& elm) { return &elm; });
+			//std::transform(keywords_automata.begin(), keywords_automata.end(), automata.begin() + symbols_automata.size() + 3, [](auto& elm) { return &elm; });
 		}
 		
 		constexpr void setOutputCallback(std::function<void(Token)> fn) {
@@ -101,6 +101,8 @@ namespace dpl {
 
 			if (in.is_open()) {
 				std::string line;
+
+				// #TASK : add some option to cut-off character stream while parsing (when encountering an error...)
 
 				#ifdef DPL_LOG
 				frontend_clock_begin = std::chrono::steady_clock::now();
@@ -231,7 +233,10 @@ namespace dpl {
 				if (automata[i]->isAccepted()) {
 					longest_accepted = i;
 					length_of_longest = automata[i]->getAge();
-					if (i < misc_automata_count) break;
+					if (i < misc_automata_count) {
+						all_dead = true;
+						break;
+					}
 				}
 			}
 
@@ -268,17 +273,19 @@ namespace dpl {
 					#endif //DPL_LOG
 
 				} else if (machine == 0) {
-					output(Token{ Token::Type::Identifier, std::string{ str } });
+					if (keywords.contains(str)) {
+						output(Token{ TokenType::Keyword, keywords[str] });
+					} else {
+						output(Token{ TokenType::Identifier, std::string{ str } });
+					}
 				} else if (machine == 1) {
 					long double dbl;
 					std::from_chars(str.data(), str.data() + str.size(), dbl);
-					output(Token{ Token::Type::Number, dbl });
+					output(Token{ TokenType::Number, dbl });
 				} else if (machine == 2) {
-					output(Token{ Token::Type::String, std::move(dpl::StringDFA::recent_string) });
+					output(Token{ TokenType::String, std::move(dpl::StringDFA::recent_string) });
 				} else if (machine <= symbols_count - 1 + misc_automata_count) {
-					output(Token{ Token::Type::Symbol, magic_enum::enum_value<SymT>(machine - misc_automata_count) });
-				} else if (machine <= keywords_count - 1 + misc_automata_count + symbols_count) {
-					output(Token{ Token::Type::Keyword, magic_enum::enum_value<KwdT>(machine - misc_automata_count - symbols_count) });
+					output(Token{ TokenType::Symbol, magic_enum::enum_value<SymT>(machine - misc_automata_count) });
 				}
 			}
 			#ifdef DPL_LOG

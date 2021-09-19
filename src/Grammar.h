@@ -66,9 +66,6 @@ namespace dpl {
 		constexpr Nonterminal() = default;
 		constexpr Nonterminal(std::string_view n, std::initializer_list<ProductionRule> l) : productions(l), name(n) { }
 
-		template<typename KwdT, typename SymT>
-		friend std::ostream& operator<<(std::ostream& os, const Nonterminal<KwdT, SymT>& t);
-
 		constexpr decltype(auto) size() {
 			return productions.size();
 		}

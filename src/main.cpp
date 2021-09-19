@@ -3,6 +3,7 @@
 #include <memory>
 #include <string_view>
 #include <variant>
+#include <unordered_map>
 
 #define DPL_LOG
 
@@ -91,7 +92,8 @@
 	X(Arrow, "->") \
 	X(LongArrow, "-->") \
 	X(SquigglyArrow, "~>") \
-	X(WideArrow, "=>")
+	X(WideArrow, "=>") \
+	X(LeftArry, "<-")
 
 #define KEYWORDS_MACRO \
 	Y(Int) \
@@ -121,9 +123,12 @@ int main() {
 	#undef Y
 
 	#define X(name, symbol) symbol,
-	#define Y(name) #name,
 	const std::vector<std::string_view> symbols{ SYMBOLS_MACRO };
-	const std::vector<std::string_view> keywords{ KEYWORDS_MACRO };
+	#undef X
+	
+	#define X(name, str) {str, Keywords:: name},
+	#define Y(name) {#name, Keywords:: name},
+	const std::unordered_map<std::string_view, Keywords> keywords{ KEYWORDS_MACRO };
 	#undef X
 	#undef Y
 
