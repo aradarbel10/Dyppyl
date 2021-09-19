@@ -196,9 +196,9 @@ int main() {
 		if (!(tree << e)) std::cout << "Parse Tree Overloaded!";
 	});
 
+	DplLogPrintParseTree(tree);
 	DplLogPrintTelemetry();
 	DplLogPrintParseErrors();
-	DplLogPrintParseTree(tree);
 
 	return 0;
 }

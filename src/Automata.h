@@ -13,12 +13,11 @@ namespace dpl {
 		virtual bool isAccepted() const = 0;
 
 		virtual void setAlive() {
-			alive = true;
 			current_state = 0;
 		}
 
 		virtual bool isAlive() const {
-			return alive;
+			return current_state != -1;
 		}
 
 		virtual int getAge() const {
@@ -28,13 +27,11 @@ namespace dpl {
 		virtual void kill() {
 			current_state = -1;
 			age = 0;
-			alive = false;
 		}
 
 	protected:
 
 		int current_state = 0;
-		bool alive = false; // #TASK : this variable could probably be removed, use state == -1 instead
 		int age = 0;
 
 		static bool isLetter(char c) {

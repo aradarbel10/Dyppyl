@@ -8,11 +8,7 @@
 #include <stack>
 
 namespace dpl{
-
-	// #TASK : proper error handling for parser (and tokenizer!!)
 	enum class ParseResult { Fail, Next, Done };
-
-	// #TASK : better naming for all the variables in this file. especially the super short one-letter ones...
 
 	template<typename KwdT, typename SymT>
 	class LL1 {
@@ -24,8 +20,6 @@ namespace dpl{
 		using Grammar = Grammar<KwdT, SymT>;
 
 		LL1(Grammar& g, std::string_view s) : grammar(g), start_symbol(s) {
-			// #TASK : decouple firsts & follows calculations from parser
-
 			calcFirstSets();
 			calcFollowSets();
 			generateParseTable();
@@ -235,7 +229,6 @@ namespace dpl{
 		std::string_view start_symbol;
 		Grammar& grammar;
 
-		// #TASK : possibly employ some more type aliases
 		std::unordered_map<std::string_view, std::unordered_set<std::variant<std::monostate, Token>>> firsts;
 		std::unordered_map<std::string_view, std::unordered_set<Token>> follows;
 		std::unordered_map<std::variant<std::monostate, Token>, std::unordered_map<std::string_view, int>> table;

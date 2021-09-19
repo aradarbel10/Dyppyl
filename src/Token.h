@@ -22,7 +22,6 @@ namespace dpl {
 
 		Type type;
 		value_type value;
-		// #TASK : use string_view in place of string in tokens
 
 		#ifdef DPL_LOG
 		constexpr std::string_view stringify() const {
