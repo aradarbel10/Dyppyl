@@ -17,12 +17,9 @@
 
 // search this solution for "#TASK" to find places where optimizations/refactoring/improvements may be worth implementing
 
-// #TASK : hook up all output to some external logger
 // #TASK : abstract away tokenizer and parser inputs as buffered streams
 // #TASK : use callbacks for all stream interactions
 // #TASK : wrap up tokenizer, parser, tree-gen in a separate "front end" object
-// #TASK : carry positional information inside tokens
-// #TASK : use macros to enable/disable debugging features
 // #TASK : find better way to handle exceptions
 // #TASK : ensure constexpr-ness of whatever's possible
 // #TASK : write tests
@@ -173,26 +170,18 @@ int main() {
 	dpl::Tokenizer<Keywords, Symbols> tokenizer{ keywords, symbols };
 
 	tokenizer.setOutputCallback([&parser](const Token& tkn) {
-		auto res = parser << tkn;
-		if (res == dpl::ParseResult::Fail) {
-			std::cout << "Parsing Error Occured!\n";
-		} else if (res == dpl::ParseResult::Done) {
-			if (tkn.type != dpl::TokenType::EndOfFile) {
-				std::cout << "Parsing Finished Too Soon...\n";
-			}
-		}
+		std::cout << dpl::log::streamer{ tkn } << '\n';
+		parser << tkn;
 	});
 
 	std::string_view input_text{ "while not zero var do --var;" };
 	tokenizer.tokenizeString(input_text);
-
+	//tokenizer.tokenizeFile("C:/Users/arada/Downloads/xstring-benchmark.hpp");
 
 	ParseTree tree{example_grammar};
 
 
 	std::for_each(parser.parse_out.begin(), parser.parse_out.end(), [&](const std::variant<Token, std::pair<std::string_view, int>>& e) {
-		std::cout << dpl::log::streamer{ e } << '\n';
-
 		if (!(tree << e)) std::cout << "Parse Tree Overloaded!";
 	});
 

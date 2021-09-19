@@ -175,7 +175,7 @@ namespace dpl{
 			}
 		}
 
-		ParseResult operator<<(Token t) {
+		void operator<<(Token t) {
 			bool terminal_eliminated = false;
 			do {
 
@@ -196,7 +196,12 @@ namespace dpl{
 						});
 
 					} else {
-						return ParseResult::Fail;
+						#ifdef DPL_LOG
+						// #TASK : include token position in error message
+						dpl::log::error_info.add("Parse Error", std::monostate());
+						#endif //DPL_LOG
+
+						return;
 					}
 				}
 
@@ -207,14 +212,16 @@ namespace dpl{
 
 						terminal_eliminated = true;
 
-						if (parse_stack.empty()) return ParseResult::Done;
+						if (parse_stack.empty()) return;
 					} else {
-						return ParseResult::Fail;
+						#ifdef DPL_LOG
+						dpl::log::error_info.add("Parse Error", std::monostate());
+						#endif //DPL_LOG
+
+						return;
 					}
 				}
 			} while (!terminal_eliminated);
-
-			return ParseResult::Next;
 		}
 
 		bool hasEntry(const Token& tkn, std::string_view nontr) {

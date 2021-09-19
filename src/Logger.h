@@ -93,7 +93,7 @@ namespace dpl {
 
 		using dur_type = std::chrono::duration<double>;
 		static info_log<dur_type, unsigned long long, long double, std::string, FileSize> telemetry_info{"DPL timing results"};
-		static info_log<std::pair<unsigned int, unsigned int>> error_info{"DPL parsing errors"};
+		static info_log<std::monostate, std::pair<unsigned int, unsigned int>> error_info{"DPL parsing errors"};
 
 	}
 }
