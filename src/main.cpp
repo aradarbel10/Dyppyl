@@ -22,7 +22,6 @@
 // #TASK : wrap up tokenizer, parser, tree-gen in a separate "front end" object
 // #TASK : carry positional information inside tokens
 // #TASK : use macros to enable/disable debugging features
-// #TASK : profile the entire pipeline, measure time, measure amount of copies perforemd on certain objects
 // #TASK : find better way to handle exceptions
 // #TASK : ensure constexpr-ness of whatever's possible
 // #TASK : write tests
@@ -192,12 +191,9 @@ int main() {
 		if (!(tree << e)) std::cout << "Parse Tree Overloaded!";
 	});
 
-	std::cout << "\n\nParse Tree:\n========================\n";
-	dpl::printTree(&tree);
-	std::cout << "\n\n";
-
 	DplLogPrintTelemetry();
 	DplLogPrintParseErrors();
+	DplLogPrintParseTree(tree);
 
 	return 0;
 }

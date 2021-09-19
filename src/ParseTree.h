@@ -57,6 +57,7 @@ namespace dpl {
 		
 	};
 
+	#ifdef DPL_LOG
 	template<typename KwdT, typename SymT>
 	void printTree(const std::string& prefix, ParseTree<KwdT, SymT>* node, bool isLast) {
 		static HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -77,8 +78,11 @@ namespace dpl {
 	}
 
 	template<typename KwdT, typename SymT>
-	void printTree(ParseTree<KwdT, SymT>* node) {
-		printTree("", node, true);
+	void printTree(ParseTree<KwdT, SymT>& node) {
+		std::cout << "\n\nParse Tree:\n========================\n";
+		printTree("", &node, true);
+		std::cout << "\n\n";
 	}
+	#endif //DPL_LOG
 
 }

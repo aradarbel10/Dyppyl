@@ -53,6 +53,19 @@ namespace dpl {
 			return os;
 		}
 
+		struct FileSize {
+			std::uintmax_t size{};
+		private: friend
+			std::ostream& operator<<(std::ostream& os, FileSize hr) {
+			int i{};
+			double mantissa = hr.size;
+			for (; mantissa >= 1024.; mantissa /= 1024., ++i) {}
+			mantissa = std::ceil(mantissa * 10.) / 10.;
+			os << mantissa << "BKMGTPE"[i];
+			return i == 0 ? os : os << "B (" << hr.size << ')';
+		}
+		};
+
 		template<typename... Ts>
 		struct info_log {
 			constexpr info_log(const char* header_) : header(header_) { }
@@ -67,7 +80,7 @@ namespace dpl {
 			}
 
 			void print(std::ostream& os) {
-				os << header << ":\n";
+				os << "\n\n" << header << ":\n";
 				for (const auto& [label, val] : entries) {
 					os << '\t' << label << "  ---  " << dpl::log::streamer{ val } << '\n';
 				}
@@ -79,7 +92,7 @@ namespace dpl {
 		};
 
 		using dur_type = std::chrono::duration<double>;
-		static info_log<dur_type, unsigned long long> telemetry_info{"DPL timing results"};
+		static info_log<dur_type, unsigned long long, long double, std::string, FileSize> telemetry_info{"DPL timing results"};
 		static info_log<std::pair<unsigned int, unsigned int>> error_info{"DPL parsing errors"};
 
 	}
@@ -87,10 +100,12 @@ namespace dpl {
 
 #define DplLogPrintTelemetry() dpl::log::telemetry_info.print(std::cout);
 #define DplLogPrintParseErrors() dpl::log::error_info.print(std::cout);
+#define DplLogPrintParseTree(tree) dpl::printTree(tree);
 
 #else //DPL_LOG
 
 #define DplLogPrintTimings()
 #define DplLogPrintParseErrors()
+#define DplLogPrintParseTree(tree)
 
 #endif //DPL_LOG

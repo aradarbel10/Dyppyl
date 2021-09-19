@@ -16,6 +16,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <cstdint>
 
 #ifdef DPL_LOG
 #include <iostream>
@@ -66,6 +67,8 @@ namespace dpl {
 		unsigned long long token_count{ 0 };
 
 		std::pair<unsigned long long, unsigned long long> pos_in_file{ 0, 0 };
+
+		std::uintmax_t source_size;
 		#endif //DPL_LOG
 
 		void tokenizeLine(std::string_view src) {
@@ -102,6 +105,11 @@ namespace dpl {
 				#ifdef DPL_LOG
 				frontend_clock_begin = std::chrono::steady_clock::now();
 				pos_in_file = { 0, 0 };
+
+				source_size = std::filesystem::file_size(src);
+
+				dpl::log::telemetry_info.add("source file path", std::string{ src.string() });
+				dpl::log::telemetry_info.add("source file size", dpl::log::FileSize{ source_size });
 				#endif //DPL_LOG
 
 				while (std::getline(in, line)) {
@@ -136,10 +144,14 @@ namespace dpl {
 			output(TokenType::EndOfFile);
 
 			#ifdef DPL_LOG
-			dpl::log::telemetry_info.add("total time for frontend", std::chrono::steady_clock::now() - frontend_clock_begin);
+			auto duration = std::chrono::steady_clock::now() - frontend_clock_begin;
+
+			dpl::log::telemetry_info.add("total time for frontend", duration);
 			dpl::log::telemetry_info.add("avg. time per character", char_avg_dur);
 			dpl::log::telemetry_info.add("# of characters", char_count);
 			dpl::log::telemetry_info.add("# of tokens", token_count);
+
+			dpl::log::telemetry_info.add("Apprx. speed [MB/sec]", static_cast<long double>(source_size * 1000.0l / duration.count()));
 			#endif //DPL_LOG
 		}
 
@@ -219,7 +231,7 @@ namespace dpl {
 				if (automata[i]->isAccepted()) {
 					longest_accepted = i;
 					length_of_longest = automata[i]->getAge();
-					if (i > misc_automata_count) all_dead = true;
+					if (i < misc_automata_count) break;
 				}
 			}
 
