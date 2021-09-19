@@ -170,7 +170,10 @@ int main() {
 	dpl::Tokenizer<Keywords, Symbols> tokenizer{ keywords, symbols };
 
 	tokenizer.setOutputCallback([&parser](const Token& tkn) {
+		#ifdef DPL_LOG
 		std::cout << dpl::log::streamer{ tkn } << '\n';
+		#endif //DPL_LOG
+
 		parser << tkn;
 	});
 

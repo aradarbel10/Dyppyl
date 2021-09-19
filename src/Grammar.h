@@ -28,8 +28,10 @@ namespace dpl {
 
 		constexpr auto& expand() { return definition; }
 
+		#ifdef DPL_LOG
 		template<typename KwdT, typename SymT>
 		friend std::ostream& operator<<(std::ostream& os, const ProductionRule<KwdT, SymT>& t);
+		#endif //DPL_LOG
 
 		constexpr decltype(auto) size() {
 			return definition.size();

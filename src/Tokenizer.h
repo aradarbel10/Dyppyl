@@ -18,9 +18,10 @@
 #include <fstream>
 #include <cstdint>
 
+#include <magic_enum/magic_enum.hpp>
+
 #ifdef DPL_LOG
 #include <iostream>
-#include <magic_enum/magic_enum.hpp>
 #endif //DPL_LOG
 
 namespace dpl {
@@ -287,8 +288,8 @@ namespace dpl {
 				} else if (machine <= symbols_count - 1 + misc_automata_count) {
 					output(Token{ TokenType::Symbol, magic_enum::enum_value<SymT>(machine - misc_automata_count) });
 				}
-			}
 			#ifdef DPL_LOG
+			}
 			catch (const std::bad_function_call&) {
 				if (!printed_error) {
 					dpl::log::error_info.add("No output callback set for tokenizer", pos_in_file);

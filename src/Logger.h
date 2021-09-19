@@ -104,7 +104,7 @@ namespace dpl {
 
 #else //DPL_LOG
 
-#define DplLogPrintTimings()
+#define DplLogPrintTelemetry()
 #define DplLogPrintParseErrors()
 #define DplLogPrintParseTree(tree)
 

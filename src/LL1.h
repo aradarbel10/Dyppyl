@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Grammar.h"
+#include "Token.h"
 
 #include <unordered_map>
 #include <algorithm>
