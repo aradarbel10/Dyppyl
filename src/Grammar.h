@@ -33,11 +33,11 @@ namespace dpl {
 		friend std::ostream& operator<<(std::ostream& os, const ProductionRule<KwdT, SymT>& t);
 		#endif //DPL_LOG
 
-		constexpr decltype(auto) size() {
+		constexpr decltype(auto) size() const {
 			return definition.size();
 		}
 
-		constexpr decltype(auto) operator[](size_t i) {
+		constexpr decltype(auto) operator[](size_t i) const {
 			return definition[i];
 		}
 

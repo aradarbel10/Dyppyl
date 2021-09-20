@@ -1,0 +1,30 @@
+/*
+	this is an example program that
+	prints out the fibonacci sequence in
+	an infinite loop.
+
+	the syntax is very simplistic and is
+	only used for testing purposes.
+*/
+
+// initialize variables
+0 -> x1;
+1 -> x2;
+
+// loop forever
+while zero 0 do {
+	// print x1
+	x1 -> output;
+
+	// store x2 in an intermediate value
+	x2 -> temp;
+
+	// x2 += x1
+	while not zero x1 do {
+		--x1;
+		++x2;
+	}
+
+	// bring back temp into x1
+	temp -> x1;
+}

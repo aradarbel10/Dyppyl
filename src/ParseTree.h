@@ -25,13 +25,20 @@ namespace dpl {
 		constexpr ParseTree(Grammar& g_, Node n_) : grammar(g_), value(n_) { }
 
 		constexpr bool operator<<(std::variant<Token, std::pair<std::string_view, int>> node) {
-			if (std::holds_alternative<std::monostate>(value)) {
-				std::visit([&](const auto& v) { value = v; }, node);
+			if (!value.has_value()) {
+				std::visit([&](const auto& v) { value.emplace(v); }, node);
 
-				if (auto* const pair_val = std::get_if<std::pair<std::string_view, int>>(&value)) {
-					children.reserve(grammar[(*pair_val).first][(*pair_val).second].size());
-					for (int i = 0; i < children.capacity(); i++) {
-						children.push_back(std::make_unique<ParseTree>(grammar));
+				if (auto* const pair_val = std::get_if<std::pair<std::string_view, int>>(&value.value())) {
+					const auto& rule = grammar[(*pair_val).first][(*pair_val).second];
+
+					if (rule.size() == 1 && std::holds_alternative<std::monostate>(rule[0])) {
+						children.reserve(1);
+						children.push_back(std::make_unique<ParseTree>(grammar, std::monostate()));
+					} else {
+						children.reserve(rule.size());
+						for (int i = 0; i < children.capacity(); i++) {
+							children.push_back(std::make_unique<ParseTree>(grammar));
+						}
 					}
 				}
 				
@@ -52,7 +59,7 @@ namespace dpl {
 
 		Grammar& grammar;
 
-		Node value = std::monostate();
+		std::optional<Node> value;
 		std::vector<std::unique_ptr<ParseTree>> children;
 		
 	};
@@ -65,12 +72,17 @@ namespace dpl {
 		std::cout << prefix;
 		std::cout << (isLast ? "'---" : "|---");
 
-		if (const auto* nt = std::get_if<std::pair<std::string_view, int>>(&node->value)) std::cout << (*nt).first << "(" << (*nt).second << ")\n";
-		else if (const auto* tkn = std::get_if<Token<KwdT, SymT>>(&node->value)) {
-			SetConsoleTextAttribute(hConsole, 0x03);
-			std::cout << (*tkn).stringify() << '\n';
-			SetConsoleTextAttribute(hConsole, 0x07);
+		if (node->value.has_value()) {
+			if (const auto* nt = std::get_if<std::pair<std::string_view, int>>(&node->value.value())) std::cout << (*nt).first << "(" << (*nt).second << ")\n";
+			else if (const auto* tkn = std::get_if<Token<KwdT, SymT>>(&node->value.value())) {
+				SetConsoleTextAttribute(hConsole, 0x03);
+				std::cout << (*tkn).stringify() << '\n';
+				SetConsoleTextAttribute(hConsole, 0x07);
+			} else {
+				std::cout << "null\n";
+			}
 		}
+		
 
 		for (int i = 0; i < node->children.size(); i++) {
 			printTree(prefix + (isLast ? "    " : "|   "), &*node->children[i], i == node->children.size() - 1);

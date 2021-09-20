@@ -2,6 +2,7 @@
 
 #include "Grammar.h"
 #include "Token.h"
+#include "PipelineStage.h"
 
 #include <unordered_map>
 #include <algorithm>
@@ -9,16 +10,15 @@
 #include <stack>
 
 namespace dpl{
-	enum class ParseResult { Fail, Next, Done };
-
 	template<typename KwdT, typename SymT>
-	class LL1 {
+	class LL1 : public dpl::PipelineStage<Token<KwdT, SymT>, std::variant<Token<KwdT, SymT>, std::pair<std::string_view, int>>> {
 	public:
 
 		using Token = Token<KwdT, SymT>;
 		using ProductionRule = ProductionRule<KwdT, SymT>;
 		using Nonterminal = Nonterminal<KwdT, SymT>;
 		using Grammar = Grammar<KwdT, SymT>;
+		using out_type = std::variant<Token, std::pair<std::string_view, int>>;
 
 		LL1(Grammar& g, std::string_view s) : grammar(g), start_symbol(s) {
 			calcFirstSets();
@@ -176,15 +176,15 @@ namespace dpl{
 			}
 		}
 
-		void operator<<(Token t) {
+		void operator<<(const Token& t) override {
 			bool terminal_eliminated = false;
 			do {
 
 				if (const auto* nontr = std::get_if<std::string_view>(&parse_stack.back())) {
 					if (hasEntry(t, *nontr)) {
 
-						auto& rule = grammar[*nontr][table[t][*nontr]].getDefinition();
-						parse_out.push_back(std::pair{ *nontr, table[t][*nontr] });
+						auto& rule = grammar[*nontr][table[getTerminalType(t)][*nontr]].getDefinition();
+						if (!parse_errors) this->output(std::make_pair(*nontr, table[getTerminalType(t)][*nontr]));
 
 						parse_stack.pop_back();
 
@@ -197,28 +197,28 @@ namespace dpl{
 						});
 
 					} else {
+						parse_errors = true;
 						#ifdef DPL_LOG
 						// #TASK : include token position in error message
-						dpl::log::error_info.add("Parse Error", std::monostate());
+						dpl::log::error_info.add("Parse Error: Unexpected Token", t.pos);
 						#endif //DPL_LOG
-
 						return;
 					}
 				}
 
 				if (const auto* tr = std::get_if<Token>(&parse_stack.back())) {
 					if (*tr == t) {
-						parse_out.push_back(t);
+						if (!parse_errors) this->output(t);
 						parse_stack.pop_back();
 
 						terminal_eliminated = true;
 
 						if (parse_stack.empty()) return;
 					} else {
+						parse_errors = true;
 						#ifdef DPL_LOG
-						dpl::log::error_info.add("Parse Error", std::monostate());
+						dpl::log::error_info.add("Parse Error: Missing Token", t.pos);
 						#endif //DPL_LOG
-
 						return;
 					}
 				}
@@ -229,8 +229,19 @@ namespace dpl{
 			return table.contains(getTerminalType(tkn)) && table[getTerminalType(tkn)].contains(nontr);
 		}
 
-
-		std::list<std::variant<Token, std::pair<std::string_view, int>>> parse_out;
+		#ifdef DPL_LOG
+		void printParseTable() {
+			std::cout << "\n\nParse Table:\n";
+			for (const auto& [tkn, row] : table) {
+				std::cout << dpl::log::streamer{ tkn } << " :   ";
+				for (const auto& [key, rule] : row) {
+					std::cout << key << " (" << rule << ")  ";
+				}
+				std::cout << '\n';
+			}
+			std::cout << "\n\n";
+		}
+		#endif
 
 	private:
 
@@ -243,5 +254,6 @@ namespace dpl{
 
 		// #TASK : use list for debug, stack for release
 		std::list<std::variant<std::string_view, Token>> parse_stack;
+		bool parse_errors = false;
 	};
 }

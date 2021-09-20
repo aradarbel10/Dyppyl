@@ -24,10 +24,14 @@ namespace dpl {
 		value_type value;
 
 		#ifdef DPL_LOG
-		constexpr std::string_view stringify() const {
+		std::pair<unsigned int, unsigned int> pos;
+
+
+
+		constexpr std::string stringify() const {
 			if (type == TokenType::Symbol || type == TokenType::Keyword) {
-				if (const auto* sym = std::get_if<SymT>(&value)) return magic_enum::enum_name(*sym);
-				else if (const auto* kwd = std::get_if<KwdT>(&value)) return magic_enum::enum_name(*kwd);
+				if (const auto* sym = std::get_if<SymT>(&value)) return std::string{ magic_enum::enum_name(*sym) };
+				else if (const auto* kwd = std::get_if<KwdT>(&value)) return std::string{ magic_enum::enum_name(*kwd) };
 				return "unknown enum";
 			} else if (type == TokenType::Identifier) {
 				return std::get<std::string>(value);

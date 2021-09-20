@@ -2,6 +2,7 @@
 
 #include "Automata.h"
 #include "Token.h"
+#include "PipelineStage.h"
 
 #include <utility>
 #include <variant>
@@ -26,7 +27,7 @@
 
 namespace dpl {
 	template<typename KwdT, typename SymT> requires std::is_enum_v<KwdT> && std::is_enum_v<SymT>
-	class Tokenizer {
+	class Tokenizer : public dpl::PipelineStage<char, Token<KwdT, SymT>> {
 	private:
 
 		using Token = Token<KwdT, SymT>;
@@ -56,10 +57,12 @@ namespace dpl {
 		int longest_accepted = -1, length_of_longest = 0;
 		std::string lexeme_buff = "", lexer_queue = "";
 
-		std::function<void(Token)> output;
+		//std::function<void(Token)> output;
 
 
 		#ifdef DPL_LOG
+		//std::function<void(Token)> user_defined_output;
+
 		std::chrono::time_point<std::chrono::steady_clock> frontend_clock_begin;
 		std::chrono::time_point<std::chrono::steady_clock> char_clock_begin;
 		std::chrono::duration<long double> char_avg_dur{ 0 };
@@ -67,7 +70,7 @@ namespace dpl {
 		unsigned long long char_count{ 0 };
 		unsigned long long token_count{ 0 };
 
-		std::pair<unsigned long long, unsigned long long> pos_in_file{ 0, 0 };
+		std::pair<unsigned int, unsigned int> pos_in_file{ 0, 0 };
 
 		std::uintmax_t source_size;
 		#endif //DPL_LOG
@@ -92,10 +95,6 @@ namespace dpl {
 			std::transform(symbols_automata.begin(), symbols_automata.end(), automata.begin() + 3, [](auto& elm) { return &elm; });
 			//std::transform(keywords_automata.begin(), keywords_automata.end(), automata.begin() + symbols_automata.size() + 3, [](auto& elm) { return &elm; });
 		}
-		
-		constexpr void setOutputCallback(std::function<void(Token)> fn) {
-			output = fn;
-		}
 
 		void tokenizeFile(std::filesystem::path src) {
 			std::ifstream in{ src };
@@ -107,7 +106,7 @@ namespace dpl {
 
 				#ifdef DPL_LOG
 				frontend_clock_begin = std::chrono::steady_clock::now();
-				pos_in_file = { 0, 0 };
+				pos_in_file = { 1, 1 };
 
 				source_size = std::filesystem::file_size(src);
 
@@ -119,7 +118,7 @@ namespace dpl {
 					tokenizeLine(line);
 
 					#ifdef DPL_LOG
-					pos_in_file.first = 0;
+					pos_in_file.first = 1;
 					pos_in_file.second++;
 					#endif //DPL_LOG
 				}
@@ -144,7 +143,7 @@ namespace dpl {
 	private:
 
 		void endStream() {
-			output(TokenType::EndOfFile);
+			this->output(Token{ TokenType::EndOfFile });
 
 			#ifdef DPL_LOG
 			auto duration = std::chrono::steady_clock::now() - frontend_clock_begin;
@@ -158,7 +157,7 @@ namespace dpl {
 			#endif //DPL_LOG
 		}
 
-		void operator<<(char c) {
+		void operator<<(const char& c) override {
 			#ifdef DPL_LOG
 			char_clock_begin = std::chrono::steady_clock::now();
 			char_count++;
@@ -267,6 +266,8 @@ namespace dpl {
 			#ifdef DPL_LOG
 			try {
 			#endif //DPL_LOG
+				Token tkn;
+
 				if (machine == -1) {
 					#ifdef DPL_LOG
 					token_count--;
@@ -275,19 +276,25 @@ namespace dpl {
 
 				} else if (machine == 0) {
 					if (keywords.contains(str)) {
-						output(Token{ TokenType::Keyword, keywords[str] });
+						tkn = Token{ TokenType::Keyword, keywords[str] };
 					} else {
-						output(Token{ TokenType::Identifier, std::string{ str } });
+						tkn = Token{ TokenType::Identifier, std::string{ str } };
 					}
 				} else if (machine == 1) {
 					long double dbl;
 					std::from_chars(str.data(), str.data() + str.size(), dbl);
-					output(Token{ TokenType::Number, dbl });
+					tkn = Token{ TokenType::Number, dbl };
 				} else if (machine == 2) {
-					output(Token{ TokenType::String, std::move(dpl::StringDFA::recent_string) });
+					tkn = Token{ TokenType::String, std::move(dpl::StringDFA::recent_string) };
 				} else if (machine <= symbols_count - 1 + misc_automata_count) {
-					output(Token{ TokenType::Symbol, magic_enum::enum_value<SymT>(machine - misc_automata_count) });
+					tkn = Token{ TokenType::Symbol, magic_enum::enum_value<SymT>(machine - misc_automata_count) };
 				}
+
+				#ifdef DPL_LOG
+				tkn.pos = pos_in_file;
+				#endif
+
+				this->output(tkn);
 			#ifdef DPL_LOG
 			}
 			catch (const std::bad_function_call&) {

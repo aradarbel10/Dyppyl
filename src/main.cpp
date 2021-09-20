@@ -157,7 +157,7 @@ int main() {
 		}},
 		{ "Block", {
 			{ "Stmt" },
-			{ Symbols::LeftCurly, "Stmt", Symbols::RightCurly }
+			{ Symbols::LeftCurly, "Stmts", Symbols::RightCurly }
 		}},
 		{ "Stmts", {
 			{ "Stmt", "Stmts" },
@@ -165,29 +165,27 @@ int main() {
 		}}
 	};
 
-	LL1 parser{ example_grammar, "Stmts" };
 
+	ParseTree tree{ example_grammar };
+	LL1 parser{ example_grammar, "Stmts" };
 	dpl::Tokenizer<Keywords, Symbols> tokenizer{ keywords, symbols };
 
-	tokenizer.setOutputCallback([&parser](const Token& tkn) {
-		#ifdef DPL_LOG
-		std::cout << dpl::log::streamer{ tkn } << '\n';
-		#endif //DPL_LOG
 
+
+	tokenizer.setOutputCallback([&parser](const Token& tkn) {
 		parser << tkn;
 	});
 
-	std::string_view input_text{ "while not zero var do --var;" };
-	tokenizer.tokenizeString(input_text);
-	//tokenizer.tokenizeFile("C:/Users/arada/Downloads/xstring-benchmark.hpp");
-
-	ParseTree tree{example_grammar};
-
-
-	std::for_each(parser.parse_out.begin(), parser.parse_out.end(), [&](const std::variant<Token, std::pair<std::string_view, int>>& e) {
-		if (!(tree << e)) std::cout << "Parse Tree Overloaded!";
+	parser.setOutputCallback([&tree](const LL1::out_type& tkn) {
+		tree << tkn;
 	});
 
+
+
+	//tokenizer.tokenizeString("while zero 0 do { ++x; }");
+	tokenizer.tokenizeFile("snippets/example.lang");
+
+	DplLogPrintParseTable(parser);
 	DplLogPrintParseTree(tree);
 	DplLogPrintTelemetry();
 	DplLogPrintParseErrors();
