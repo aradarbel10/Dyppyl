@@ -23,7 +23,13 @@ namespace dpl{
 		LL1(Grammar& g, std::string_view s) : grammar(g), start_symbol(s) {
 			calcFirstSets();
 			calcFollowSets();
-			generateParseTable();
+
+			try {
+				generateParseTable();
+			} catch (const std::invalid_argument& err) {
+				std::cerr << "LL(1) parser can't parse non-LL(1) grammar!\n";
+			}
+			
 
 			parse_stack.push_back(TokenType::EndOfFile);
 			parse_stack.push_back(start_symbol);
@@ -164,12 +170,17 @@ namespace dpl{
 					auto firsts_of_def = first_star(rule.begin(), rule.end());
 
 					for (const auto& f : firsts_of_def) {
-						if (const auto* t = std::get_if<Token>(&f)) {
-							table[*t][name] = i;
-						} else {
-							std::for_each(follows[name].begin(), follows[name].end(), [&](const auto& e) {
-								table[e][name] = i;
-							});
+						try {
+							if (const auto* t = std::get_if<Token>(&f)) {
+								addEntry(*t, name, i);
+							} else {
+								std::for_each(follows[name].begin(), follows[name].end(), [&](const auto& e) {
+									addEntry(e, name, i);
+								});
+							}
+						} catch (const std::invalid_argument& err) {
+							table.clear();
+							throw err;
 						}
 					}
 				}
@@ -227,6 +238,11 @@ namespace dpl{
 
 		bool hasEntry(const Token& tkn, std::string_view nontr) {
 			return table.contains(getTerminalType(tkn)) && table[getTerminalType(tkn)].contains(nontr);
+		}
+
+		bool addEntry(const Token& tkn, std::string_view name, int i) {
+			if (hasEntry(tkn, name)) throw std::invalid_argument("non LL(1) grammar");
+			table[tkn][name] = i;
 		}
 
 		#ifdef DPL_LOG

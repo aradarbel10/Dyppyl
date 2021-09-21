@@ -166,24 +166,27 @@ int main() {
 	};
 
 
+	Grammar non_ll1{
+		{ "L", {
+			{ Symbols::Plus },
+			{ Symbols::Plus, "L" }
+		}}
+	};
+
+
 	ParseTree tree{ example_grammar };
+
 	LL1 parser{ example_grammar, "Stmts" };
+	parser.setOutputCallback([&tree](const LL1::out_type& tkn) { tree << tkn; });
+
 	dpl::Tokenizer<Keywords, Symbols> tokenizer{ keywords, symbols };
+	tokenizer.setOutputCallback([&parser](const Token& tkn) { parser << tkn; });
 
 
 
-	tokenizer.setOutputCallback([&parser](const Token& tkn) {
-		parser << tkn;
-	});
-
-	parser.setOutputCallback([&tree](const LL1::out_type& tkn) {
-		tree << tkn;
-	});
-
-
-
-	//tokenizer.tokenizeString("while zero 0 do { ++x; }");
-	tokenizer.tokenizeFile("snippets/example.lang");
+	tokenizer.tokenizeString("while zero 0 do { ++x; }");
+	//tokenizer.tokenizeFile("snippets/example.lang");
+	//tokenizer.tokenizeString("+ + + + + +");
 
 	DplLogPrintParseTable(parser);
 	DplLogPrintParseTree(tree);

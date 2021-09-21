@@ -111,3 +111,11 @@ namespace dpl {
 #define DplLogPrintParseTable(parser)
 
 #endif //DPL_LOG
+
+//namespace dpl::log {
+//	class grammar_parser_mismatch : public std::exception {
+//	public:
+//		explicit grammar_parser_mismatch(std::string_view s_) : what(s_) { }
+//		std::string what;
+//	};
+//}

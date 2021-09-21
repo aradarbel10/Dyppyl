@@ -12,14 +12,14 @@ namespace dpl {
 	public:
 
 		PipelineStage() = default;
-		PipelineStage(std::function<void(const T&)>& fn) : output(fn) { }
+		PipelineStage(std::function<void(const T&)> fn) : output(fn) { }
 
 		virtual void operator<<(const T&) = 0;
 		
 		template<typename Func> requires std::invocable<Func, S>
 		void setOutputCallback(const Func& fn) {
 			#ifdef DPL_LOG
-			output_fn = [&fn](const auto& out_sym) -> void {
+			output_fn = [fn](const S& out_sym) -> void { // capture the argument by value! by ref would leave a dangling pointer to a temporary (the parameter)
 				std::cout << dpl::log::streamer{ out_sym } << '\n';
 				std::invoke(fn, out_sym);
 			};
@@ -29,9 +29,9 @@ namespace dpl {
 		}
 
 		template<typename InT, typename OutT>
-		void setOutputStage(const PipelineStage<InT, OutT>& nxt) {
+		void setOutputStage(PipelineStage<InT, OutT>& nxt) {
 			#ifdef DPL_LOG
-			output_fn = [&nxt](const auto& out_sym) -> void {
+			output_fn = [&nxt](const S& out_sym) -> void {
 				std::cout << dpl::log::streamer{ out_sym } << '\n';
 				nxt << out_sym;
 			};
@@ -44,7 +44,7 @@ namespace dpl {
 
 		void output(const S& arg) {
 			try {
-				output_fn(arg);
+				std::invoke(output_fn, arg);
 			} catch (const std::bad_function_call& exc) { /* nothing */ }
 		}
 
