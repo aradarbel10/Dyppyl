@@ -23,10 +23,7 @@ namespace dpl {
 		Type type;
 		value_type value;
 
-		#ifdef DPL_LOG
 		std::pair<unsigned int, unsigned int> pos;
-
-
 
 		constexpr std::string stringify() const {
 			if (type == TokenType::Symbol || type == TokenType::Keyword) {
@@ -44,7 +41,6 @@ namespace dpl {
 				return "unknown non-enum";
 			}
 		}
-		#endif //DPL_LOG
 
 		constexpr Token() = default;
 		constexpr Token(Type t, value_type v) : type(t), value(v) { }
@@ -53,21 +49,15 @@ namespace dpl {
 		constexpr Token(SymT t) : type(Type::Symbol), value(t) { }
 	};
 
-	#ifdef DPL_LOG
 	template<typename KwdT, typename SymT>
 	std::ostream& operator<<(std::ostream& os, const Token<KwdT, SymT>& t) {
 		os << "[" << magic_enum::enum_name(t.type) << ", ";
 
-		//std::visit([&os](const auto& v) {
-		//	if constexpr (std::is_enum_v<decltype(v)>) os << magic_enum::enum_name(v);
-		//	else os << v;
-		//}, t.value);
 		std::cout << dpl::log::streamer{ t.value };
 
 		os << "]";
 		return os;
 	}
-	#endif //DPL_LOG
 
 	template<typename KwdT, typename SymT>
 	inline constexpr bool operator==(const Token<KwdT, SymT>& lhs, const Token<KwdT, SymT>& rhs) {

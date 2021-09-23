@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef DPL_LOG
+
 #include <iostream>
 #include <variant>
 #include <vector>
@@ -53,6 +53,8 @@ namespace dpl {
 			return os;
 		}
 
+		#ifdef DPL_LOG
+
 		struct FileSize {
 			std::uintmax_t size{};
 		private: friend
@@ -93,29 +95,14 @@ namespace dpl {
 
 		using dur_type = std::chrono::duration<double>;
 		static info_log<dur_type, unsigned long long, long double, std::string, FileSize> telemetry_info{"DPL timing results"};
-		static info_log<std::monostate, std::pair<unsigned int, unsigned int>, std::string_view> error_info{"DPL parsing errors"};
+
+		#endif
 
 	}
 }
 
+#ifdef DPL_LOG
 #define DplLogPrintTelemetry() dpl::log::telemetry_info.print(std::cout);
-#define DplLogPrintParseErrors() dpl::log::error_info.print(std::cout);
-#define DplLogPrintParseTree(tree) dpl::printTree(tree);
-#define DplLogPrintParseTable(parser) parser.printParseTable();
-
 #else //DPL_LOG
-
 #define DplLogPrintTelemetry()
-#define DplLogPrintParseErrors()
-#define DplLogPrintParseTree(tree)
-#define DplLogPrintParseTable(parser)
-
 #endif //DPL_LOG
-
-//namespace dpl::log {
-//	class grammar_parser_mismatch : public std::exception {
-//	public:
-//		explicit grammar_parser_mismatch(std::string_view s_) : what(s_) { }
-//		std::string what;
-//	};
-//}

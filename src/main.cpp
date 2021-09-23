@@ -135,7 +135,6 @@ int main() {
 	using Nonterminal = dpl::Nonterminal<Keywords, Symbols>;
 	using Token = dpl::Token<Keywords, Symbols>;
 	using Grammar = dpl::Grammar<Keywords, Symbols>;
-	using LL1 = dpl::LL1<Keywords, Symbols>;
 	using ParseTree = dpl::ParseTree<Keywords, Symbols>;
 
 	Grammar example_grammar{
@@ -175,23 +174,16 @@ int main() {
 
 
 	ParseTree tree{ example_grammar };
+	dpl::LL1<Keywords, Symbols> parser{ example_grammar, "Stmts", tree };
+	dpl::Tokenizer<Keywords, Symbols> tokenizer{ keywords, symbols, parser };
 
-	LL1 parser{ example_grammar, "Stmts" };
-	parser.setOutputCallback([&tree](const LL1::out_type& tkn) { tree << tkn; });
-
-	dpl::Tokenizer<Keywords, Symbols> tokenizer{ keywords, symbols };
-	tokenizer.setOutputCallback([&parser](const Token& tkn) { parser << tkn; });
-
-
-
-	tokenizer.tokenizeString("while zero 0 do { ++x; }");
-	//tokenizer.tokenizeFile("snippets/example.lang");
+	//tokenizer.tokenizeString("while zero 0 do { 1 -> x; }");
+	tokenizer.tokenizeFile("snippets/example.lang");
 	//tokenizer.tokenizeString("+ + + + + +");
 
-	DplLogPrintParseTable(parser);
-	DplLogPrintParseTree(tree);
+	parser.printParseTable();
+	dpl::printTree(tree);
 	DplLogPrintTelemetry();
-	DplLogPrintParseErrors();
 
 	return 0;
 }

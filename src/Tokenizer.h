@@ -2,7 +2,7 @@
 
 #include "Automata.h"
 #include "Token.h"
-#include "PipelineStage.h"
+#include "LL1.h"
 
 #include <utility>
 #include <variant>
@@ -27,18 +27,18 @@
 
 namespace dpl {
 	template<typename KwdT, typename SymT> requires std::is_enum_v<KwdT> && std::is_enum_v<SymT>
-	class Tokenizer : public dpl::PipelineStage<char, Token<KwdT, SymT>> {
+	class Tokenizer {
 	private:
 
 		using Token = Token<KwdT, SymT>;
+		using LL1 = LL1<KwdT, SymT>;
 
 		// #TASK : take hiders and whitespaces as input from user
 		std::array<std::array<dpl::LinearDFA, 2>, 2> hiders{{ {"//", "\n"}, {"/*", "*/"} }};
 		const std::unordered_set<char> whitespaces{ ' ', '\n', '\t', '\0' };
 		int inside_hider = -1;
-		std::string hiders_queue = "";
-		// #TASK : should probably implement custom queue with size max(hiders.first...)-1, save tons of allocations
-		
+		std::string hiders_queue = "  ";
+
 		const size_t symbols_count = magic_enum::enum_count<SymT>();
 
 		dpl::IdentifierDFA identifier_automaton;
@@ -53,16 +53,10 @@ namespace dpl {
 
 		std::unordered_map<std::string_view, KwdT> keywords;
 
-		// #TASK : find more appropriate data structure to hold queues
 		int longest_accepted = -1, length_of_longest = 0;
 		std::string lexeme_buff = "", lexer_queue = "";
 
-		//std::function<void(Token)> output;
-
-
 		#ifdef DPL_LOG
-		//std::function<void(Token)> user_defined_output;
-
 		std::chrono::time_point<std::chrono::steady_clock> frontend_clock_begin;
 		std::chrono::time_point<std::chrono::steady_clock> char_clock_begin;
 		std::chrono::duration<long double> char_avg_dur{ 0 };
@@ -70,30 +64,34 @@ namespace dpl {
 		unsigned long long char_count{ 0 };
 		unsigned long long token_count{ 0 };
 
-		std::pair<unsigned int, unsigned int> pos_in_file{ 0, 0 };
-
 		std::uintmax_t source_size;
 		#endif //DPL_LOG
 
+		std::pair<unsigned int, unsigned int> pos_in_file{ 0, 0 };
+		std::string_view current_line;
+
+		bool active = true;
+		LL1& out_parser;
+
 		void tokenizeLine(std::string_view src) {
+			current_line = src;
 			for (const auto& c : src) {
 				*this << c;
 
-				#ifdef DPL_LOG
+				if (!this->active) break;
+
 				pos_in_file.first++;
-				#endif //DPL_LOG
 			}
 			*this << '\n';
 		}
 
 	public:
 
-		constexpr Tokenizer(const std::unordered_map<std::string_view, KwdT>& keywords_, const std::vector<std::string_view>& symbols) : keywords(keywords_) {
+		constexpr Tokenizer(const std::unordered_map<std::string_view, KwdT>& keywords_,
+							const std::vector<std::string_view>& symbols,
+							LL1& op) : keywords(keywords_), out_parser(op) {
 			std::transform(symbols.begin(), symbols.end(), symbols_automata.begin(), std::identity{});
-			//std::transform(keywords.begin(), keywords.end(), keywords_automata.begin(), std::identity{});
-			
 			std::transform(symbols_automata.begin(), symbols_automata.end(), automata.begin() + 3, [](auto& elm) { return &elm; });
-			//std::transform(keywords_automata.begin(), keywords_automata.end(), automata.begin() + symbols_automata.size() + 3, [](auto& elm) { return &elm; });
 		}
 
 		void tokenizeFile(std::filesystem::path src) {
@@ -104,9 +102,10 @@ namespace dpl {
 
 				// #TASK : add some option to cut-off character stream while parsing (when encountering an error...)
 
+				pos_in_file = { 1, 1 };
+
 				#ifdef DPL_LOG
 				frontend_clock_begin = std::chrono::steady_clock::now();
-				pos_in_file = { 1, 1 };
 
 				source_size = std::filesystem::file_size(src);
 
@@ -117,17 +116,17 @@ namespace dpl {
 				while (std::getline(in, line)) {
 					tokenizeLine(line);
 
-					#ifdef DPL_LOG
 					pos_in_file.first = 1;
 					pos_in_file.second++;
-					#endif //DPL_LOG
+
+					if (!this->active) break;
 				}
 
 				this->endStream();
 
 				in.close();
 			} else {
-				throw "Could not open file!";
+				std::cerr << "Could not open file!";
 			}
 		}
 
@@ -143,7 +142,7 @@ namespace dpl {
 	private:
 
 		void endStream() {
-			this->output(Token{ TokenType::EndOfFile });
+			out_parser << Token{ TokenType::EndOfFile };
 
 			#ifdef DPL_LOG
 			auto duration = std::chrono::steady_clock::now() - frontend_clock_begin;
@@ -157,7 +156,7 @@ namespace dpl {
 			#endif //DPL_LOG
 		}
 
-		void operator<<(const char& c) override {
+		void operator<<(const char& c) {
 			#ifdef DPL_LOG
 			char_clock_begin = std::chrono::steady_clock::now();
 			char_count++;
@@ -259,51 +258,46 @@ namespace dpl {
 
 		void evaluate(int machine, std::string_view str) {
 			#ifdef DPL_LOG
-			static bool printed_error = false;
 			token_count++;
 			#endif //DPL_LOG
 
-			#ifdef DPL_LOG
-			try {
-			#endif //DPL_LOG
-				Token tkn;
+			static bool printed_error = false;
 
-				if (machine == -1) {
-					#ifdef DPL_LOG
-					token_count--;
-					dpl::log::error_info.add("Illegal Token", pos_in_file);
-					#endif //DPL_LOG
+			Token tkn;
 
-				} else if (machine == 0) {
-					if (keywords.contains(str)) {
-						tkn = Token{ TokenType::Keyword, keywords[str] };
-					} else {
-						tkn = Token{ TokenType::Identifier, std::string{ str } };
-					}
-				} else if (machine == 1) {
-					long double dbl;
-					std::from_chars(str.data(), str.data() + str.size(), dbl);
-					tkn = Token{ TokenType::Number, dbl };
-				} else if (machine == 2) {
-					tkn = Token{ TokenType::String, std::move(dpl::StringDFA::recent_string) };
-				} else if (machine <= symbols_count - 1 + misc_automata_count) {
-					tkn = Token{ TokenType::Symbol, magic_enum::enum_value<SymT>(machine - misc_automata_count) };
-				}
-
+			if (machine == -1) {
 				#ifdef DPL_LOG
-				tkn.pos = pos_in_file;
-				#endif
+				token_count--;
+				#endif //DPL_LOG
 
-				this->output(tkn);
-			#ifdef DPL_LOG
+				std::cerr << "Illegal token at character " << pos_in_file.first << " of line " << pos_in_file.second;
+
+			} else if (machine == 0) {
+				if (keywords.contains(str)) {
+					tkn = Token{ TokenType::Keyword, keywords[str] };
+				} else {
+					tkn = Token{ TokenType::Identifier, std::string{ str } };
+				}
+			} else if (machine == 1) {
+				long double dbl;
+				std::from_chars(str.data(), str.data() + str.size(), dbl);
+				tkn = Token{ TokenType::Number, dbl };
+			} else if (machine == 2) {
+				tkn = Token{ TokenType::String, std::move(dpl::StringDFA::recent_string) };
+			} else if (machine <= symbols_count - 1 + misc_automata_count) {
+				tkn = Token{ TokenType::Symbol, magic_enum::enum_value<SymT>(machine - misc_automata_count) };
 			}
-			catch (const std::bad_function_call&) {
+
+			tkn.pos = { pos_in_file.first - length_of_longest, pos_in_file.second };
+
+			try {
+				out_parser << tkn;
+			} catch (const std::bad_function_call&) {
 				if (!printed_error) {
-					dpl::log::error_info.add("No output callback set for tokenizer", pos_in_file);
+					std::cerr << "No output callback set for tokenizer";
 					printed_error = true;
 				}
 			}
-			#endif //DPL_LOG
 		}
 
 	};
