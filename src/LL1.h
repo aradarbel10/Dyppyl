@@ -38,7 +38,7 @@ namespace dpl{
 			firsts.reserve(grammar.size());
 			for (auto& [name, nt] : grammar) {
 				firsts[name].reserve(nt.size());
-				for (auto& rule : nt.getProductions()) {
+				for (auto& rule : nt) {
 					if (const Token* t = std::get_if<Token>(&rule[0])) {
 						firsts[name].insert(*t);
 					}
@@ -56,7 +56,7 @@ namespace dpl{
 				changed = false;
 
 				for (auto& [name, nt] : grammar) {
-					for (auto& rule : nt.productions) {
+					for (auto& rule : nt) {
 						auto size_before = firsts[name].size();
 
 						int i = 0;
@@ -86,7 +86,7 @@ namespace dpl{
 
 		void calcFollowSets() {
 			for (auto& [name, nt] : grammar) {
-				for (auto& rule : nt.productions) {
+				for (auto& rule : nt) {
 					for (int i = 0; i < rule.size() - 1; i++) {
 						if (const auto* n = std::get_if<std::string_view>(&rule[i])) {
 							if (const auto* t = std::get_if<Token>(&rule[i + 1])) {
@@ -104,7 +104,7 @@ namespace dpl{
 				changed = false;
 
 				for (auto& [name, nt] : grammar) {
-					for (auto& rule : nt.productions) {
+					for (auto& rule : nt) {
 						for (int i = 0; i < rule.size() - 1; i++) {
 							if (const auto* v = std::get_if<std::string_view>(&rule[i])) {
 								auto size_before = follows[*v].size();
@@ -163,8 +163,8 @@ namespace dpl{
 
 		void generateParseTable() {
 			for (auto& [name, nt] : grammar) {
-				for (int i = 0; i < nt.productions.size(); i++) {
-					auto& rule = nt.productions[i];
+				for (int i = 0; i < nt.size(); i++) {
+					auto& rule = nt[i];
 
 					auto firsts_of_def = first_star(rule.begin(), rule.end());
 
@@ -192,7 +192,7 @@ namespace dpl{
 				if (const auto* nontr = std::get_if<std::string_view>(&parse_stack.back())) {
 					if (hasEntry(t, *nontr)) {
 
-						auto& rule = grammar[*nontr][table[getTerminalType(t)][*nontr]].getDefinition();
+						auto& rule = grammar[*nontr][table[getTerminalType(t)][*nontr]];
 						out_tree << std::make_pair(*nontr, table[getTerminalType(t)][*nontr]);
 
 						parse_stack.pop_back();

@@ -9,88 +9,44 @@
 
 namespace dpl {
 
-	template<typename KwdT, typename SymT> class LL1;
-
 	template<typename KwdT, typename SymT> requires std::is_enum_v<KwdT> && std::is_enum_v<SymT>
-	class Nonterminal;
-
-	template<typename KwdT, typename SymT> requires std::is_enum_v<KwdT>&& std::is_enum_v<SymT>
-	class Grammar;
-
-	template<typename KwdT, typename SymT> requires std::is_enum_v<KwdT> && std::is_enum_v<SymT>
-	class ProductionRule {
+	class ProductionRule : private std::vector<std::variant<std::monostate, Token<KwdT, SymT>, std::string_view>> {
 	public:
 
 		using Token = Token<KwdT, SymT>;
 		using Atom = std::variant<std::monostate, Token, std::string_view>;
 
-		constexpr ProductionRule(std::initializer_list<Atom> l) : definition(l) { }
+		constexpr ProductionRule(std::initializer_list<Atom> l) : std::vector<Atom>(l) { }
 
-		constexpr auto& expand() { return definition; }
-
-		constexpr decltype(auto) size() const {
-			return definition.size();
-		}
-
-		constexpr decltype(auto) operator[](size_t i) const {
-			return definition[i];
-		}
-
-		constexpr auto begin() {
-			return definition.begin();
-		}
-
-		constexpr auto end() {
-			return definition.end();
-		}
-
-		constexpr std::vector<Atom>& getDefinition() {
-			return definition;
-		}
-
-	private:
-
-		std::vector<Atom> definition;
+		using std::vector<Atom>::size;
+		using std::vector<Atom>::operator[];
+		using std::vector<Atom>::begin;
+		using std::vector<Atom>::end;
+		using std::vector<Atom>::rbegin;
+		using std::vector<Atom>::rend;
 
 	};
 
 	template<typename KwdT, typename SymT> requires std::is_enum_v<KwdT> && std::is_enum_v<SymT>
-	class Nonterminal {
+	class Nonterminal : private std::vector<ProductionRule<KwdT, SymT>> {
 	public:
 		
 		using ProductionRule = ProductionRule<KwdT, SymT>;
 
 		constexpr Nonterminal() = default;
-		constexpr Nonterminal(std::string_view n, std::initializer_list<ProductionRule> l) : productions(l), name(n) { }
+		constexpr Nonterminal(std::string_view n, std::initializer_list<ProductionRule> l) : std::vector<ProductionRule>(l), name(n) { }
 
-		constexpr decltype(auto) size() {
-			return productions.size();
-		}
+		using std::vector<ProductionRule>::size;
+		using std::vector<ProductionRule>::operator[];
+		using std::vector<ProductionRule>::begin;
+		using std::vector<ProductionRule>::end;
 
-		constexpr decltype(auto) operator[](size_t i) {
-			return productions[i];
-		}
-
-		constexpr std::vector<ProductionRule>& getProductions() {
-			return productions;
-		}
-
-		constexpr std::string_view getName() const {
-			return name;
-		}
-
-		friend class LL1<typename KwdT, typename SymT>;
-		friend class Grammar<typename KwdT, typename SymT>;
-
-	private:
-
-		std::vector<ProductionRule> productions;
 		std::string_view name;
 
 	};
 
 	template<typename KwdT, typename SymT> requires std::is_enum_v<KwdT> && std::is_enum_v<SymT>
-	class Grammar {
+	class Grammar : std::unordered_map<std::string_view, Nonterminal<KwdT, SymT>> {
 	public:
 
 		using ProductionRule = ProductionRule<KwdT, SymT>;
@@ -99,31 +55,14 @@ namespace dpl {
 
 		constexpr Grammar(std::initializer_list<Nonterminal> l) {
 			std::for_each(l.begin(), l.end(), [&](const auto& e) {
-				nonterminals[e.name] = e;
+				(*this)[e.name] = e;
 			});
 		}
 
-		constexpr decltype(auto) size() {
-			return nonterminals.size();
-		}
-
-		constexpr decltype(auto) operator[](std::string_view key) {
-			return nonterminals[key];
-		}
-
-		constexpr auto begin() {
-			return nonterminals.begin();
-		}
-
-		constexpr auto end() {
-			return nonterminals.end();
-		}
-
-		friend class LL1<typename KwdT, typename SymT>;
-
-	private:
-
-		std::unordered_map<std::string_view, Nonterminal> nonterminals;
+		using std::unordered_map <std::string_view, Nonterminal>::size;
+		using std::unordered_map <std::string_view, Nonterminal>::operator[];
+		using std::unordered_map <std::string_view, Nonterminal>::begin;
+		using std::unordered_map <std::string_view, Nonterminal>::end;
 
 	};
 }
