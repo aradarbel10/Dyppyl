@@ -139,6 +139,10 @@ int main() {
 	using ParseTree = dpl::ParseTree<Keywords, Symbols>;
 
 	Grammar example_grammar{
+		{ "Stmts", {
+			{ "Stmt", "Stmts" },
+			{ std::monostate() }
+		}},
 		{ "Term", {
 			{ Token::Type::Identifier },
 			{ Token::Type::Number }
@@ -158,10 +162,6 @@ int main() {
 		{ "Block", {
 			{ "Stmt" },
 			{ Symbols::LeftCurly, "Stmts", Symbols::RightCurly }
-		}},
-		{ "Stmts", {
-			{ "Stmt", "Stmts" },
-			{ std::monostate() }
 		}}
 	};
 
@@ -182,7 +182,7 @@ int main() {
 	dpl::Tokenizer<Keywords, Symbols> tokenizer{ keywords, symbols, src };
 
 	ParseTree tree{ example_grammar };
-	dpl::LL1<Keywords, Symbols> parser{ example_grammar, "Stmts", tree };
+	dpl::LL1<Keywords, Symbols> parser{ example_grammar, tree };
 	
 	
 
