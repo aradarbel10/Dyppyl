@@ -14,6 +14,7 @@
 #include "Grammar.h"
 #include "LL1.h"
 #include "ParseTree.h"
+#include "TextStream.h"
 
 // search this solution for "#TASK" to find places where optimizations/refactoring/improvements may be worth implementing
 
@@ -173,12 +174,27 @@ int main() {
 	};
 
 
+	
+	
+
+	//dpl::StringStream src{ "while zero 0 do { 1 -> x; } \0" };
+	dpl::FileStream src{ "snippets/example.lang" };
+	dpl::Tokenizer<Keywords, Symbols> tokenizer{ keywords, symbols, src };
+
 	ParseTree tree{ example_grammar };
 	dpl::LL1<Keywords, Symbols> parser{ example_grammar, "Stmts", tree };
-	dpl::Tokenizer<Keywords, Symbols> tokenizer{ keywords, symbols, parser };
+	
+	
+
+
+	while (!src.closed()) {
+		Token tkn = tokenizer.fetchNext();
+		parser << tkn;
+	}
+
 
 	//tokenizer.tokenizeString("while zero 0 do { 1 -> x; }");
-	tokenizer.tokenizeFile("snippets/example.lang");
+	//tokenizer.tokenizeFile("snippets/example.lang");
 	//tokenizer.tokenizeString("+ + + + + +");
 
 	parser.printParseTable();
