@@ -2,7 +2,6 @@
 
 #include "Automata.h"
 #include "Token.h"
-#include "LL1.h"
 #include "TextStream.h"
 
 #include <utility>
@@ -32,7 +31,6 @@ namespace dpl {
 	private:
 
 		using Token = Token<KwdT, SymT>;
-		using LL1 = LL1<KwdT, SymT>;
 
 		// #TASK : take hiders and whitespaces as input from user
 		std::array<std::array<dpl::LinearDFA, 2>, 2> hiders{{ {"//", "\n"}, {"/*", "*/"} }};
@@ -87,10 +85,8 @@ namespace dpl {
 		Token fetchNext() {
 			next_tkn_ready = false;
 
-			while (!next_tkn_ready && !input.closed()) {
-				char next = input.fetchNext();
-				std::cout << next;
-				*this << next;
+			while (!next_tkn_ready) {
+				*this << input.fetchNext();
 			}
 
 			return next_tkn;

@@ -3,6 +3,7 @@
 #include "Grammar.h"
 #include "Token.h"
 #include "ParseTree.h"
+#include "Tokenizer.h"
 
 #include <unordered_map>
 #include <algorithm>
@@ -14,14 +15,16 @@ namespace dpl{
 	class LL1 {
 	public:
 
+		using Tokenizer = dpl::Tokenizer<KwdT, SymT>;
 		using Token = Token<KwdT, SymT>;
 		using ProductionRule = ProductionRule<KwdT, SymT>;
 		using Nonterminal = Nonterminal<KwdT, SymT>;
 		using Grammar = Grammar<KwdT, SymT>;
 		using ParseTree = ParseTree<KwdT, SymT>;
 		using out_type = std::variant<Token, std::pair<std::string_view, int>>;
+		
 
-		LL1(Grammar& g, ParseTree& pt) : grammar(g), out_tree(pt) {
+		LL1(Grammar& g, ParseTree& pt, Tokenizer& inp) : input(inp), grammar(g), out_tree(pt) {
 			grammar.initialize();
 
 			try {
@@ -31,6 +34,16 @@ namespace dpl{
 			} catch (const std::invalid_argument& err) {
 				std::cerr << "LL(1) parser can't parse non-LL(1) grammar!\n";
 			}
+		}
+
+		out_type fetchNext() {
+			next_node_ready = false;
+
+			while (!next_node_ready && !input.closed()) {
+				*this << input.fetchNext();
+			}
+
+			return next_node;
 		}
 
 		void operator<<(const Token& t) {
@@ -123,6 +136,10 @@ namespace dpl{
 		}
 
 	private:
+
+		Tokenizer& input;
+		out_type next_node;
+		bool next_node_ready = false;
 
 		Grammar& grammar;
 

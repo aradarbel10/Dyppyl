@@ -22,11 +22,12 @@ namespace dpl{
 		char fetchNext() override {
 			++pos;
 			if (pos - 1 < str.length()) return str[pos - 1];
+			else if (pos - 1 == str.length()) return '\n';
 			else return '\0';
 		}
 
 		bool closed() override {
-			return pos > str.length();
+			return pos > str.length() + 1;
 		}
 
 	private:
@@ -47,17 +48,20 @@ namespace dpl{
 		}
 
 		char fetchNext() override {
-			if (!closed()) {
-				char out;
-				file >> out;
-				return out;
-			} else {
+			char out;
+			file >> out;
+
+			if (is_eof) {
+				is_closed = true;
 				return '\0';
-			}
+			} else if (file.eof()) {
+				is_eof = true;
+				return '\n';
+			} else return out;
 		}
 
 		bool closed() override {
-			return file.eof();
+			return is_closed;
 		}
 
 		void close() { file.close(); }
@@ -66,6 +70,8 @@ namespace dpl{
 	private:
 
 		std::ifstream file;
+		bool is_eof = false;
+		bool is_closed = false;
 
 	};
 }
