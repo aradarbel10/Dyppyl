@@ -25,6 +25,10 @@ namespace dpl {
 
 		std::pair<unsigned int, unsigned int> pos;
 
+		friend bool operator<(const Token& lhs, const Token& rhs) {
+			return (lhs.type < rhs.type) || (lhs.value < rhs.value);
+		}
+
 		constexpr std::string stringify() const {
 			if (type == TokenType::Symbol || type == TokenType::Keyword) {
 				if (const auto* sym = std::get_if<SymT>(&value)) return std::string{ magic_enum::enum_name(*sym) };

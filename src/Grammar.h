@@ -68,6 +68,7 @@ namespace dpl {
 		using std::unordered_map <std::string_view, Nonterminal>::operator[];
 		using std::unordered_map <std::string_view, Nonterminal>::begin;
 		using std::unordered_map <std::string_view, Nonterminal>::end;
+		using std::unordered_map <std::string_view, Nonterminal>::contains;
 
 
 	public:

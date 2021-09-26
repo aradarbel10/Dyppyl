@@ -154,7 +154,7 @@
     <ClInclude Include="src\Grammar.h" />
     <ClInclude Include="src\LL1.h" />
     <ClInclude Include="src\Logger.h" />
-    <ClInclude Include="src\LR1.h" />
+    <ClInclude Include="src\LR0.h" />
     <ClInclude Include="src\ParseTree.h" />
     <ClInclude Include="src\TextStream.h" />
     <ClInclude Include="src\Token.h" />

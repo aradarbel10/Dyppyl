@@ -15,6 +15,7 @@
 #include "LL1.h"
 #include "ParseTree.h"
 #include "TextStream.h"
+#include "LR0.h"
 
 // search this solution for "#TASK" to find places where optimizations/refactoring/improvements may be worth implementing
 
@@ -167,9 +168,16 @@ int main() {
 
 
 	Grammar non_ll1{
-		{ "L", {
-			{ Symbols::Plus },
-			{ Symbols::Plus, "L" }
+		//{ "S", {
+		//	{ "E" },
+		//}},
+		{ "E" , {
+			{ "T", Symbols::Semicolon },
+			{ "T", Symbols::Plus, "E" }
+		}},
+		{ "T", {
+			{ Keywords::Int },
+			{ Symbols::LeftParen, "E", Symbols::RightParen }
 		}}
 	};
 
@@ -183,19 +191,21 @@ int main() {
 	dpl::Tokenizer<Keywords, Symbols> tokenizer{ keywords, symbols, src };
 
 	ParseTree tree{ example_grammar };
-	dpl::LL1<Keywords, Symbols> parser{ example_grammar, tree, tokenizer };
+	//dpl::LL1<Keywords, Symbols> parser{ non_ll1, tree, tokenizer };
+	dpl::LR0Automaton<Keywords, Symbols> lr0_parser{ non_ll1 };
 	
 	
 
 
-	while (!src.closed()) {
-		Token tkn = tokenizer.fetchNext();
-		parser << tkn;
-	}
+	//while (!src.closed()) {
+	//	//Token tkn = tokenizer.fetchNext();
+	//	//parser << tkn;
+	//	tree << parser.fetchNext();
+	//}
 
-	parser.printParseTable();
-	dpl::printTree(tree);
-	DplLogPrintTelemetry();
+	//parser.printParseTable();
+	//dpl::printTree(tree);
+	//DplLogPrintTelemetry();
 
 	return 0;
 }

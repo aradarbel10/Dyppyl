@@ -92,6 +92,10 @@ namespace dpl {
 			return next_tkn;
 		}
 
+		bool closed() {
+			return input.closed();
+		}
+
 	private:
 
 		void operator<<(const char& c) {
