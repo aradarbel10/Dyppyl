@@ -12,15 +12,13 @@
 #include "Token.h"
 #include "Tokenizer.h"
 #include "Grammar.h"
-#include "LL1.h"
+//#include "LL1.h"
 #include "ParseTree.h"
 #include "TextStream.h"
 #include "LR0.h"
 
 // search this solution for "#TASK" to find places where optimizations/refactoring/improvements may be worth implementing
 
-// #TASK : abstract away tokenizer and parser inputs as buffered streams
-// #TASK : use callbacks for all stream interactions
 // #TASK : wrap up tokenizer, parser, tree-gen in a separate "front end" object
 // #TASK : find better way to handle exceptions
 // #TASK : ensure constexpr-ness of whatever's possible
@@ -208,7 +206,7 @@ int main() {
 		lr0_parser << tkn;
 	}
 
-	dpl::printTree(tree);
+	std::cout << tree;
 	DplLogPrintTelemetry();
 
 	return 0;

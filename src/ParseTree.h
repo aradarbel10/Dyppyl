@@ -21,6 +21,7 @@ namespace dpl {
 		ParseTree(Grammar& g_) : grammar(g_) { }
 		ParseTree(Grammar& g_, Node n_) : grammar(g_), value(n_) { }
 
+
 		bool operator<<(std::variant<Token, std::pair<std::string_view, int>> node) {
 			if (!value.has_value()) {
 				std::visit([&](const auto& v) { value.emplace(v); }, node);
@@ -49,7 +50,39 @@ namespace dpl {
 			return false;
 		}
 
-		friend void printTree(const std::string& prefix, ParseTree* node, bool isLast);
+		friend std::ostream& operator<<(std::ostream& os, const ParseTree& tree) {
+			os << "\n\nParse Tree:\n========================\n";
+			tree.recursivePrint("", true);
+			os << "\n\n";
+
+			return os;
+		}
+
+
+	private:
+
+		void recursivePrint(const std::string& prefix, bool isLast) const {
+			static HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+
+			std::cout << prefix;
+			std::cout << (isLast ? "'---" : "|---");
+
+			if (value.has_value()) {
+				if (const auto* nt = std::get_if<std::pair<std::string_view, int>>(&value.value())) std::cout << (*nt).first << "(" << (*nt).second << ")\n";
+				else if (const auto* tkn = std::get_if<Token>(&value.value())) {
+					SetConsoleTextAttribute(hConsole, 0x03);
+					std::cout << (*tkn).stringify() << '\n';
+					SetConsoleTextAttribute(hConsole, 0x07);
+				} else {
+					std::cout << "null\n";
+				}
+			}
+
+
+			for (int i = 0; i < children.size(); i++) {
+				children[i]->recursivePrint(prefix + (isLast ? "    " : "|   "), i == children.size() - 1);
+			}
+		}
 
 	private:
 
@@ -57,36 +90,39 @@ namespace dpl {
 
 		std::optional<Node> value;
 		std::vector<std::unique_ptr<ParseTree>> children;
+
+		friend class BottomUpTreeBuilder;
 		
 	};
 
-	void printTree(const std::string& prefix, ParseTree* node, bool isLast) {
-		static HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	
+	class BottomUpTreeBuilder {
+	public:
 
-		std::cout << prefix;
-		std::cout << (isLast ? "'---" : "|---");
+		BottomUpTreeBuilder(Grammar& g_) : grammar(g_) { };
 
-		if (node->value.has_value()) {
-			if (const auto* nt = std::get_if<std::pair<std::string_view, int>>(&node->value.value())) std::cout << (*nt).first << "(" << (*nt).second << ")\n";
-			else if (const auto* tkn = std::get_if<Token>(&node->value.value())) {
-				SetConsoleTextAttribute(hConsole, 0x03);
-				std::cout << (*tkn).stringify() << '\n';
-				SetConsoleTextAttribute(hConsole, 0x07);
-			} else {
-				std::cout << "null\n";
-			}
+		void addSubTree(ParseTree::Node tree) {
+			sub_trees.emplace_back(std::make_unique<ParseTree>(grammar, tree));
 		}
-		
 
-		for (int i = 0; i < node->children.size(); i++) {
-			printTree(prefix + (isLast ? "    " : "|   "), &*node->children[i], i == node->children.size() - 1);
+		void packTree(ParseTree::Node tree) {
+			std::unique_ptr<ParseTree> new_root{ std::make_unique<ParseTree>(grammar, tree) };
+			std::swap(new_root->children, sub_trees);
+			sub_trees.clear();
+			sub_trees.emplace_back(std::move(new_root));
 		}
-	}
 
-	void printTree(ParseTree& node) {
-		std::cout << "\n\nParse Tree:\n========================\n";
-		printTree("", &node, true);
-		std::cout << "\n\n";
-	}
+		void assignToTree(ParseTree& tree) {
+			// #TASK : confirm there is exactly one sub-tree when accessing this
+			tree.children = std::move(sub_trees.front()->children);
+			tree.value = sub_trees.front()->value;
+		}
+
+	private:
+
+		std::vector<std::unique_ptr<ParseTree>> sub_trees;
+		Grammar& grammar;
+
+	};
 
 }

@@ -30,11 +30,25 @@ namespace dpl {
 			return (lhs.type < rhs.type) || (lhs.value < rhs.value);
 		}
 
+		static std::string_view symbolByIndex(size_t index) {
+			for (const auto& [key, val] : symbols) {
+				if (index == val) return key;
+			}
+			return "";
+		}
+
+		static std::string_view keywordByIndex(size_t index) {
+			for (const auto& [key, val] : keywords) {
+				if (index == val) return key;
+			}
+			return "";
+		}
+
 		constexpr std::string stringify() const {
 			if (type == Type::Symbol) {
-				return "Symbol " + std::to_string(std::get<size_t>(value));
+				return std::string{ symbolByIndex(std::get<size_t>(value)) };
 			} else if (type == Type::Keyword) {
-					return "Keyword " + std::to_string(std::get<size_t>(value));
+				return std::string{ keywordByIndex(std::get<size_t>(value)) };
 			} else if (type == Type::Identifier) {
 				return std::get<std::string>(value);
 			} else if (type == Type::EndOfFile) {

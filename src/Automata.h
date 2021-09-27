@@ -239,7 +239,3 @@ namespace dpl {
 	// symbol DFA = basially the same as the identifier DFA but even simpler
 
 }
-
-//std::unique_ptr<dpl::LinearDFA> operator"" _ldfa(const char* c_, std::size_t s) {
-//	return std::make_unique<dpl::LinearDFA>(c_);
-//}

@@ -7,6 +7,8 @@
 #include <set>
 #include <unordered_map>
 #include <variant>
+#include <list>
+#include <stack>
 
 #include "Token.h"
 #include "Grammar.h"
@@ -179,7 +181,7 @@ namespace dpl {
 
 		using out_type = std::variant<Token, std::pair<std::string_view, int>>;
 
-		LR0(Grammar& g, ParseTree& pt, Tokenizer& inp) : input(inp), grammar(g), out_tree(pt) {
+		LR0(Grammar& g, ParseTree& pt, Tokenizer& inp) : input(inp), grammar(g), out_tree(pt), tree_builder(grammar) {
 			LR0Automaton automaton{ g };
 
 			// generate parse tables
@@ -205,16 +207,6 @@ namespace dpl {
 			parse_stack.push(0);
 		}
 
-		//void fetchNext() {
-		//	next_node_ready = false;
-
-		//	while (!next_node_ready && !input.closed()) {
-		//		*this << input.fetchNext();
-		//	}
-
-		//	return next_node;
-		//}
-
 		void operator<<(const Token& t) {
 			bool terminal_eliminated = false;
 			do {
@@ -225,6 +217,7 @@ namespace dpl {
 
 					terminal_eliminated = true;
 
+					tree_builder.addSubTree(t);
 					std::cout << "Shift: " << t << '\n';
 				} else if (const auto* prod = std::get_if<std::pair<std::string_view, int>>(&action_table[parse_stack.top()])) { // reduce action
 					const ProductionRule& rule = grammar[(*prod).first][(*prod).second];
@@ -234,10 +227,13 @@ namespace dpl {
 					int new_state = goto_table[parse_stack.top()][(*prod).first];
 					parse_stack.push(new_state);
 
+					tree_builder.packTree(*prod);
 					std::cout << "Reduce: " << dpl::log::streamer{*prod} << '\n';
 				} else if (std::holds_alternative<std::monostate>(action_table[parse_stack.top()])) { // accept
-					std::cout << "Accept...\n";
 					terminal_eliminated = true;
+
+					tree_builder.assignToTree(out_tree);
+					std::cout << "Accept...\n";
 				} else { // report error
 					std::cerr << "Syntax error: unexpected token " << t << " at position (" << dpl::log::streamer{ t.pos } << ")\n";
 				}
@@ -249,6 +245,7 @@ namespace dpl {
 
 		Tokenizer& input;
 		Grammar& grammar;
+		BottomUpTreeBuilder tree_builder;
 		ParseTree& out_tree;
 
 		std::unordered_map<int, std::map<std::variant<std::monostate, Token, std::string_view>, int>> goto_table;
