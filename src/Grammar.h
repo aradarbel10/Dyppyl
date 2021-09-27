@@ -76,7 +76,7 @@ namespace dpl {
 		std::unordered_map<std::string_view, std::unordered_set<std::variant<std::monostate, Token>>> firsts;
 		std::unordered_map<std::string_view, std::unordered_set<Token>> follows;
 
-		std::string_view start_symbol;
+		std::string start_symbol;
 
 	private:
 

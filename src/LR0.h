@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <map>
 #include <set>
+#include <unordered_map>
 #include <variant>
 
 #include "Token.h"
@@ -20,7 +21,7 @@ namespace dpl {
 		using ProductionRule = ProductionRule<KwdT, SymT>;
 		using Grammar = Grammar<KwdT, SymT>;
 
-	private:
+	public:
 
 		struct Configuration {
 			std::pair<std::string_view, int> production;
@@ -124,25 +125,28 @@ namespace dpl {
 
 	public:
 
-		std::vector<std::pair<State, std::map<std::variant<std::monostate, Token, std::string_view>, size_t>>> states;
+		std::vector<std::pair<State, std::map<std::variant<std::monostate, Token, std::string_view>, int>>> states;
 
 		LR0Automaton(Grammar& g) {
 			// augment grammar
 			std::string augmented_start_symbol{ g.start_symbol };
+			std::string_view old_start_symbol = g[g.start_symbol].name;
 			do {
 				augmented_start_symbol.push_back('_');
 			} while (g.contains(augmented_start_symbol));
 
-			g[augmented_start_symbol] = { augmented_start_symbol, {{ g.start_symbol }} };
+			std::swap(g.start_symbol, augmented_start_symbol);
+			g[g.start_symbol] = { g.start_symbol, {{ old_start_symbol }} };
+			
 
 			// construct initial state
 			State start_state;
-			start_state.push_back(Configuration{{augmented_start_symbol, 0}, 0});
+			start_state.push_back(Configuration{{g.start_symbol, 0}, 0});
 			states.push_back({ start_state, {} });
 			states.back().first.computeClosure(g);
 
 			// add all states and transitions based on alg:
-			size_t old_size;
+			size_t old_size = 0;
 			do {
 				old_size = states.size();
 
@@ -172,6 +176,10 @@ namespace dpl {
 					}
 				}
 			} while (states.size() != old_size);
+
+
+			// re-adjust start symbol
+			//g[g.start_symbol] = { g.start_symbol, {{ old_start_symbol, TokenType::EndOfFile }} };
 		}
 
 	};
@@ -187,26 +195,86 @@ namespace dpl {
 		using Grammar = Grammar<KwdT, SymT>;
 		using ParseTree = ParseTree<KwdT, SymT>;
 		using out_type = std::variant<Token, std::pair<std::string_view, int>>;
+		using LR0Automaton = LR0Automaton<KwdT, SymT>;
+		using Tokenizer = Tokenizer<KwdT, SymT>;
 
-		LR0(Grammar& g, std::string_view s, ParseTree& pt) : grammar(g), start_symbol(s), out_tree(pt) {
+		LR0(Grammar& g, ParseTree& pt, Tokenizer& inp) : input(inp), grammar(g), out_tree(pt) {
+			LR0Automaton automaton{ g };
+
 			// generate parse tables
-			//	- action table
-			//	- transition table
-		}
+			for (int i = 0; i < automaton.states.size(); i++) {
+				auto& [state, transes] = automaton.states[i];
 
-		void fetchNext() {
+				if (transes.empty()) {
+					assert(state.size() == 1 && state[0].atEnd(g));
 
-		}
-
-		void generateParseTables() {
+					if (state[0].production.first == g.start_symbol) {
+						action_table[i] = std::monostate{};
+						initial_state = i;
+					} else {
+						action_table[i] = state[0].production;
+					}
+					
+				} else {
+					goto_table[i] = transes;
+				}
+			}
 			
+
+			parse_stack.push(0);
+		}
+
+		//void fetchNext() {
+		//	next_node_ready = false;
+
+		//	while (!next_node_ready && !input.closed()) {
+		//		*this << input.fetchNext();
+		//	}
+
+		//	return next_node;
+		//}
+
+		void operator<<(const Token& t) {
+			bool terminal_eliminated = false;
+			do {
+				
+				if (!action_table.contains(parse_stack.top())) { // not contains means the action is shift
+					int new_state = goto_table[parse_stack.top()][t];
+					parse_stack.push(new_state);
+
+					terminal_eliminated = true;
+
+					std::cout << "Shift: " << t << '\n';
+				} else if (const auto* prod = std::get_if<std::pair<std::string_view, int>>(&action_table[parse_stack.top()])) { // reduce action
+					const ProductionRule& rule = grammar[(*prod).first][(*prod).second];
+
+					for (int i = 0; i < rule.size(); i++) parse_stack.pop();
+
+					int new_state = goto_table[parse_stack.top()][(*prod).first];
+					parse_stack.push(new_state);
+
+					std::cout << "Reduce: " << dpl::log::streamer{*prod} << '\n';
+				} else if (std::holds_alternative<std::monostate>(action_table[parse_stack.top()])) { // accept
+					std::cout << "Accept...\n";
+					terminal_eliminated = true;
+				} else { // report error
+					std::cerr << "Syntax error: unexpected token " << t << " at position (" << dpl::log::streamer{ t.pos } << ")\n";
+				}
+
+			} while (!terminal_eliminated);
 		}
 
 	private:
 
-		std::string_view start_symbol;
+		Tokenizer& input;
 		Grammar& grammar;
 		ParseTree& out_tree;
+
+		std::unordered_map<int, std::map<std::variant<std::monostate, Token, std::string_view>, int>> goto_table;
+		std::unordered_map<int, std::variant<std::monostate, std::pair<std::string_view, int>>> action_table;
+
+		int initial_state = -1;
+		std::stack<int> parse_stack;
 
 	};
 }

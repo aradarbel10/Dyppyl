@@ -187,21 +187,23 @@ int main() {
 
 	//dpl::StringStream src{ "while zero 0 do { 1 -> x; } ++x;" };
 	//dpl::FileStream src{ "snippets/example.lang" };
-	dpl::FileStream src{ "snippets/short.lang" };
+	//dpl::FileStream src{ "snippets/short.lang" };
+	dpl::StringStream src{ "Int + ( Int + Int; );" };
 	dpl::Tokenizer<Keywords, Symbols> tokenizer{ keywords, symbols, src };
 
 	ParseTree tree{ example_grammar };
 	//dpl::LL1<Keywords, Symbols> parser{ non_ll1, tree, tokenizer };
-	dpl::LR0Automaton<Keywords, Symbols> lr0_parser{ non_ll1 };
+	dpl::LR0<Keywords, Symbols> lr0_parser{ non_ll1, tree, tokenizer };
 	
 	
 
 
-	//while (!src.closed()) {
-	//	//Token tkn = tokenizer.fetchNext();
-	//	//parser << tkn;
-	//	tree << parser.fetchNext();
-	//}
+	while (!src.closed()) {
+		Token tkn = tokenizer.fetchNext();
+		lr0_parser << tkn;
+		//parser << tkn;
+		//tree << parser.fetchNext();
+	}
 
 	//parser.printParseTable();
 	//dpl::printTree(tree);
