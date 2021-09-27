@@ -23,6 +23,17 @@ namespace dpl {
 		using std::vector<Atom>::rbegin;
 		using std::vector<Atom>::rend;
 
+		friend std::ostream& operator<<(std::ostream& os, const ProductionRule& rule) {
+			for (const auto& atom : rule) {
+				if (std::holds_alternative<std::monostate>(atom)) os << "epsilon";
+				else if (const auto* nonterminal = std::get_if<std::string_view>(&atom)) dpl::log::coloredStream(os, 0x0F, *nonterminal);
+				else dpl::log::coloredStream(os, 0x03, std::get<Token>(atom).stringify());
+
+				os << " ";
+			}
+			return os;
+		}
+
 	};
 
 	class Nonterminal : private std::vector<ProductionRule> {
@@ -37,6 +48,13 @@ namespace dpl {
 		using std::vector<ProductionRule>::end;
 
 		std::string_view name;
+
+		friend std::ostream& operator<<(std::ostream& os, const Nonterminal& nt) {
+			for (const auto& rule : nt) {
+				os << "    | " << rule << '\n';
+			}
+			return os;
+		}
 
 	};
 
@@ -67,6 +85,16 @@ namespace dpl {
 		std::unordered_map<std::string_view, std::unordered_set<Token>> follows;
 
 		std::string start_symbol;
+
+		friend std::ostream& operator<<(std::ostream& os, const Grammar& grammar) {
+			for (const auto& [name, nonterminal] : grammar) {
+				dpl::log::coloredStream(std::cout, (name == grammar.start_symbol ? 0x02 : 0x0F), name);
+				os << " ::=\n";
+				os << nonterminal;
+				os << "  ;\n\n";
+			}
+			return os;
+		}
 
 	private:
 

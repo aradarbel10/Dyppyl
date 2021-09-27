@@ -1,10 +1,12 @@
 #pragma once
 
+#include <windows.h>
 
 #include <iostream>
 #include <variant>
 #include <vector>
 #include <chrono>
+
 
 #include "magic_enum/magic_enum.hpp"
 
@@ -44,6 +46,14 @@ namespace dpl {
 
 		inline std::ostream& operator<<(std::ostream& os, streamer<std::monostate> strm) {
 			return os;
+		}
+
+		inline void coloredStream(std::ostream& os, int color, std::string_view str) {
+			static HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+
+			SetConsoleTextAttribute(hConsole, color);
+			os << str;
+			SetConsoleTextAttribute(hConsole, 0x07);
 		}
 
 		#ifdef DPL_LOG

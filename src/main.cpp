@@ -205,7 +205,8 @@ int main() {
 		dpl::Token tkn = tokenizer.fetchNext();
 		lr0_parser << tkn;
 	}
-
+	
+	std::cout << non_ll1 << "\n";
 	std::cout << tree;
 	DplLogPrintTelemetry();
 

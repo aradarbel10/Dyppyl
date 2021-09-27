@@ -4,7 +4,6 @@
 #include "Grammar.h"
 
 #include <iostream>
-#include <windows.h>
 
 #include <array>
 #include <variant>
@@ -62,7 +61,7 @@ namespace dpl {
 	private:
 
 		void recursivePrint(const std::string& prefix, bool isLast) const {
-			static HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+			
 
 			std::cout << prefix;
 			std::cout << (isLast ? "'---" : "|---");
@@ -70,9 +69,8 @@ namespace dpl {
 			if (value.has_value()) {
 				if (const auto* nt = std::get_if<std::pair<std::string_view, int>>(&value.value())) std::cout << (*nt).first << "(" << (*nt).second << ")\n";
 				else if (const auto* tkn = std::get_if<Token>(&value.value())) {
-					SetConsoleTextAttribute(hConsole, 0x03);
-					std::cout << (*tkn).stringify() << '\n';
-					SetConsoleTextAttribute(hConsole, 0x07);
+					dpl::log::coloredStream(std::cout, 0x03, (*tkn).stringify());
+					std::cout << '\n';
 				} else {
 					std::cout << "null\n";
 				}

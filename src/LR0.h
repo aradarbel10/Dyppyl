@@ -180,6 +180,7 @@ namespace dpl {
 	public:
 
 		using out_type = std::variant<Token, std::pair<std::string_view, int>>;
+		using symbol_type = std::variant<std::monostate, Token, std::string_view>;
 
 		LR0(Grammar& g, ParseTree& pt, Tokenizer& inp) : input(inp), grammar(g), out_tree(pt), tree_builder(grammar) {
 			LR0Automaton automaton{ g };
@@ -212,28 +213,35 @@ namespace dpl {
 			do {
 				
 				if (!action_table.contains(parse_stack.top())) { // not contains means the action is shift
+					if (!hasGotoEntry(parse_stack.top(), t)) {
+						std::cerr << "Syntax error: unexptected token " << t << "at position (" << dpl::log::streamer{ t.pos } << ")\n";
+						return;
+					}
+
 					int new_state = goto_table[parse_stack.top()][t];
 					parse_stack.push(new_state);
 
 					terminal_eliminated = true;
 
 					tree_builder.addSubTree(t);
-					std::cout << "Shift: " << t << '\n';
 				} else if (const auto* prod = std::get_if<std::pair<std::string_view, int>>(&action_table[parse_stack.top()])) { // reduce action
 					const ProductionRule& rule = grammar[(*prod).first][(*prod).second];
 
 					for (int i = 0; i < rule.size(); i++) parse_stack.pop();
 
+					if (!hasGotoEntry(parse_stack.top(), (*prod).first)) {
+						std::cerr << "Syntax error: unexptected token " << t << "at position (" << dpl::log::streamer{ t.pos } << ")\n";
+						return;
+					}
+
 					int new_state = goto_table[parse_stack.top()][(*prod).first];
 					parse_stack.push(new_state);
 
 					tree_builder.packTree(*prod);
-					std::cout << "Reduce: " << dpl::log::streamer{*prod} << '\n';
 				} else if (std::holds_alternative<std::monostate>(action_table[parse_stack.top()])) { // accept
 					terminal_eliminated = true;
 
 					tree_builder.assignToTree(out_tree);
-					std::cout << "Accept...\n";
 				} else { // report error
 					std::cerr << "Syntax error: unexpected token " << t << " at position (" << dpl::log::streamer{ t.pos } << ")\n";
 				}
@@ -243,12 +251,17 @@ namespace dpl {
 
 	private:
 
+		bool hasGotoEntry(const int state, const typename symbol_type& t) {
+			return goto_table.contains(state) && goto_table[state].contains(t);
+		}
+
+
 		Tokenizer& input;
 		Grammar& grammar;
 		BottomUpTreeBuilder tree_builder;
 		ParseTree& out_tree;
 
-		std::unordered_map<int, std::map<std::variant<std::monostate, Token, std::string_view>, int>> goto_table;
+		std::unordered_map<int, std::map<symbol_type, int>> goto_table;
 		std::unordered_map<int, std::variant<std::monostate, std::pair<std::string_view, int>>> action_table;
 
 		int initial_state = -1;
