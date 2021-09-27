@@ -84,6 +84,8 @@ namespace dpl {
 			return os;
 		}
 
+		std::string_view getStates() const { return states; }
+
 	private:
 
 		std::string_view states;

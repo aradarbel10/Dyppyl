@@ -4,6 +4,8 @@
 
 #include <variant>
 #include <functional>
+#include <unordered_map>
+#include <map>
 
 #ifdef DPL_LOG
 #include <iostream>
@@ -13,12 +15,11 @@
 
 namespace dpl {
 
-	enum class TokenType { Identifier, Number, String, Symbol, Keyword, Whitespace, Unknown, EndOfFile };
-
-	template<typename KwdT, typename SymT> requires std::is_enum_v<KwdT> && std::is_enum_v<SymT>
 	struct Token {
-		using Type = TokenType;
-		using value_type = std::variant<std::monostate, std::string, long double, SymT, KwdT>;
+		static std::map<std::string_view, size_t> keywords, symbols;
+
+		enum class Type { Identifier, Number, String, Symbol, Keyword, Whitespace, Unknown, EndOfFile };
+		using value_type = std::variant<std::monostate, std::string, long double, size_t>;
 
 		Type type;
 		value_type value;
@@ -30,13 +31,13 @@ namespace dpl {
 		}
 
 		constexpr std::string stringify() const {
-			if (type == TokenType::Symbol || type == TokenType::Keyword) {
-				if (const auto* sym = std::get_if<SymT>(&value)) return std::string{ magic_enum::enum_name(*sym) };
-				else if (const auto* kwd = std::get_if<KwdT>(&value)) return std::string{ magic_enum::enum_name(*kwd) };
-				return "unknown enum";
-			} else if (type == TokenType::Identifier) {
+			if (type == Type::Symbol) {
+				return "Symbol " + std::to_string(std::get<size_t>(value));
+			} else if (type == Type::Keyword) {
+					return "Keyword " + std::to_string(std::get<size_t>(value));
+			} else if (type == Type::Identifier) {
 				return std::get<std::string>(value);
-			} else if (type == TokenType::EndOfFile) {
+			} else if (type == Type::EndOfFile) {
 				return "EOF";
 			} else {
 				std::string type_name(magic_enum::enum_name(type));
@@ -46,15 +47,15 @@ namespace dpl {
 			}
 		}
 
-		constexpr Token() = default;
-		constexpr Token(Type t, value_type v) : type(t), value(v) { }
-		constexpr Token(Type t) : type(t), value(std::monostate()) { }
-		constexpr Token(KwdT t) : type(Type::Keyword), value(t) { }
-		constexpr Token(SymT t) : type(Type::Symbol), value(t) { }
+		Token() = default;
+		Token(Type t) : type(t), value(std::monostate()) { }
+		Token(Type t, value_type v) : type(t), value(v) { }
 	};
 
-	template<typename KwdT, typename SymT>
-	std::ostream& operator<<(std::ostream& os, const Token<KwdT, SymT>& t) {
+	std::map<std::string_view, size_t> Token::keywords;
+	std::map<std::string_view, size_t> Token::symbols;
+
+	std::ostream& operator<<(std::ostream& os, const Token& t) {
 		os << "[" << magic_enum::enum_name(t.type) << ", ";
 
 		std::cout << dpl::log::streamer{ t.value };
@@ -63,8 +64,9 @@ namespace dpl {
 		return os;
 	}
 
-	template<typename KwdT, typename SymT>
-	inline constexpr bool operator==(const Token<KwdT, SymT>& lhs, const Token<KwdT, SymT>& rhs) {
+	
+
+	inline constexpr bool operator==(const Token& lhs, const Token& rhs) {
 		if (lhs.type != rhs.type) return false;
 		if (std::holds_alternative<std::monostate>(lhs.value) || std::holds_alternative<std::monostate>(rhs.value)) {
 			return true;
@@ -72,24 +74,19 @@ namespace dpl {
 		return lhs.value == rhs.value;
 	}
 
-	template<typename KwdT, typename SymT>
-	inline Token<KwdT, SymT> getTerminalType(const Token<KwdT, SymT>& tkn) {
-		if (const auto* sym = std::get_if<SymT>(&tkn.value)){
-			return *sym;
-		} else if(const auto* kwd = std::get_if<KwdT>(&tkn.value)) {
-			return *kwd;
-		}
-		return tkn.type;
+	inline Token getTerminalType(const Token& tkn) {
+		if (const auto* val = std::get_if<size_t>(&tkn.value)) return Token{ tkn.type, *val };
+		else return tkn.type;
 	}
 }
 
 namespace std {
-	template<typename KwdT, typename SymT> class hash<dpl::Token<KwdT, SymT>> {
+	template<> class hash<dpl::Token> {
 	public:
 		//credit to boost::hash_combine
-		std::size_t operator()(dpl::Token<KwdT, SymT> const& t) const noexcept {
-			size_t intermediate = std::hash<dpl::TokenType>{}(t.type);
-			intermediate ^= std::hash<typename dpl::Token<KwdT, SymT>::value_type>{}(t.value)
+		std::size_t operator()(dpl::Token const& t) const noexcept {
+			size_t intermediate = std::hash<dpl::Token::Type>{}(t.type);
+			intermediate ^= std::hash<typename dpl::Token::value_type>{}(t.value)
 				+ 0x9e3779b9 + (intermediate << 6) + (intermediate >> 2);
 			return intermediate;
 		}

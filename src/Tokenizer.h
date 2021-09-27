@@ -26,34 +26,28 @@
 #endif //DPL_LOG
 
 namespace dpl {
-	template<typename KwdT, typename SymT> requires std::is_enum_v<KwdT> && std::is_enum_v<SymT>
 	class Tokenizer {
 	private:
-
-		using Token = Token<KwdT, SymT>;
 
 		// #TASK : take hiders and whitespaces as input from user
 		std::array<std::array<dpl::LinearDFA, 2>, 2> hiders{{ {"//", "\n"}, {"/*", "*/"} }};
 		const std::unordered_set<char> whitespaces{ ' ', '\n', '\t', '\0' };
 		int inside_hider = -1;
-		std::string hiders_queue = "  ";
+		std::string hiders_queue;
 
-		const size_t symbols_count = magic_enum::enum_count<SymT>();
+		const size_t symbols_count = Token::symbols.size();
 
 		dpl::IdentifierDFA identifier_automaton;
 		dpl::NumberDFA number_automaton;
 		dpl::StringDFA string_automaton;
-		std::array<LinearDFA, magic_enum::enum_count<SymT>()> symbols_automata;
+		std::vector<LinearDFA> symbols_automata;
 
-		std::array<GenericDFA*, magic_enum::enum_count<SymT>() + 3>
-			automata { &identifier_automaton, &number_automaton, &string_automaton };
+		std::vector<GenericDFA*> automata { &identifier_automaton, &number_automaton, &string_automaton };
 		
-		const size_t misc_automata_count = automata.size() - symbols_count;
-
-		std::unordered_map<std::string_view, KwdT> keywords;
+		const size_t misc_automata_count = automata.size();
 
 		int longest_accepted = -1, length_of_longest = 0;
-		std::string lexeme_buff = "", lexer_queue = "";
+		std::string lexeme_buff, lexer_queue;
 
 		#ifdef DPL_LOG
 		std::chrono::time_point<std::chrono::steady_clock> frontend_clock_begin;
@@ -75,11 +69,14 @@ namespace dpl {
 
 	public:
 
-		constexpr Tokenizer(const std::unordered_map<std::string_view, KwdT>& keywords_,
-							const std::vector<std::string_view>& symbols,
-							TextStream& inp) : keywords(keywords_), input(inp) {
-			std::transform(symbols.begin(), symbols.end(), symbols_automata.begin(), std::identity{});
-			std::transform(symbols_automata.begin(), symbols_automata.end(), automata.begin() + 3, [](auto& elm) { return &elm; });
+		Tokenizer(TextStream& inp) : input(inp) {
+			symbols_automata.reserve(Token::symbols.size());
+			automata.reserve(automata.size() + Token::symbols.size());
+
+			for (const auto& [key, val] : Token::symbols) {
+				symbols_automata.push_back(key.data());
+				automata.push_back(&*std::prev(symbols_automata.end()));
+			}
 		}
 
 		Token fetchNext() {
@@ -118,7 +115,7 @@ namespace dpl {
 		}
 
 		void endStream() {
-			next_tkn = Token{ TokenType::EndOfFile };
+			next_tkn = Token{ Token::Type::EndOfFile };
 			next_tkn_ready = true;
 
 			#ifdef DPL_LOG
@@ -233,19 +230,22 @@ namespace dpl {
 				std::cerr << "Illegal token at character " << pos_in_file.first << " of line " << pos_in_file.second;
 
 			} else if (machine == 0) {
-				if (keywords.contains(str)) {
-					next_tkn = Token{ TokenType::Keyword, keywords[str] };
+				if (Token::keywords.contains(str)) {
+					next_tkn = Token{ Token::Type::Keyword, Token::keywords[str] };
 				} else {
-					next_tkn = Token{ TokenType::Identifier, std::string{ str } };
+					next_tkn = Token{ Token::Type::Identifier, std::string{ str } };
 				}
 			} else if (machine == 1) {
 				long double dbl;
 				std::from_chars(str.data(), str.data() + str.size(), dbl);
-				next_tkn = Token{ TokenType::Number, dbl };
+				next_tkn = Token{ Token::Type::Number, dbl };
 			} else if (machine == 2) {
-				next_tkn = Token{ TokenType::String, std::move(dpl::StringDFA::recent_string) };
+				next_tkn = Token{ Token::Type::String, std::move(dpl::StringDFA::recent_string) };
 			} else if (machine <= symbols_count - 1 + misc_automata_count) {
-				next_tkn = Token{ TokenType::Symbol, magic_enum::enum_value<SymT>(machine - misc_automata_count) };
+				std::string_view name = static_cast<LinearDFA*>(automata[machine])->getStates();
+				next_tkn = Token{ Token::Type::Symbol, Token::symbols[name]};
+			} else {
+				std::cerr << "Error: Programmar is an idiot!\n";
 			}
 
 			next_tkn.pos = { pos_in_file.first - length_of_longest, pos_in_file.second };

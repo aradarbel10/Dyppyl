@@ -9,8 +9,8 @@
 
 #include "Logger.h"
 
-#include "Tokenizer.h"
 #include "Token.h"
+#include "Tokenizer.h"
 #include "Grammar.h"
 #include "LL1.h"
 #include "ParseTree.h"
@@ -112,72 +112,78 @@
 	Y(Yo) \
 	Y(World)
 
+
+
+
+
+
+dpl::Token operator"" _kwd(const char* str, size_t) {
+	return { dpl::Token::Type::Keyword, dpl::Token::keywords[str] };
+}
+
+dpl::Token operator"" _sym(const char* str, size_t) {
+	return { dpl::Token::Type::Symbol, dpl::Token::symbols[str] };
+}
+
 int main() {
 
 	#define X(name, symbol) name,
 	#define Y(name) name,
-	enum class Symbols { SYMBOLS_MACRO };
-	enum class Keywords { KEYWORDS_MACRO };
+	enum Symbols { SYMBOLS_MACRO };
+	enum Keywords { KEYWORDS_MACRO };
 	#undef X
 	#undef Y
 
-	#define X(name, symbol) symbol,
-	const std::vector<std::string_view> symbols{ SYMBOLS_MACRO };
+	#define X(name, symbol) {symbol, Symbols:: name},
+	const std::map<std::string_view, size_t> symbols{ SYMBOLS_MACRO };
 	#undef X
 	
 	#define X(name, str) {str, Keywords:: name},
 	#define Y(name) {#name, Keywords:: name},
-	const std::unordered_map<std::string_view, Keywords> keywords{ KEYWORDS_MACRO };
+	const std::map<std::string_view, size_t> keywords{ KEYWORDS_MACRO };
 	#undef X
 	#undef Y
 
-	
+	dpl::Token::keywords = keywords;
+	dpl::Token::symbols = symbols;
 
-	using ProductionRule = dpl::ProductionRule<Keywords, Symbols>;
-	using Nonterminal = dpl::Nonterminal<Keywords, Symbols>;
-	using Token = dpl::Token<Keywords, Symbols>;
-	using Grammar = dpl::Grammar<Keywords, Symbols>;
-	using ParseTree = dpl::ParseTree<Keywords, Symbols>;
 
-	Grammar example_grammar{
+	dpl::Grammar example_grammar{
 		{ "Stmts", {
 			{ "Stmt", "Stmts" },
 			{ std::monostate() }
 		}},
 		{ "Term", {
-			{ Token::Type::Identifier },
-			{ Token::Type::Number }
+			{ dpl::Token::Type::Identifier },
+			{ dpl::Token::Type::Number }
 		}},
 		{ "Expr", {
-			{ "Term", Symbols::Arrow, Token::Type::Identifier },
-			{ Keywords::Zero, "Term"},
-			{ Keywords::Not, "Expr" },
-			{ Symbols::PlusPlus, Token::Type::Identifier },
-			{ Symbols::MinusMinus, Token::Type::Identifier }
+			{ "Term", "->"_sym, dpl::Token::Type::Identifier },
+			{ "zero"_kwd, "Term" },
+			{ "not"_kwd, "Expr"},
+			{ "++"_sym, dpl::Token::Type::Identifier},
+			{ "--"_sym, dpl::Token::Type::Identifier }
 		}},
 		{ "Stmt", {
-			{ Keywords::If, "Expr" , Keywords::Then, "Block" },
-			{ Keywords::While, "Expr", Keywords::Do, "Block" },
-			{ "Expr", Symbols::Semicolon }
+			{ "if"_kwd, "Expr" , "then"_kwd, "Block" },
+			{ "while"_kwd, "Expr", "do"_kwd, "Block"},
+			{ "Expr", ";"_sym}
 		}},
 		{ "Block", {
 			{ "Stmt" },
-			{ Symbols::LeftCurly, "Stmts", Symbols::RightCurly }
+			{ "{"_sym, "Stmts", "}"_sym }
 		}}
 	};
 
 
-	Grammar non_ll1{
-		//{ "S", {
-		//	{ "E" },
-		//}},
+	dpl::Grammar non_ll1{
 		{ "E" , {
-			{ "T", Symbols::Semicolon },
-			{ "T", Symbols::Plus, "E" }
+			{ "T", ";"_sym },
+			{ "T", "+"_sym, "E"}
 		}},
 		{ "T", {
-			{ Keywords::Int },
-			{ Symbols::LeftParen, "E", Symbols::RightParen }
+			{ "Int"_kwd },
+			{ "("_sym, "E", ")"_sym }
 		}}
 	};
 
@@ -189,25 +195,21 @@ int main() {
 	//dpl::FileStream src{ "snippets/example.lang" };
 	//dpl::FileStream src{ "snippets/short.lang" };
 	dpl::StringStream src{ "Int + ( Int + Int; );" };
-	dpl::Tokenizer<Keywords, Symbols> tokenizer{ keywords, symbols, src };
+	dpl::Tokenizer tokenizer{ src };
 
-	ParseTree tree{ example_grammar };
-	//dpl::LL1<Keywords, Symbols> parser{ non_ll1, tree, tokenizer };
-	dpl::LR0<Keywords, Symbols> lr0_parser{ non_ll1, tree, tokenizer };
+	dpl::ParseTree tree{ non_ll1 };
+	dpl::LR0 lr0_parser{ non_ll1, tree, tokenizer };
 	
 	
 
 
 	while (!src.closed()) {
-		Token tkn = tokenizer.fetchNext();
+		dpl::Token tkn = tokenizer.fetchNext();
 		lr0_parser << tkn;
-		//parser << tkn;
-		//tree << parser.fetchNext();
 	}
 
-	//parser.printParseTable();
-	//dpl::printTree(tree);
-	//DplLogPrintTelemetry();
+	dpl::printTree(tree);
+	DplLogPrintTelemetry();
 
 	return 0;
 }

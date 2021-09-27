@@ -11,19 +11,12 @@
 namespace dpl {
 	namespace log {
 
-		template<typename KwdT, typename SymT> requires std::is_enum_v<KwdT>&& std::is_enum_v<SymT> struct Token;
+		struct Token;
 
 		template<typename T>
 		struct streamer {
 			const T& val;
 		};
-
-
-		template<typename KwdT, typename SymT>
-		std::ostream& operator<<(std::ostream& os, const streamer<Token<KwdT, SymT>>& t) {
-			os << t.val;
-			return os;
-		}
 
 		template<typename... Ts>
 		inline std::ostream& operator<<(std::ostream& os, streamer<std::variant<Ts...>> vnt) {

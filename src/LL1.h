@@ -11,16 +11,9 @@
 #include <stack>
 
 namespace dpl{
-	template<typename KwdT, typename SymT>
 	class LL1 {
 	public:
 
-		using Tokenizer = dpl::Tokenizer<KwdT, SymT>;
-		using Token = Token<KwdT, SymT>;
-		using ProductionRule = ProductionRule<KwdT, SymT>;
-		using Nonterminal = Nonterminal<KwdT, SymT>;
-		using Grammar = Grammar<KwdT, SymT>;
-		using ParseTree = ParseTree<KwdT, SymT>;
 		using out_type = std::variant<Token, std::pair<std::string_view, int>>;
 		
 
@@ -29,7 +22,7 @@ namespace dpl{
 
 			try {
 				generateParseTable();
-				parse_stack.push_back(TokenType::EndOfFile);
+				parse_stack.push_back(Token::Type::EndOfFile);
 				parse_stack.push_back(grammar.start_symbol);
 			} catch (const std::invalid_argument& err) {
 				std::cerr << "LL(1) parser can't parse non-LL(1) grammar!\n";

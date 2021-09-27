@@ -13,14 +13,7 @@
 
 namespace dpl {
 
-	template<typename KwdT, typename SymT>
 	class LR0Automaton {
-	public:
-
-		using Token = Token<KwdT, SymT>;
-		using ProductionRule = ProductionRule<KwdT, SymT>;
-		using Grammar = Grammar<KwdT, SymT>;
-
 	public:
 
 		struct Configuration {
@@ -176,27 +169,15 @@ namespace dpl {
 					}
 				}
 			} while (states.size() != old_size);
-
-
-			// re-adjust start symbol
-			//g[g.start_symbol] = { g.start_symbol, {{ old_start_symbol, TokenType::EndOfFile }} };
 		}
 
 	};
 
 
-	template<typename KwdT, typename SymT>
 	class LR0 {
 	public:
 
-		using Token = Token<KwdT, SymT>;
-		using ProductionRule = ProductionRule<KwdT, SymT>;
-		using Nonterminal = Nonterminal<KwdT, SymT>;
-		using Grammar = Grammar<KwdT, SymT>;
-		using ParseTree = ParseTree<KwdT, SymT>;
 		using out_type = std::variant<Token, std::pair<std::string_view, int>>;
-		using LR0Automaton = LR0Automaton<KwdT, SymT>;
-		using Tokenizer = Tokenizer<KwdT, SymT>;
 
 		LR0(Grammar& g, ParseTree& pt, Tokenizer& inp) : input(inp), grammar(g), out_tree(pt) {
 			LR0Automaton automaton{ g };

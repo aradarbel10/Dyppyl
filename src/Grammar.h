@@ -9,14 +9,12 @@
 
 namespace dpl {
 
-	template<typename KwdT, typename SymT> requires std::is_enum_v<KwdT> && std::is_enum_v<SymT>
-	class ProductionRule : private std::vector<std::variant<std::monostate, Token<KwdT, SymT>, std::string_view>> {
+	class ProductionRule : private std::vector<std::variant<std::monostate, Token, std::string_view>> {
 	public:
 
-		using Token = Token<KwdT, SymT>;
 		using Atom = std::variant<std::monostate, Token, std::string_view>;
 
-		constexpr ProductionRule(std::initializer_list<Atom> l) : std::vector<Atom>(l) { }
+		ProductionRule(std::initializer_list<Atom> l) : std::vector<Atom>(l) { }
 
 		using std::vector<Atom>::size;
 		using std::vector<Atom>::operator[];
@@ -27,14 +25,11 @@ namespace dpl {
 
 	};
 
-	template<typename KwdT, typename SymT> requires std::is_enum_v<KwdT> && std::is_enum_v<SymT>
-	class Nonterminal : private std::vector<ProductionRule<KwdT, SymT>> {
+	class Nonterminal : private std::vector<ProductionRule> {
 	public:
-		
-		using ProductionRule = ProductionRule<KwdT, SymT>;
 
-		constexpr Nonterminal() = default;
-		constexpr Nonterminal(std::string_view n, std::initializer_list<ProductionRule> l) : std::vector<ProductionRule>(l), name(n) { }
+		Nonterminal() = default;
+		Nonterminal(std::string_view n, std::initializer_list<ProductionRule> l) : std::vector<ProductionRule>(l), name(n) { }
 
 		using std::vector<ProductionRule>::size;
 		using std::vector<ProductionRule>::operator[];
@@ -45,15 +40,10 @@ namespace dpl {
 
 	};
 
-	template<typename KwdT, typename SymT> requires std::is_enum_v<KwdT> && std::is_enum_v<SymT>
-	class Grammar : std::unordered_map<std::string_view, Nonterminal<KwdT, SymT>> {
+	class Grammar : std::unordered_map<std::string_view, Nonterminal> {
 	public:
 
-		using ProductionRule = ProductionRule<KwdT, SymT>;
-		using Nonterminal = Nonterminal<KwdT, SymT>;
-		using Token = Token<KwdT, SymT>;
-
-		constexpr Grammar(std::initializer_list<Nonterminal> l) : start_symbol((*l.begin()).name) {
+		Grammar(std::initializer_list<Nonterminal> l) : start_symbol((*l.begin()).name) {
 			std::for_each(l.begin(), l.end(), [&](const auto& e) {
 				(*this)[e.name] = e;
 			});
@@ -143,7 +133,7 @@ namespace dpl {
 				}
 			}
 
-			follows[start_symbol].insert(TokenType::EndOfFile);
+			follows[start_symbol].insert(Token::Type::EndOfFile);
 
 			bool changed;
 			do {

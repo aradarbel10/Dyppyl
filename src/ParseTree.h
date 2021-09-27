@@ -12,20 +12,16 @@
 
 namespace dpl {
 
-	template<typename KwdT, typename SymT>
 	class ParseTree {
 	public:
 
-		using Token = Token<KwdT, SymT>;
 		using Node = std::variant<Token, std::pair<std::string_view, int>, std::monostate>;
-		using Grammar = Grammar<KwdT, SymT>;
 
-		constexpr ParseTree() { }
 
-		constexpr ParseTree(Grammar& g_) : grammar(g_) { }
-		constexpr ParseTree(Grammar& g_, Node n_) : grammar(g_), value(n_) { }
+		ParseTree(Grammar& g_) : grammar(g_) { }
+		ParseTree(Grammar& g_, Node n_) : grammar(g_), value(n_) { }
 
-		constexpr bool operator<<(std::variant<Token, std::pair<std::string_view, int>> node) {
+		bool operator<<(std::variant<Token, std::pair<std::string_view, int>> node) {
 			if (!value.has_value()) {
 				std::visit([&](const auto& v) { value.emplace(v); }, node);
 
@@ -53,8 +49,7 @@ namespace dpl {
 			return false;
 		}
 
-		template<typename KwdT, typename SymT>
-		friend void printTree(const std::string& prefix, ParseTree<KwdT, SymT>* node, bool isLast);
+		friend void printTree(const std::string& prefix, ParseTree* node, bool isLast);
 
 	private:
 
@@ -65,8 +60,7 @@ namespace dpl {
 		
 	};
 
-	template<typename KwdT, typename SymT>
-	void printTree(const std::string& prefix, ParseTree<KwdT, SymT>* node, bool isLast) {
+	void printTree(const std::string& prefix, ParseTree* node, bool isLast) {
 		static HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 
 		std::cout << prefix;
@@ -74,7 +68,7 @@ namespace dpl {
 
 		if (node->value.has_value()) {
 			if (const auto* nt = std::get_if<std::pair<std::string_view, int>>(&node->value.value())) std::cout << (*nt).first << "(" << (*nt).second << ")\n";
-			else if (const auto* tkn = std::get_if<Token<KwdT, SymT>>(&node->value.value())) {
+			else if (const auto* tkn = std::get_if<Token>(&node->value.value())) {
 				SetConsoleTextAttribute(hConsole, 0x03);
 				std::cout << (*tkn).stringify() << '\n';
 				SetConsoleTextAttribute(hConsole, 0x07);
@@ -89,8 +83,7 @@ namespace dpl {
 		}
 	}
 
-	template<typename KwdT, typename SymT>
-	void printTree(ParseTree<KwdT, SymT>& node) {
+	void printTree(ParseTree& node) {
 		std::cout << "\n\nParse Tree:\n========================\n";
 		printTree("", &node, true);
 		std::cout << "\n\n";
