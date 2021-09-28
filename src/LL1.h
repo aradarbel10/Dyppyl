@@ -46,6 +46,8 @@ namespace dpl{
 					if (hasEntry(t, *nontr)) {
 
 						auto& rule = grammar[*nontr][table[getTerminalType(t)][*nontr]];
+
+						std::cout << "Production out: (" << *nontr << ", " << table[getTerminalType(t)][*nontr] << ")\n";
 						out_tree << std::make_pair(*nontr, table[getTerminalType(t)][*nontr]);
 
 						parse_stack.pop_back();
@@ -65,7 +67,9 @@ namespace dpl{
 				}
 
 				if (const auto* tr = std::get_if<Token>(&parse_stack.back())) {
-					if (*tr == t) {
+					if (getTerminalType(*tr) == getTerminalType(t)) {
+
+						std::cout << "Token out: " << t.stringify() << '\n';
 						out_tree << t;
 						parse_stack.pop_back();
 

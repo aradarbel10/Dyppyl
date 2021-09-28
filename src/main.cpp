@@ -155,7 +155,7 @@ int main() {
 	dpl::Grammar example_grammar{
 		{ "Stmts", {
 			{ "Stmt", "Stmts" },
-			{ std::monostate() }
+			{ }
 		}},
 		{ "Term", {
 			{ dpl::Token::Type::Identifier },
@@ -182,7 +182,7 @@ int main() {
 
 	dpl::Grammar non_ll1{
 		{ "E" , {
-			{ "T", ";"_sym },
+			{ "T"/*, ";"_sym*/ },
 			{ "T", "+"_sym, "E"}
 		}},
 		{ "T", {
@@ -217,9 +217,18 @@ int main() {
 		}}
 	};
 
-	// - -
-	// + + + - + -
-	// + + - -
+
+
+	dpl::Grammar lr1_epsilon{
+		{ "Program", {
+			{ "PROGRAM"_kwd, Token::Type::Identifier, "BEGIN"_kwd, "Stmts", "END"_kwd }
+		}},
+		{ "Stmts", {
+			{ "Stmts", "+"_sym },
+			{ }
+		}}
+	};
+
 
 	dpl::Grammar PascalLikeGrammar{
 		{ "Program", {
@@ -241,27 +250,33 @@ int main() {
 	
 	
 
-	//dpl::StringStream src{ "while zero 0 do { 1 -> x; } ++x;" };
+	//dpl::StringStream src{ "while zero 0 do { 1 -> x; ++x; }" };
 	//dpl::FileStream src{ "snippets/example.lang" };
 	//dpl::FileStream src{ "snippets/short.lang" };
-	//dpl::StringStream src{ "Int + ( , Int + Int )" };
-//	dpl::StringStream src{
-//R"raw(
-//PROGRAM DEMO1
-//BEGIN
-//	A := 3;
-//	B := A;
-//	BABOON := GIRAFFE;
-//	TEXT := "Hello, World!";
-//END
-//)raw"
-//	};
-	dpl::StringStream src{ "+ + - + -" };
+	//dpl::StringStream src{ "Int + ( Int + Int )" };
+	dpl::StringStream src{
+R"raw(
+PROGRAM DEMO1
+BEGIN
+	A := 3;
+	B := A;
+	BABOON := GIRAFFE;
+	TEXT := "Hello, World!";
+END
+)raw"
+	};
+	//dpl::StringStream src{ "PROGRAM MyProg BEGIN + + + + + + END" };
+
 	dpl::Tokenizer tokenizer{ src };
 
-	dpl::ParseTree tree{ lr1_test };
+	dpl::ParseTree tree{ PascalLikeGrammar };
+
+	//dpl::LL1 ll1_parser{ example_grammar, tree, tokenizer };
+	//ll1_parser.printParseTable();
+
 	//dpl::LR0 lr0_parser{ non_ll1, tree, tokenizer };
-	dpl::LR1 lr1_parser{ lr1_test, tree, tokenizer };
+	
+	dpl::LR1 lr1_parser{ PascalLikeGrammar, tree, tokenizer };
 	
 	
 
@@ -271,8 +286,8 @@ int main() {
 		lr1_parser << tkn;
 	}
 	
-	std::cout << "Grammar:\n==============\n";
-	std::cout << lr1_test << "\n";
+	std::cout << "\n\nGrammar:\n==============\n";
+	std::cout << PascalLikeGrammar << "\n";
 
 	std::cout << "Input String:\n=============\n" << src.str << "\n";
 	std::cout << tree;

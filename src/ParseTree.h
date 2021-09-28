@@ -28,7 +28,7 @@ namespace dpl {
 				if (auto* const pair_val = std::get_if<std::pair<std::string_view, int>>(&value.value())) {
 					const auto& rule = grammar[(*pair_val).first][(*pair_val).second];
 
-					if (rule.size() == 1 && std::holds_alternative<std::monostate>(rule[0])) {
+					if (rule.isEpsilonProd()) {
 						children.reserve(1);
 						children.push_back(std::make_unique<ParseTree>(grammar, std::monostate()));
 					} else {
@@ -50,7 +50,7 @@ namespace dpl {
 		}
 
 		friend std::ostream& operator<<(std::ostream& os, const ParseTree& tree) {
-			os << "\n\nParse Tree:\n========================\n";
+			os << "\n\nParse Tree:\n===============\n";
 			tree.recursivePrint("", true);
 			os << "\n\n";
 

@@ -53,6 +53,9 @@ namespace dpl {
 		}
 
 		constexpr std::string stringify() const {
+			std::string type_name(magic_enum::enum_name(type));
+			if (std::holds_alternative<std::monostate>(value)) return type_name;
+
 			if (type == Type::Symbol) {
 				return std::string{ symbolByIndex(std::get<size_t>(value)) };
 			} else if (type == Type::Keyword) {
@@ -62,19 +65,20 @@ namespace dpl {
 			} else if (type == Type::EndOfFile) {
 				return "EOF";
 			} else {
-				std::string type_name(magic_enum::enum_name(type));
+				
 				if (const auto* str = std::get_if<std::string>(&value)) return type_name + " " + *str;
 				else if (const auto* dbl = std::get_if<long double>(&value)) return type_name + " " + std::to_string(*dbl);
-				return "unknown non-enum";
+				else return type_name;
 			}
 		}
 
 		Token() = default;
 		Token(Type t) : type(t) {
-			if (type == Type::Identifier) value = "Identifier";
-			else if (type == Type::Number) value = "Number";
-			else if (type == Type::String) value = "String";
-			else value = std::monostate();
+			value = std::monostate();
+			//if (type == Type::Identifier) value = "Identifier";
+			//else if (type == Type::Number) value = "Number";
+			//else if (type == Type::String) value = "String";
+			//else 
 		}
 		Token(Type t, value_type v) : type(t), value(v) { }
 	};
