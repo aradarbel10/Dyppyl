@@ -73,7 +73,17 @@ namespace dpl {
 		}
 
 		Token() = default;
+<<<<<<< HEAD
 		Token(Type t) : type(t) { value = std::monostate(); }
+=======
+		Token(Type t) : type(t) {
+			value = std::monostate();
+			//if (type == Type::Identifier) value = "Identifier";
+			//else if (type == Type::Number) value = "Number";
+			//else if (type == Type::String) value = "String";
+			//else 
+		}
+>>>>>>> 4b91005cef7c3a78495abcd7a32c52b7a3e22dfe
 		Token(Type t, value_type v) : type(t), value(v) { }
 	};
 

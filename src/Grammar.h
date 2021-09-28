@@ -128,6 +128,28 @@ namespace dpl {
 					for (auto& rule : nt) {
 						auto size_before = firsts[name].size();
 
+<<<<<<< HEAD
+=======
+						//int i = 0;
+						//for (i = 0; i < rule.size(); i++) {
+						//	if (const auto* v = std::get_if<Token>(&rule[i])) {
+						//		firsts[name].insert(*v);
+						//		break;
+						//	} else if (const auto* v = std::get_if<std::string_view>(&rule[i])) {
+						//		if (!firsts[*v].contains(std::monostate())) {
+						//			std::for_each(firsts[*v].begin(), firsts[*v].end(), [&](const auto& e) {
+						//				firsts[name].insert(e);
+						//			});
+						//			break;
+						//		}
+						//	}
+						//}
+
+						//if (i == rule.size()) {
+						//	firsts[name].insert(std::monostate());
+						//}
+
+>>>>>>> 4b91005cef7c3a78495abcd7a32c52b7a3e22dfe
 						auto first_star_set = first_star(rule.begin(), rule.end());
 						for (const auto& symbol : first_star_set) {
 							firsts[name].insert(symbol);
