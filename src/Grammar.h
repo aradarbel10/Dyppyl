@@ -16,18 +16,21 @@ namespace dpl {
 
 		ProductionRule(std::initializer_list<Atom> l) : std::vector<Atom>(l) { }
 
+		using std::vector<Atom>::vector;
 		using std::vector<Atom>::size;
 		using std::vector<Atom>::operator[];
 		using std::vector<Atom>::begin;
 		using std::vector<Atom>::end;
 		using std::vector<Atom>::rbegin;
 		using std::vector<Atom>::rend;
+		using std::vector<Atom>::push_back;
 
 		friend std::ostream& operator<<(std::ostream& os, const ProductionRule& rule) {
 			for (const auto& atom : rule) {
 				if (std::holds_alternative<std::monostate>(atom)) os << "epsilon";
 				else if (const auto* nonterminal = std::get_if<std::string_view>(&atom)) dpl::log::coloredStream(os, 0x0F, *nonterminal);
-				else dpl::log::coloredStream(os, 0x03, std::get<Token>(atom).stringify());
+				else if (const auto* tkn = std::get_if<Token>(&atom))
+					dpl::log::coloredStream(os, 0x03, tkn->stringify());
 
 				os << " ";
 			}
@@ -201,7 +204,11 @@ namespace dpl {
 
 		template<class InputIt> requires std::input_iterator<InputIt>
 		std::unordered_set<std::variant<std::monostate, Token>> first_star(InputIt first, InputIt last) {
-			if (first == last || (std::distance(first, last) == 1 && std::holds_alternative<std::monostate>(*first))) {
+			if (first == last) {
+				return { };
+			}
+
+			if (std::distance(first, last) == 1 && std::holds_alternative<std::monostate>(*first)) {
 				return { std::monostate() };
 			}
 

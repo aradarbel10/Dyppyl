@@ -248,7 +248,7 @@ namespace dpl {
 				std::cerr << "Error: Programmar is an idiot!\n";
 			}
 
-			next_tkn.pos = { pos_in_file.first - length_of_longest, pos_in_file.second };
+			next_tkn.pos = { pos_in_file.first, pos_in_file.second };
 			next_tkn_ready = true;
 		}
 

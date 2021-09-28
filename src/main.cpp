@@ -12,10 +12,11 @@
 #include "Token.h"
 #include "Tokenizer.h"
 #include "Grammar.h"
-//#include "LL1.h"
+#include "LL1.h"
 #include "ParseTree.h"
 #include "TextStream.h"
 #include "LR0.h"
+#include "LR1.h"
 
 // search this solution for "#TASK" to find places where optimizations/refactoring/improvements may be worth implementing
 
@@ -108,7 +109,10 @@
 	Y(Hello) \
 	Y(Heya) \
 	Y(Yo) \
-	Y(World)
+	Y(World) \
+	Y(PROGRAM) \
+	Y(BEGIN) \
+	Y(END) \
 
 
 
@@ -144,6 +148,8 @@ int main() {
 
 	dpl::Token::keywords = keywords;
 	dpl::Token::symbols = symbols;
+
+	using Token = dpl::Token;
 
 
 	dpl::Grammar example_grammar{
@@ -186,27 +192,89 @@ int main() {
 	};
 
 
+	dpl::Grammar non_lr0{
+		{ "E" , {
+			{ "T" },
+			{ "E", "+"_sym, "T"}
+		}},
+		{ "T", {
+			{ "Int"_kwd },
+			{ "("_sym, "Es", ")"_sym }
+		}},
+		{ "Es", {
+			{ "Es", ","_sym, "E" },
+			{ }
+		}}
+	};
+
+	dpl::Grammar lr1_test{
+		{ "S", {
+			{ "C", "C" }
+		}},
+		{ "C", {
+			{ "+"_sym, "C" },
+			{ "-"_sym }
+		}}
+	};
+
+	// - -
+	// + + + - + -
+	// + + - -
+
+	dpl::Grammar PascalLikeGrammar{
+		{ "Program", {
+			{ "PROGRAM"_kwd, Token::Type::Identifier, "BEGIN"_kwd, "Stmts", "END"_kwd }
+		}},
+		{ "Stmts", {
+			{ "Stmts", "Stmt" },
+			{ }
+		}},
+		{ "Stmt", {
+			{ Token::Type::Identifier, ":="_sym, "Rvalue", ";"_sym }
+		}},
+		{ "Rvalue", {
+			{ Token::Type::Number },
+			{ Token::Type::String },
+			{ Token::Type::Identifier }
+		}}
+	};
 	
 	
 
 	//dpl::StringStream src{ "while zero 0 do { 1 -> x; } ++x;" };
 	//dpl::FileStream src{ "snippets/example.lang" };
 	//dpl::FileStream src{ "snippets/short.lang" };
-	dpl::StringStream src{ "Int + ( Int + Int; );" };
+	//dpl::StringStream src{ "Int + ( , Int + Int )" };
+//	dpl::StringStream src{
+//R"raw(
+//PROGRAM DEMO1
+//BEGIN
+//	A := 3;
+//	B := A;
+//	BABOON := GIRAFFE;
+//	TEXT := "Hello, World!";
+//END
+//)raw"
+//	};
+	dpl::StringStream src{ "+ + - + -" };
 	dpl::Tokenizer tokenizer{ src };
 
-	dpl::ParseTree tree{ non_ll1 };
-	dpl::LR0 lr0_parser{ non_ll1, tree, tokenizer };
+	dpl::ParseTree tree{ lr1_test };
+	//dpl::LR0 lr0_parser{ non_ll1, tree, tokenizer };
+	dpl::LR1 lr1_parser{ lr1_test, tree, tokenizer };
 	
 	
 
 
 	while (!src.closed()) {
 		dpl::Token tkn = tokenizer.fetchNext();
-		lr0_parser << tkn;
+		lr1_parser << tkn;
 	}
 	
-	std::cout << non_ll1 << "\n";
+	std::cout << "Grammar:\n==============\n";
+	std::cout << lr1_test << "\n";
+
+	std::cout << "Input String:\n=============\n" << src.str << "\n";
 	std::cout << tree;
 	DplLogPrintTelemetry();
 

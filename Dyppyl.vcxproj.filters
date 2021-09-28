@@ -47,5 +47,8 @@
     <ClInclude Include="src\LR0.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\LR1.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

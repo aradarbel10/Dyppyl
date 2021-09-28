@@ -103,10 +103,16 @@ namespace dpl {
 			sub_trees.emplace_back(std::make_unique<ParseTree>(grammar, tree));
 		}
 
-		void packTree(ParseTree::Node tree) {
+		void packTree(ParseTree::Node tree, size_t n) {
 			std::unique_ptr<ParseTree> new_root{ std::make_unique<ParseTree>(grammar, tree) };
-			std::swap(new_root->children, sub_trees);
-			sub_trees.clear();
+			for (int i = 0; i < n; i++) {
+				new_root->children.emplace_back(std::move(sub_trees.back()));
+				sub_trees.pop_back();
+			}
+			std::reverse(new_root->children.begin(), new_root->children.end());
+
+			//std::swap(new_root->children, sub_trees);
+			//sub_trees.clear();
 			sub_trees.emplace_back(std::move(new_root));
 		}
 

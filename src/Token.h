@@ -26,8 +26,16 @@ namespace dpl {
 
 		std::pair<unsigned int, unsigned int> pos;
 
-		friend bool operator<(const Token& lhs, const Token& rhs) {
-			return (lhs.type < rhs.type) || (lhs.value < rhs.value);
+		friend inline constexpr auto operator<=>(const Token& lhs, const Token& rhs) {
+			return std::tie(lhs.type, lhs.value, lhs. pos) <=> std::tie(rhs.type, rhs.value, rhs.pos);
+		}
+
+		friend inline constexpr bool operator==(const Token& lhs, const Token& rhs) {
+			if (lhs.type != rhs.type) return false;
+			if (std::holds_alternative<std::monostate>(lhs.value) || std::holds_alternative<std::monostate>(rhs.value)) {
+				return true;
+			}
+			return lhs.value == rhs.value;
 		}
 
 		static std::string_view symbolByIndex(size_t index) {
@@ -62,7 +70,12 @@ namespace dpl {
 		}
 
 		Token() = default;
-		Token(Type t) : type(t), value(std::monostate()) { }
+		Token(Type t) : type(t) {
+			if (type == Type::Identifier) value = "Identifier";
+			else if (type == Type::Number) value = "Number";
+			else if (type == Type::String) value = "String";
+			else value = std::monostate();
+		}
 		Token(Type t, value_type v) : type(t), value(v) { }
 	};
 
@@ -76,16 +89,6 @@ namespace dpl {
 
 		os << "]";
 		return os;
-	}
-
-	
-
-	inline constexpr bool operator==(const Token& lhs, const Token& rhs) {
-		if (lhs.type != rhs.type) return false;
-		if (std::holds_alternative<std::monostate>(lhs.value) || std::holds_alternative<std::monostate>(rhs.value)) {
-			return true;
-		}
-		return lhs.value == rhs.value;
 	}
 
 	inline Token getTerminalType(const Token& tkn) {
