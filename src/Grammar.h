@@ -9,15 +9,20 @@
 
 namespace dpl {
 
-	class ProductionRule : private std::vector<std::variant<std::monostate, Token, std::string_view>> {
+	class ProductionRule : private std::vector<std::variant<Token, std::string_view>> {
 	public:
 
-		using Atom = std::variant<std::monostate, Token, std::string_view>;
+		using Atom = std::variant<Token, std::string_view>;
 
 		ProductionRule(std::initializer_list<Atom> l) : std::vector<Atom>(l) { }
 
+		inline constexpr bool isEpsilonProd() const {
+			return empty();
+		}
+
 		using std::vector<Atom>::vector;
 		using std::vector<Atom>::size;
+		using std::vector<Atom>::empty;
 		using std::vector<Atom>::operator[];
 		using std::vector<Atom>::begin;
 		using std::vector<Atom>::end;
@@ -26,14 +31,15 @@ namespace dpl {
 		using std::vector<Atom>::push_back;
 
 		friend std::ostream& operator<<(std::ostream& os, const ProductionRule& rule) {
-			for (const auto& atom : rule) {
-				if (std::holds_alternative<std::monostate>(atom)) os << "epsilon";
-				else if (const auto* nonterminal = std::get_if<std::string_view>(&atom)) dpl::log::coloredStream(os, 0x0F, *nonterminal);
+			if (rule.empty()) os << "epsilon";
+			else for (const auto& atom : rule) {
+				if (const auto* nonterminal = std::get_if<std::string_view>(&atom)) dpl::log::coloredStream(os, 0x0F, *nonterminal);
 				else if (const auto* tkn = std::get_if<Token>(&atom))
 					dpl::log::coloredStream(os, 0x03, tkn->stringify());
 
 				os << " ";
 			}
+
 			return os;
 		}
 
@@ -106,14 +112,10 @@ namespace dpl {
 			for (auto& [name, nt] : (*this)) {
 				firsts[name].reserve(nt.size());
 				for (auto& rule : nt) {
-					if (const Token* t = std::get_if<Token>(&rule[0])) {
+					if (rule.empty()) {
+						firsts[name].insert(std::monostate());
+					} else if (const Token* t = std::get_if<Token>(&rule[0])) {
 						firsts[name].insert(*t);
-					}
-
-					if (rule.size() == 1) {
-						if (std::holds_alternative<std::monostate>(rule[0])) {
-							firsts[name].insert(std::monostate());
-						}
 					}
 				}
 			}
@@ -126,23 +128,9 @@ namespace dpl {
 					for (auto& rule : nt) {
 						auto size_before = firsts[name].size();
 
-						int i = 0;
-						for (i = 0; i < rule.size(); i++) {
-							if (const auto* v = std::get_if<Token>(&rule[i])) {
-								firsts[name].insert(*v);
-								break;
-							} else if (const auto* v = std::get_if<std::string_view>(&rule[i])) {
-								if (!firsts[*v].contains(std::monostate())) {
-									std::for_each(firsts[*v].begin(), firsts[*v].end(), [&](const auto& e) {
-										firsts[name].insert(e);
-									});
-									break;
-								}
-							}
-						}
-
-						if (i == rule.size()) {
-							firsts[name].insert(std::monostate());
+						auto first_star_set = first_star(rule.begin(), rule.end());
+						for (const auto& symbol : first_star_set) {
+							firsts[name].insert(symbol);
 						}
 
 						if (size_before != firsts[name].size()) changed = true;
@@ -154,6 +142,8 @@ namespace dpl {
 		void calcFollowSets() {
 			for (auto& [name, nt] : (*this)) {
 				for (auto& rule : nt) {
+					if (rule.empty()) continue;
+
 					for (int i = 0; i < rule.size() - 1; i++) {
 						if (const auto* n = std::get_if<std::string_view>(&rule[i])) {
 							if (const auto* t = std::get_if<Token>(&rule[i + 1])) {
@@ -172,6 +162,8 @@ namespace dpl {
 
 				for (auto& [name, nt] : (*this)) {
 					for (auto& rule : nt) {
+						if (rule.empty()) continue;
+
 						for (int i = 0; i < rule.size() - 1; i++) {
 							if (const auto* v = std::get_if<std::string_view>(&rule[i])) {
 								auto size_before = follows[*v].size();
@@ -180,16 +172,15 @@ namespace dpl {
 								bool contains_epsilon = false;
 
 								std::for_each(first_of_rest.begin(), first_of_rest.end(), [&](const auto& e) {
-									if (std::holds_alternative<std::monostate>(e)) {
-										contains_epsilon = true;
-									} else {
-										follows[*v].insert(std::get<Token>(e));
-									}
+									if (std::holds_alternative<Token>(e)) follows[*v].insert(std::get<Token>(e));
+									else if (std::holds_alternative<std::monostate>(e)) contains_epsilon = true;
 								});
 
-								std::for_each(follows[name].begin(), follows[name].end(), [&](const auto& e) {
-									follows[*v].insert(e);
-								});
+								if (contains_epsilon) {
+									std::for_each(follows[name].begin(), follows[name].end(), [&](const auto& e) {
+										follows[*v].insert(e);
+									});
+								}
 
 								if (size_before != follows[*v].size()) changed = true;
 							}
@@ -202,13 +193,10 @@ namespace dpl {
 
 	public:
 
+		// TASK: require constant iterators
 		template<class InputIt> requires std::input_iterator<InputIt>
 		std::unordered_set<std::variant<std::monostate, Token>> first_star(InputIt first, InputIt last) {
-			if (first == last) {
-				return { };
-			}
-
-			if (std::distance(first, last) == 1 && std::holds_alternative<std::monostate>(*first)) {
+			if (std::distance(first, last) == 0) {
 				return { std::monostate() };
 			}
 

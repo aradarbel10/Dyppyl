@@ -88,7 +88,7 @@ namespace dpl {
 				} while (size() != old_size);
 			}
 
-			State successor(std::variant<std::monostate, Token, std::string_view> symbol, Grammar& g) const {
+			State successor(std::variant<Token, std::string_view> symbol, Grammar& g) const {
 				State result;
 
 				for (const Configuration& config : *this) {
@@ -137,6 +137,8 @@ namespace dpl {
 			std::swap(g.start_symbol, augmented_start_symbol);
 			g[g.start_symbol] = { g.start_symbol, {{ old_start_symbol }} };
 
+			// we rely on first sets, so calculate them
+			g.initialize();
 
 			// construct initial state
 			State start_state;
@@ -216,8 +218,6 @@ namespace dpl {
 					if (hasGotoEntry(i, symbol)) std::cout << "Error: Duplicate Action Entries -- Non-LR(1) Grammar!\n";
 					else goto_table[i][symbol] = dest;
 				}
-
-				//goto_table[i] = transes;
 				
 			}
 
@@ -226,14 +226,14 @@ namespace dpl {
 		}
 
 		void operator<<(const Token& t) {
-			Token t_ = dpl::getTerminalType(t);
+			Token t_ = getTerminalType(t);
 
 			bool terminal_eliminated = false;
 			do {
 
 				if (!hasActionEntry(parse_stack.top(), t_)) { // not contains means the action is shift
 					if (!hasGotoEntry(parse_stack.top(), t_)) {
-						std::cerr << "Syntax error: unexptected token " << t << " at position (" << dpl::log::streamer{ t.pos } << ")\n";
+						std::cerr << "Syntax error: unexptected token " << t.stringify() << " at position (" << dpl::log::streamer{ t.pos } << ")\n";
 						return;
 					}
 
@@ -242,28 +242,28 @@ namespace dpl {
 
 					terminal_eliminated = true;
 
-					std::cout << "Shift: " << t << ", goto " << new_state << '\n';
+					std::cout << "Shift: " << t.stringify() << ", goto " << new_state << '\n';
 					tree_builder.addSubTree(t);
-				} else if (const auto* prod = std::get_if<std::pair<std::string_view, int>>(&action_table[parse_stack.top()][t])) { // reduce action
+				} else if (const auto* prod = std::get_if<std::pair<std::string_view, int>>(&action_table[parse_stack.top()][t_])) { // reduce action
 					const ProductionRule& rule = grammar[prod->first][prod->second];
 
 					for (int i = 0; i < rule.size(); i++) parse_stack.pop();
 
 					if (!hasGotoEntry(parse_stack.top(), prod->first)) {
-						std::cerr << "Syntax error: unexptected token " << t << " at position (" << dpl::log::streamer{ t.pos } << ")\n";
+						std::cerr << "Syntax error: unexptected token " << t.stringify() << " at position (" << dpl::log::streamer{ t.pos } << ")\n";
 						return;
 					}
 
 					int new_state = goto_table[parse_stack.top()][prod->first];
 					parse_stack.push(new_state);
 
-					std::cout << "Reduce: " << dpl::log::streamer{ rule } << ", goto " << new_state << '\n';
+					std::cout << "Reduce: " << rule << ", goto " << new_state << '\n';
 					tree_builder.packTree(*prod, rule.size());
 				} else if (std::holds_alternative<std::monostate>(action_table[parse_stack.top()][t_])) { // accept
 					terminal_eliminated = true;
 					tree_builder.assignToTree(out_tree);
 				} else { // report error
-					std::cerr << "Syntax error: unexpected token " << t << " at position (" << dpl::log::streamer{ t.pos } << ")\n";
+					std::cerr << "Syntax error: unexpected token " << t.stringify() << " at position (" << dpl::log::streamer{ t.pos } << ")\n";
 				}
 
 			} while (!terminal_eliminated);
