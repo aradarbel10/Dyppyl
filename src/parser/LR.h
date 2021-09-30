@@ -1,29 +1,24 @@
 #pragma once
 
-#include <string_view>
-#include <vector>
-#include <algorithm>
-#include <map>
-#include <set>
-#include <unordered_map>
-#include <variant>
-#include <list>
+#include "../Token.h"
+#include "../Grammar.h"
+#include "../ParseTree.h"
+#include "../Tokenizer.h"
+
 #include <stack>
 
-#include "Token.h"
-#include "Grammar.h"
-
 namespace dpl {
-	class LR1Automaton {
+
+
+	class LR0Automaton {
 	public:
 
 		struct Configuration {
 			std::pair<std::string_view, int> production;
 			int pos = 0;
-			Token lookahead;
 
 			friend bool operator==(const Configuration lhs, const Configuration& rhs) {
-				return (lhs.production == rhs.production) && (lhs.pos == rhs.pos) && (lhs.lookahead == rhs.lookahead);
+				return (lhs.production == rhs.production) && (lhs.pos == rhs.pos);
 			}
 
 			auto dot(Grammar& g) const {
@@ -31,7 +26,7 @@ namespace dpl {
 			}
 
 			Configuration next() const {
-				return Configuration{ production, pos + 1, lookahead };
+				return Configuration{ production, pos + 1 };
 			}
 
 			bool atEnd(Grammar& g) const {
@@ -55,7 +50,7 @@ namespace dpl {
 
 					// iterate through all configurations in state
 					for (int i = 0; i < size(); i++) {
-						Configuration& config = (*this)[i];
+						const Configuration& config = (*this)[i];
 						const ProductionRule& rule = g[config.production.first][config.production.second];
 
 						if (!config.atEnd(g)) {
@@ -63,24 +58,10 @@ namespace dpl {
 
 								// iterate through all productions in nonterminal definition
 								for (int j = 0; j < g[*nonterminal].size(); j++) {
-
-									config = (*this)[i]; // re-assign config because it gets invalidated sometimes
-
-									ProductionRule rule_for_first(std::next(rule.begin(), config.pos + 1), rule.end());
-									rule_for_first.push_back(config.lookahead);
-									auto first_star_set = g.first_star(rule_for_first.begin(), rule_for_first.end());
-
-									for (const auto terminal : first_star_set) {
-										if (!std::holds_alternative<std::monostate>(terminal)) {
-											const Configuration new_config = { { *nonterminal, j }, 0, std::get<Token>(terminal) };
-											if (!contains(new_config)) {
-												emplace_back(new_config);
-											}
-										}
+									const Configuration new_config = { { *nonterminal, j }, 0 };
+									if (!contains(new_config)) {
+										push_back(new_config);
 									}
-
-									first_star_set = std::unordered_set<std::variant<std::monostate, Token>>();
-
 								}
 
 							}
@@ -94,7 +75,7 @@ namespace dpl {
 				State result;
 
 				for (const Configuration& config : *this) {
-					if (!config.atEnd(g) && config.dot(g) == symbol) {
+					if (config.dot(g) == symbol) {
 						result.push_back(config.next());
 					}
 				}
@@ -128,7 +109,7 @@ namespace dpl {
 
 		std::vector<std::pair<State, std::map<std::variant<std::monostate, Token, std::string_view>, int>>> states;
 
-		LR1Automaton(Grammar& g) {
+		LR0Automaton(Grammar& g) {
 			// augment grammar
 			std::string augmented_start_symbol{ g.start_symbol };
 			std::string_view old_start_symbol = g[g.start_symbol].name;
@@ -139,12 +120,11 @@ namespace dpl {
 			std::swap(g.start_symbol, augmented_start_symbol);
 			g[g.start_symbol] = { g.start_symbol, {{ old_start_symbol }} };
 
-			// we rely on first sets, so calculate them
 			g.initialize();
 
 			// construct initial state
 			State start_state;
-			start_state.push_back(Configuration{ {g.start_symbol, 0}, 0, Token::Type::EndOfFile });
+			start_state.push_back(Configuration{ {g.start_symbol, 0}, 0 });
 			states.push_back({ start_state, {} });
 			states.back().first.computeClosure(g);
 
@@ -186,107 +166,43 @@ namespace dpl {
 
 
 
-	class LR1 {
+
+	class LR {
 	public:
+
+		using state_type = int;
+		using accept_action = std::monostate;
 
 		using out_type = std::variant<Token, std::pair<std::string_view, int>>;
 		using symbol_type = std::variant<std::monostate, Token, std::string_view>;
 
-		LR1(Grammar& g, ParseTree& pt, Tokenizer& inp) : input(inp), grammar(g), out_tree(pt), tree_builder(grammar) {
-			LR1Automaton automaton{ g };
+		using action_type = std::variant<accept_action, state_type, std::pair<std::string_view, int>>;
 
-			// generate parse tables
-			for (int i = 0; i < automaton.states.size(); i++) {
-				auto& [state, transes] = automaton.states[i];
-
-				for (const auto& config : state) {
-					if (config.production.first == g.start_symbol
-							&& config.production.second == 0
-							&& config.pos == 1
-							&& config.lookahead == Token::Type::EndOfFile)
-					{
-						if (hasActionEntry(i, config.lookahead)) std::cout << "Error: Duplicate Action Entries -- Non-LR(1) Grammar!\n";
-						else action_table[i][config.lookahead] = std::monostate();
-
-						initial_state = i;
-					} else if (config.atEnd(g)) {
-						if (hasActionEntry(i, config.lookahead)) std::cout << "Error: Duplicate Action Entries -- Non-LR(1) Grammar!\n";
-						else action_table[i][config.lookahead] = config.production;
-					}
-				}
-
-				for (const auto& [symbol, dest] : transes) {
-					if (hasGotoEntry(i, symbol)) std::cout << "Error: Duplicate Action Entries -- Non-LR(1) Grammar!\n";
-					else goto_table[i][symbol] = dest;
-				}
-				
-			}
+		LR(Grammar& g, ParseTree& pt, Tokenizer& inp);
+		void operator<<(const Token& t);
 
 
-			parse_stack.push(0);
-		}
-
-		void operator<<(const Token& t) {
-			Token t_ = getTerminalType(t);
-
-			bool terminal_eliminated = false;
-			do {
-
-				if (!hasActionEntry(parse_stack.top(), t_)) { // not contains means the action is shift
-					if (!hasGotoEntry(parse_stack.top(), t_)) {
-						std::cerr << "Syntax error: unexptected token " << t.stringify() << " at position (" << dpl::log::streamer{ t.pos } << ")\n";
-						return;
-					}
-
-					int new_state = goto_table[parse_stack.top()][t_];
-					parse_stack.push(new_state);
-
-					terminal_eliminated = true;
-
-					std::cout << "Shift: " << t.stringify() << ", goto " << new_state << '\n';
-					tree_builder.addSubTree(t);
-				} else if (const auto* prod = std::get_if<std::pair<std::string_view, int>>(&action_table[parse_stack.top()][t_])) { // reduce action
-					const ProductionRule& rule = grammar[prod->first][prod->second];
-
-					for (int i = 0; i < rule.size(); i++) parse_stack.pop();
-
-					if (!hasGotoEntry(parse_stack.top(), prod->first)) {
-						std::cerr << "Syntax error: unexptected token " << t.stringify() << " at position (" << dpl::log::streamer{ t.pos } << ")\n";
-						return;
-					}
-
-					int new_state = goto_table[parse_stack.top()][prod->first];
-					parse_stack.push(new_state);
-
-					std::cout << "Reduce: " << rule << ", goto " << new_state << '\n';
-					tree_builder.packTree(*prod, rule.size());
-				} else if (std::holds_alternative<std::monostate>(action_table[parse_stack.top()][t_])) { // accept
-					terminal_eliminated = true;
-					tree_builder.assignToTree(out_tree);
-				} else { // report error
-					std::cerr << "Syntax error: unexpected token " << t.stringify() << " at position (" << dpl::log::streamer{ t.pos } << ")\n";
-				}
-
-			} while (!terminal_eliminated);
-		}
-
-	private:
+	protected:
 
 		bool hasGotoEntry(const int state, const typename symbol_type& t) {
 			return goto_table.contains(state) && goto_table[state].contains(t);
 		}
 
 		bool hasActionEntry(const int state, const Token& t) {
-			return action_table.contains(state) && action_table[state].contains(t);
+			return action_table.contains(state);
 		}
 
+		action_type& getActionEntry(const int state, const Token& t) {
+			return action_table[state][Token::Type::Unknown];
+		}
+
+
+	protected:
 
 		Tokenizer& input;
 		Grammar& grammar;
 		BottomUpTreeBuilder tree_builder;
 		ParseTree& out_tree;
-
-		using action_type = std::variant<std::monostate, int, std::pair<std::string_view, int>>;
 
 		std::unordered_map<int, std::map<symbol_type, int>> goto_table;
 		std::unordered_map<int, std::map<Token, action_type>> action_table;

@@ -148,6 +148,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\parser\LR.cpp" />
+    <ClCompile Include="src\Token.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Automata.h" />
@@ -156,6 +158,7 @@
     <ClInclude Include="src\Logger.h" />
     <ClInclude Include="src\LR0.h" />
     <ClInclude Include="src\LR1.h" />
+    <ClInclude Include="src\parser\LR.h" />
     <ClInclude Include="src\ParseTree.h" />
     <ClInclude Include="src\TextStream.h" />
     <ClInclude Include="src\Token.h" />
