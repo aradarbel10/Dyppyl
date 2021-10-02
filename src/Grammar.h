@@ -5,6 +5,8 @@
 #include <vector>
 #include <unordered_set>
 
+#include <boost/hana.hpp>
+
 #include "tokenizer/Token.h"
 
 namespace dpl {
