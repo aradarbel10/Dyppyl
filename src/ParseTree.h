@@ -116,6 +116,7 @@ namespace dpl {
 
 		void assignToTree(ParseTree& tree) {
 			// #TASK : confirm there is exactly one sub-tree when accessing this
+			if (sub_trees.empty()) return;
 			tree.children = std::move(sub_trees.front()->children);
 			tree.value = sub_trees.front()->value;
 		}
