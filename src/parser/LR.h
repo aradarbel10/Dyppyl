@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../Token.h"
+#include "../tokenizer//Token.h"
 #include "../Grammar.h"
 #include "../ParseTree.h"
-#include "../Tokenizer.h"
+#include "../tokenizer/Tokenizer.h"
 
 #include <stack>
 

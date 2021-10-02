@@ -9,14 +9,14 @@
 
 #include "Logger.h"
 
-#include "Token.h"
-#include "Tokenizer.h"
+#include "tokenizer/Token.h"
+#include "tokenizer/Tokenizer.h"
 #include "Grammar.h"
 //#include "LL1.h"
 #include "ParseTree.h"
 #include "TextStream.h"
 #include "parser/LR.h"
-#include "LR1.h"
+#include "parser/LR1.h"
 
 // search this solution for "#TASK" to find places where optimizations/refactoring/improvements may be worth implementing
 

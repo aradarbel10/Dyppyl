@@ -20,19 +20,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\Tokenizer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Token.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\Grammar.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Automata.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\LL1.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\Logger.h">
@@ -44,10 +32,22 @@
     <ClInclude Include="src\TextStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\LR1.h">
+    <ClInclude Include="src\parser\LR.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\parser\LR.h">
+    <ClInclude Include="src\tokenizer\Automata.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\tokenizer\Token.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\tokenizer\Tokenizer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\parser\LL1.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\parser\LR1.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -5,7 +5,7 @@
 #include <vector>
 #include <unordered_set>
 
-#include "Token.h"
+#include "tokenizer/Token.h"
 
 namespace dpl {
 

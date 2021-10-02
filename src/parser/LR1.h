@@ -10,11 +10,11 @@
 #include <list>
 #include <stack>
 
-#include "Token.h"
+#include "../tokenizer/Token.h"
 #include "Grammar.h"
-#include "Tokenizer.h"
+#include "../tokenizer/Tokenizer.h"
 #include "ParseTree.h"
-#include "parser/LR.h"
+#include "LR.h"
 
 namespace dpl {
 
