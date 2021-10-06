@@ -106,25 +106,3 @@ LL(1) Predictive Parser
 
 	final LL(1) alg:
 	- compute FIRST and FOLLOW for all nonterminals
-
-
-
-LR Automaton Construction [05, 162]
-LR(0) Algorithm [05, 257]
-LR(1) Automata Construction [05, 380]
-LR(1) Algorithm [05, 384]
-
-LR(1) automata: collection of states and transitions between them
-state: collection of tuples (production, pos in production, terminal)
-	call that tuple configuration
-closure: operation on configuration that produces a state
-action table:
-	indices: state, terminal
-	cells:
-		- reduce: production
-		- shift
-		- error: blank
-		- accept
-
-Lookahead Set definition [06, 166]
-Augmented Grammar construction [06, 197]
