@@ -44,14 +44,19 @@ namespace dpl {
 			std::string type_name(magic_enum::enum_name(type));
 			if (std::holds_alternative<std::monostate>(terminal_value)) return type_name;
 
-			if (type == Type::Symbol) {
+			switch (type) {
+			case Type::Symbol:
 				return std::string{ symbolByIndex(std::get<size_t>(terminal_value)) };
-			} else if (type == Type::Keyword) {
+				break;
+			case Type::Keyword:
 				return std::string{ keywordByIndex(std::get<size_t>(terminal_value)) };
-			} else if (type == Type::EndOfFile) {
+				break;
+			case Type::EndOfFile:
 				return "EOF";
-			} else {
+				break;
+			default:
 				return type_name;
+				break;
 			}
 		}
 
@@ -100,22 +105,24 @@ namespace dpl {
 
 		constexpr std::string stringify() const {
 			std::string type_name(magic_enum::enum_name(type));
-			if (std::holds_alternative<std::monostate>(value)) return type_name;
 
+			// #TASK : convert this to a switch
 			if (type == Type::Symbol) {
-				return std::string{ symbolByIndex(std::get<size_t>(terminal_value)) };
+				return std::string{symbolByIndex(std::get<size_t>(terminal_value))};
 			} else if (type == Type::Keyword) {
 				return std::string{ keywordByIndex(std::get<size_t>(terminal_value)) };
 			} else if (type == Type::Identifier) {
-				return std::get<std::string>(value);
+				return type_name + ": " + std::get<std::string>(value);
 			} else if (type == Type::EndOfFile) {
 				return "EOF";
 			} else {
 				// #TASK : don't print strings that are too long / span over multiple lines
-				if (const auto* str = std::get_if<std::string>(&value)) return type_name + " \"" + *str + '\"';
-				else if (const auto* dbl = std::get_if<long double>(&value)) return type_name + " " + std::to_string(*dbl);
+				if (const auto* str = std::get_if<std::string>(&value)) return type_name + ": \"" + *str + '\"';
+				else if (const auto* dbl = std::get_if<long double>(&value)) return type_name + ": " + std::to_string(*dbl);
 				else return type_name;
 			}
+
+			return type_name;
 		}
 
 		Token() = default;
