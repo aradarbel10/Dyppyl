@@ -5,38 +5,36 @@
 #include <vector>
 #include <unordered_set>
 
-#include <boost/hana.hpp>
-
 #include "tokenizer/Token.h"
 
 namespace dpl {
 
-	class ProductionRule : private std::vector<std::variant<Token, std::string_view>> {
+	class ProductionRule : private std::vector<std::variant<Terminal, std::string_view>> {
 	public:
 
-		using Atom = std::variant<Token, std::string_view>;
+		using symbol_type = value_type;
 
-		ProductionRule(std::initializer_list<Atom> l) : std::vector<Atom>(l) { }
+		constexpr ProductionRule(std::initializer_list<symbol_type> l) : std::vector<symbol_type>(l) { }
 
 		inline constexpr bool isEpsilonProd() const {
 			return empty();
 		}
 
-		using std::vector<Atom>::vector;
-		using std::vector<Atom>::size;
-		using std::vector<Atom>::empty;
-		using std::vector<Atom>::operator[];
-		using std::vector<Atom>::begin;
-		using std::vector<Atom>::end;
-		using std::vector<Atom>::rbegin;
-		using std::vector<Atom>::rend;
-		using std::vector<Atom>::push_back;
+		using std::vector<symbol_type>::vector;
+		using std::vector<symbol_type>::size;
+		using std::vector<symbol_type>::empty;
+		using std::vector<symbol_type>::operator[];
+		using std::vector<symbol_type>::begin;
+		using std::vector<symbol_type>::end;
+		using std::vector<symbol_type>::rbegin;
+		using std::vector<symbol_type>::rend;
+		using std::vector<symbol_type>::push_back;
 
 		friend std::ostream& operator<<(std::ostream& os, const ProductionRule& rule) {
 			if (rule.empty()) os << "epsilon";
-			else for (const auto& atom : rule) {
-				if (const auto* nonterminal = std::get_if<std::string_view>(&atom)) dpl::log::coloredStream(os, 0x0F, *nonterminal);
-				else if (const auto* tkn = std::get_if<Token>(&atom))
+			else for (const auto& sym : rule) {
+				if (const auto* nonterminal = std::get_if<std::string_view>(&sym)) dpl::log::coloredStream(os, 0x0F, *nonterminal);
+				else if (const auto* tkn = std::get_if<Terminal>(&sym))
 					dpl::log::coloredStream(os, 0x03, tkn->stringify());
 
 				os << " ";
@@ -92,8 +90,8 @@ namespace dpl {
 
 	public:
 
-		std::unordered_map<std::string_view, std::unordered_set<std::variant<std::monostate, Token>>> firsts;
-		std::unordered_map<std::string_view, std::unordered_set<Token>> follows;
+		std::unordered_map<std::string_view, std::unordered_set<std::variant<std::monostate, Terminal>>> firsts;
+		std::unordered_map<std::string_view, std::unordered_set<Terminal>> follows;
 
 		std::string start_symbol;
 
@@ -116,7 +114,7 @@ namespace dpl {
 				for (auto& rule : nt) {
 					if (rule.empty()) {
 						firsts[name].insert(std::monostate());
-					} else if (const Token* t = std::get_if<Token>(&rule[0])) {
+					} else if (const Terminal* t = std::get_if<Terminal>(&rule[0])) {
 						firsts[name].insert(*t);
 					}
 				}
@@ -148,7 +146,7 @@ namespace dpl {
 
 					for (int i = 0; i < rule.size() - 1; i++) {
 						if (const auto* n = std::get_if<std::string_view>(&rule[i])) {
-							if (const auto* t = std::get_if<Token>(&rule[i + 1])) {
+							if (const auto* t = std::get_if<Terminal>(&rule[i + 1])) {
 								follows[*n].insert(*t);
 							}
 						}
@@ -174,7 +172,7 @@ namespace dpl {
 								bool contains_epsilon = false;
 
 								std::for_each(first_of_rest.begin(), first_of_rest.end(), [&](const auto& e) {
-									if (std::holds_alternative<Token>(e)) follows[*v].insert(std::get<Token>(e));
+									if (std::holds_alternative<Terminal>(e)) follows[*v].insert(std::get<Terminal>(e));
 									else if (std::holds_alternative<std::monostate>(e)) contains_epsilon = true;
 								});
 
@@ -197,12 +195,12 @@ namespace dpl {
 
 		// TASK: require constant iterators
 		template<class InputIt> requires std::input_iterator<InputIt>
-		std::unordered_set<std::variant<std::monostate, Token>> first_star(InputIt first, InputIt last) {
+		std::unordered_set<std::variant<std::monostate, Terminal>> first_star(InputIt first, InputIt last) {
 			if (std::distance(first, last) == 0) {
 				return { std::monostate() };
 			}
 
-			if (const auto* v = std::get_if<Token>(&(*first))) {
+			if (const auto* v = std::get_if<Terminal>(&(*first))) {
 				return { *v };
 			}
 

@@ -119,12 +119,12 @@
 
 
 
-dpl::Token operator"" _kwd(const char* str, size_t) {
-	return { dpl::Token::Type::Keyword, dpl::Token::keywords[str] };
+dpl::Terminal operator"" _kwd(const char* str, size_t) {
+	return { dpl::Terminal::Type::Keyword, dpl::Terminal::keywords[str] };
 }
 
-dpl::Token operator"" _sym(const char* str, size_t) {
-	return { dpl::Token::Type::Symbol, dpl::Token::symbols[str] };
+dpl::Terminal operator"" _sym(const char* str, size_t) {
+	return { dpl::Terminal::Type::Symbol, dpl::Terminal::symbols[str] };
 }
 
 int main() {
@@ -150,7 +150,6 @@ int main() {
 	dpl::Token::symbols = symbols;
 
 	using Token = dpl::Token;
-
 
 	dpl::Grammar example_grammar{
 		{ "Stmts", {
@@ -270,16 +269,16 @@ END
 	//dpl::LL1 ll1_parser{ example_grammar, tree, tokenizer };
 	//ll1_parser.printParseTable();
 
-	dpl::LR1 lr0_parser{ PascalLikeGrammar, tree, tokenizer };
+	//dpl::LR1 lr0_parser{ PascalLikeGrammar, tree, tokenizer };
 	
-	//dpl::LR1 lr1_parser{ PascalLikeGrammar, tree, tokenizer };
+	dpl::LR1 lr1_parser{ PascalLikeGrammar, tree, tokenizer };
 	
 	
 
 
 	while (!src.closed()) {
 		dpl::Token tkn = tokenizer.fetchNext();
-		lr0_parser << tkn;
+		lr1_parser << tkn;
 	}
 	
 	std::cout << "\n\nGrammar:\n==============\n";

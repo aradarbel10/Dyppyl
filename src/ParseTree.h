@@ -14,11 +14,11 @@ namespace dpl {
 	class ParseTree {
 	public:
 
-		using Node = std::variant<Token, std::pair<std::string_view, int>, std::monostate>;
+		using node_type = std::variant<Token, std::pair<std::string_view, int>, std::monostate>;
 
 
 		ParseTree(Grammar& g_) : grammar(g_) { }
-		ParseTree(Grammar& g_, Node n_) : grammar(g_), value(n_) { }
+		ParseTree(Grammar& g_, node_type n_) : grammar(g_), value(n_) { }
 
 
 		bool operator<<(std::variant<Token, std::pair<std::string_view, int>> node) {
@@ -26,7 +26,7 @@ namespace dpl {
 				std::visit([&](const auto& v) { value.emplace(v); }, node);
 
 				if (auto* const pair_val = std::get_if<std::pair<std::string_view, int>>(&value.value())) {
-					const auto& rule = grammar[(*pair_val).first][(*pair_val).second];
+					const auto& rule = grammar[pair_val->first][pair_val->second];
 
 					if (rule.isEpsilonProd()) {
 						children.reserve(1);
@@ -67,7 +67,7 @@ namespace dpl {
 			std::cout << (isLast ? "'---" : "|---");
 
 			if (value.has_value()) {
-				if (const auto* nt = std::get_if<std::pair<std::string_view, int>>(&value.value())) std::cout << (*nt).first << "(" << (*nt).second << ")\n";
+				if (const auto* nt = std::get_if<std::pair<std::string_view, int>>(&value.value())) std::cout << nt->first << "(" << nt->second << ")\n";
 				else if (const auto* tkn = std::get_if<Token>(&value.value())) {
 					dpl::log::coloredStream(std::cout, 0x03, (*tkn).stringify());
 					std::cout << '\n';
@@ -86,7 +86,7 @@ namespace dpl {
 
 		Grammar& grammar;
 
-		std::optional<Node> value;
+		std::optional<node_type> value;
 		std::vector<std::unique_ptr<ParseTree>> children;
 
 		friend class BottomUpTreeBuilder;
@@ -99,11 +99,11 @@ namespace dpl {
 
 		BottomUpTreeBuilder(Grammar& g_) : grammar(g_) { };
 
-		void addSubTree(ParseTree::Node tree) {
+		void addSubTree(ParseTree::node_type tree) {
 			sub_trees.emplace_back(std::make_unique<ParseTree>(grammar, tree));
 		}
 
-		void packTree(ParseTree::Node tree, size_t n) {
+		void packTree(ParseTree::node_type tree, size_t n) {
 			std::unique_ptr<ParseTree> new_root{ std::make_unique<ParseTree>(grammar, tree) };
 			for (int i = 0; i < n; i++) {
 				new_root->children.emplace_back(std::move(sub_trees.back()));

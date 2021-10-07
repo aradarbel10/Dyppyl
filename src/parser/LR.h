@@ -4,6 +4,7 @@
 #include "../Grammar.h"
 #include "../ParseTree.h"
 #include "../tokenizer/Tokenizer.h"
+#include "Parser.h"
 
 #include <stack>
 
@@ -11,16 +12,22 @@ namespace dpl {
 
 
 	template<class AutomatonT>
-	class LR {
+	class LR : public Parser {
 	public:
 
 		using state_type = int;
 		using accept_action = std::monostate;
+		using terminal_type = Terminal;
+		using nonterminal_type = std::string_view;
 
 		using out_type = std::variant<Token, std::pair<std::string_view, int>>;
-		using symbol_type = std::variant<std::monostate, Token, std::string_view>;
+		using symbol_type = std::variant<std::monostate, terminal_type, nonterminal_type>;
 
 		using action_type = std::variant<accept_action, state_type, std::pair<std::string_view, int>>;
+
+		virtual std::string_view getParserName() override {
+			return "LR(1)";
+		}
 
 		LR(Grammar& g, ParseTree& pt, Tokenizer& inp) : input(inp), grammar(g), out_tree(pt), tree_builder(grammar) {
 			AutomatonT automaton{ grammar };
@@ -31,11 +38,11 @@ namespace dpl {
 
 				auto row = state.getActions(g);
 				for (const auto& [token, action] : row) {
-					if (!addActionEntry(i, token, action)) std::cerr << "Error: Duplicate Action Entries -- Non-LR(1) Grammar!\n";
+					if (!addActionEntry(i, token, action)) std::cerr << "Error: Duplicate Action Entries -- Non-" << getParserName() << " Grammar!\n";
 				}
 
 				for (const auto& [symbol, dest] : transes) {
-					if (!addGotoEntry(i, symbol, dest)) std::cerr << "Error: Duplicate Goto Entries -- Non-LR(1) Grammar!\n";
+					if (!addGotoEntry(i, symbol, dest)) std::cerr << "Error: Duplicate Goto Entries -- Non-" << getParserName() << " Grammar!\n";
 				}
 			}
 
@@ -44,7 +51,7 @@ namespace dpl {
 		}
 		
 		void operator<<(const Token& t) {
-			Token t_ = getTerminalType(t);
+			terminal_type t_ = t;
 
 			bool terminal_eliminated = false;
 			do {
@@ -95,7 +102,7 @@ namespace dpl {
 			return goto_table.contains(state) && goto_table[state].contains(t);
 		}
 
-		bool hasActionEntry(const int state, const Token& t) {
+		bool hasActionEntry(const int state, const terminal_type& t) {
 			return action_table.contains(state) && action_table[state].contains(t);
 		}
 
@@ -103,18 +110,18 @@ namespace dpl {
 			return goto_table[state][t];
 		}
 
-		action_type& getActionEntry(const int state, const Token& t) {
+		action_type& getActionEntry(const int state, const terminal_type& t) {
 			return action_table[state][t];
 		}
 
 		bool addGotoEntry(const int state, const symbol_type& t, state_type dest) {
-			size_t init_size = goto_table[state].size();
+			state_type init_size = goto_table[state].size();
 			goto_table[state][t] = dest;
 			return init_size != goto_table[state].size();
 		}
 
-		bool addActionEntry(const int state, const Token& t, action_type dest) {
-			size_t init_size = action_table[state].size();
+		bool addActionEntry(const int state, const terminal_type& t, action_type dest) {
+			state_type init_size = action_table[state].size();
 			action_table[state][t] = dest;
 			return init_size != action_table[state].size();
 		}
@@ -127,7 +134,7 @@ namespace dpl {
 		ParseTree& out_tree;
 
 		std::unordered_map<state_type, std::map<symbol_type, state_type>> goto_table;
-		std::unordered_map<state_type, std::map<Token, action_type>> action_table;
+		std::unordered_map<state_type, std::map<terminal_type, action_type>> action_table;
 
 		state_type initial_state = -1;
 		std::stack<state_type> parse_stack;
@@ -194,7 +201,11 @@ namespace dpl {
 	template<class ConfigT>
 	struct State : protected std::vector<ConfigT> {
 
+		// #TASK : rename this to config_type for consistency... then also actually use it
 		using config_t = ConfigT;
+
+		using terminal_type = Terminal;
+		using nonterminal_type = std::string_view;
 
 		void computeClosure(Grammar& g) {
 			size_t old_size;
@@ -225,7 +236,7 @@ namespace dpl {
 			return false;
 		}
 
-		State successor(std::variant<Token, std::string_view> symbol, Grammar& g) const {
+		State successor(std::variant<terminal_type, nonterminal_type> symbol, Grammar& g) const {
 			State result;
 
 			for (const ConfigT& config : *this) {
@@ -242,14 +253,14 @@ namespace dpl {
 			return result;
 		}
 
-		virtual std::map<Token, typename LR<void>::action_type> getActions(Grammar& g) const {
-			std::map<Token, typename LR<void>::action_type> result;
+		virtual std::map<typename LR<void>::terminal_type, typename LR<void>::action_type> getActions(Grammar& g) const {
+			std::map<typename LR<void>::terminal_type, typename LR<void>::action_type> result;
 
 			for (const ConfigT& config : *this) {
 				if (config == ConfigT::getStartConfig(g).toEnd(g))
-					result[Token::Type::Unknown] = std::monostate();
+					result[Terminal::Type::Unknown] = std::monostate{};
 				else if (config.atEnd(g))
-					result[Token::Type::Unknown] = config.production;
+					result[Terminal::Type::Unknown] = config.production;
 			}
 
 			return result;
@@ -281,8 +292,11 @@ namespace dpl {
 		}
 
 	public:
+		
+		using terminal_type = Terminal;
+		using nonterminal_type = std::string_view;
 
-		std::vector<std::pair<StateT, std::map<std::variant<std::monostate, Token, std::string_view>, int>>> states;
+		std::vector<std::pair<StateT, std::map<std::variant<std::monostate, terminal_type, nonterminal_type>, int>>> states;
 
 		LR0Automaton(Grammar& g) {
 			// augment grammar

@@ -13,15 +13,14 @@
 #include "../tokenizer/Token.h"
 #include "Grammar.h"
 #include "../tokenizer/Tokenizer.h"
-#include "ParseTree.h"
 #include "LR.h"
 
 namespace dpl {
 
 	struct LR1Configuration : public Configuration {
-		Token lookahead;
+		Terminal lookahead;
 
-		LR1Configuration(std::pair<std::string_view, int> prod_, int pos_, Token t_)
+		LR1Configuration(std::pair<std::string_view, int> prod_, int pos_, Terminal t_)
 			: Configuration(prod_, pos_), lookahead(t_) { }
 
 		friend bool operator==(const LR1Configuration& lhs, const LR1Configuration& rhs) {
@@ -29,7 +28,7 @@ namespace dpl {
 		}
 
 		static LR1Configuration getStartConfig(Grammar& g) {
-			return LR1Configuration{ {g.start_symbol, 0}, 0, Token::Type::EndOfFile };
+			return LR1Configuration{ {g.start_symbol, 0}, 0, Terminal::Type::EndOfFile };
 		}
 	};
 
@@ -49,7 +48,7 @@ namespace dpl {
 
 				for (const auto terminal : first_star_set) {
 					if (!std::holds_alternative<std::monostate>(terminal)) {
-						const LR1Configuration new_config = { { *nonterminal, i }, 0, std::get<Token>(terminal) };
+						const LR1Configuration new_config = { { *nonterminal, i }, 0, std::get<Terminal>(terminal) };
 						result.push_back(new_config);
 					}
 				}
@@ -67,8 +66,8 @@ namespace dpl {
 		LR1State(const State<LR1Configuration>& other) : State<LR1Configuration>(other) { };
 
 
-		virtual std::map<Token, typename LR<void>::action_type> getActions(Grammar& g) const override {
-			std::map<Token, typename LR<void>::action_type> result;
+		virtual std::map<typename LR<void>::terminal_type, typename LR<void>::action_type> getActions(Grammar& g) const override {
+			std::map<typename LR<void>::terminal_type, typename LR<void>::action_type> result;
 
 			for (const LR1Configuration& config : *this) {
 				if (config == LR1Configuration::getStartConfig(g).toEnd(g))

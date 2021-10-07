@@ -230,7 +230,7 @@ namespace dpl {
 				std::cerr << "Illegal token at character " << pos_in_file.first << " of line " << pos_in_file.second;
 
 			} else if (machine == 0) {
-				if (Token::keywords.contains(str)) {
+				if (Terminal::keywords.contains(str)) {
 					next_tkn = Token{ Token::Type::Keyword, Token::keywords[str] };
 				} else {
 					next_tkn = Token{ Token::Type::Identifier, std::string{ str } };

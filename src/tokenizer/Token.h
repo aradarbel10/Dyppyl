@@ -14,8 +14,14 @@
 
 namespace dpl {
 
-	struct Token {
-		static std::map<std::string_view, size_t> keywords, symbols;
+	struct Terminal {
+		inline static std::map<std::string_view, size_t> keywords, symbols;
+
+		using terminal_value_type = std::variant<std::monostate, size_t>;
+		enum class Type { Identifier, Number, String, Symbol, Keyword, Unknown, EndOfFile };
+
+		Type type = Type::Unknown;
+		terminal_value_type terminal_value = std::monostate{};
 
 		static std::string_view symbolByIndex(size_t index) {
 			for (const auto& [key, val] : symbols) {
@@ -30,22 +36,51 @@ namespace dpl {
 			}
 			return "";
 		}
+
+		constexpr auto operator<=>(const Terminal&) const = default;
+		constexpr bool operator==(const Terminal&) const = default;
+
+		constexpr std::string stringify() const {
+			std::string type_name(magic_enum::enum_name(type));
+			if (std::holds_alternative<std::monostate>(terminal_value)) return type_name;
+
+			if (type == Type::Symbol) {
+				return std::string{ symbolByIndex(std::get<size_t>(terminal_value)) };
+			} else if (type == Type::Keyword) {
+				return std::string{ keywordByIndex(std::get<size_t>(terminal_value)) };
+			} else if (type == Type::EndOfFile) {
+				return "EOF";
+			} else {
+				return type_name;
+			}
+		}
+
+		Terminal() = default;
+		Terminal(Type t) : type(t) { }
+		Terminal(Type t, terminal_value_type v) : type(t), terminal_value(v) { }
 		
+	};
 
 
-		enum class Type { Identifier, Number, String, Symbol, Keyword, Unknown, EndOfFile };
-		using value_type = std::variant<std::monostate, std::string, long double, size_t>;
 
-		Type type = Type::Unknown;
+	struct Token : public Terminal {
+
+		using Type = Terminal::Type;
+		using Terminal::type;
+		using Terminal::keywords;
+		using Terminal::symbols;
+
+		using value_type = std::variant<std::monostate, std::string, long double>;
+
 		value_type value;
 		std::pair<unsigned int, unsigned int> pos;
 
-		friend inline constexpr auto operator<=>(const Token& lhs, const Token& rhs) {
+		friend constexpr auto operator<=>(const Token& lhs, const Token& rhs) {
 			if (lhs.type == Type::Unknown || rhs.type == Type::Unknown) return std::partial_ordering::equivalent;
 			return std::tie(lhs.type, lhs.value, lhs.pos) <=> std::tie(rhs.type, rhs.value, rhs.pos);
 		}
 
-		friend inline constexpr bool operator==(const Token& lhs, const Token& rhs) {
+		friend constexpr bool operator==(const Token& lhs, const Token& rhs) {
 			if (lhs.type == Type::Unknown || rhs.type == Type::Unknown) return true;
 			if (lhs.type != rhs.type) return false;
 			if (std::holds_alternative<std::monostate>(lhs.value) || std::holds_alternative<std::monostate>(rhs.value)) {
@@ -68,33 +103,34 @@ namespace dpl {
 			if (std::holds_alternative<std::monostate>(value)) return type_name;
 
 			if (type == Type::Symbol) {
-				return std::string{ symbolByIndex(std::get<size_t>(value)) };
+				return std::string{ symbolByIndex(std::get<size_t>(terminal_value)) };
 			} else if (type == Type::Keyword) {
-				return std::string{ keywordByIndex(std::get<size_t>(value)) };
+				return std::string{ keywordByIndex(std::get<size_t>(terminal_value)) };
 			} else if (type == Type::Identifier) {
 				return std::get<std::string>(value);
 			} else if (type == Type::EndOfFile) {
 				return "EOF";
 			} else {
-
-				if (const auto* str = std::get_if<std::string>(&value)) return type_name + " " + *str;
+				// #TASK : don't print strings that are too long / span over multiple lines
+				if (const auto* str = std::get_if<std::string>(&value)) return type_name + " \"" + *str + '\"';
 				else if (const auto* dbl = std::get_if<long double>(&value)) return type_name + " " + std::to_string(*dbl);
 				else return type_name;
 			}
 		}
 
 		Token() = default;
-		Token(Type t) : type(t) { value = std::monostate(); }
-		Token(Type t, value_type v) : type(t), value(v) { }
+		Token(Type t) : Terminal(t) { value = std::monostate(); }
+		Token(Type t, value_type v) : Terminal(t), value(v) { }
+		Token(Type t, terminal_value_type v) : Terminal(t, v) { }
 	};
 
-	std::map<std::string_view, size_t> Token::keywords;
-	std::map<std::string_view, size_t> Token::symbols;
+	//std::map<std::string_view, size_t> Token::keywords;
+	//std::map<std::string_view, size_t> Token::symbols;
 
-	inline Token getTerminalType(const Token& tkn) {
-		if (const auto* val = std::get_if<size_t>(&tkn.value)) return Token{ tkn.type, *val };
-		else return tkn.type;
-	}
+	//inline Token getTerminalType(const Token& tkn) {
+	//	if (const auto* val = std::get_if<size_t>(&tkn.value)) return Token{ tkn.type, *val };
+	//	else return tkn.type;
+	//}
 }
 
 
@@ -105,6 +141,17 @@ namespace std {
 		std::size_t operator()(dpl::Token const& t) const noexcept {
 			size_t intermediate = std::hash<dpl::Token::Type>{}(t.type);
 			intermediate ^= std::hash<typename dpl::Token::value_type>{}(t.value)
+				+ 0x9e3779b9 + (intermediate << 6) + (intermediate >> 2);
+			return intermediate;
+		}
+	};
+
+	template<> class hash<dpl::Terminal> {
+	public:
+		//credit to boost::hash_combine
+		std::size_t operator()(dpl::Terminal const& t) const noexcept {
+			size_t intermediate = std::hash<dpl::Terminal::Type>{}(t.type);
+			intermediate ^= std::hash<typename dpl::Terminal::terminal_value_type>{}(t.terminal_value)
 				+ 0x9e3779b9 + (intermediate << 6) + (intermediate >> 2);
 			return intermediate;
 		}
