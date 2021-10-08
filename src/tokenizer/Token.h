@@ -130,14 +130,6 @@ namespace dpl {
 		Token(Type t, value_type v) : Terminal(t), value(v) { }
 		Token(Type t, terminal_value_type v) : Terminal(t, v) { }
 	};
-
-	//std::map<std::string_view, size_t> Token::keywords;
-	//std::map<std::string_view, size_t> Token::symbols;
-
-	//inline Token getTerminalType(const Token& tkn) {
-	//	if (const auto* val = std::get_if<size_t>(&tkn.value)) return Token{ tkn.type, *val };
-	//	else return tkn.type;
-	//}
 }
 
 

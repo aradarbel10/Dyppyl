@@ -45,11 +45,11 @@ namespace dpl {
 
 	};
 
-	class Nonterminal : private std::vector<ProductionRule> {
+	class NonterminalRules : private std::vector<ProductionRule> {
 	public:
 
-		Nonterminal() = default;
-		Nonterminal(std::string_view n, std::initializer_list<ProductionRule> l) : std::vector<ProductionRule>(l), name(n) { }
+		NonterminalRules() = default;
+		NonterminalRules(std::string_view n, std::initializer_list<ProductionRule> l) : std::vector<ProductionRule>(l), name(n) { }
 
 		using std::vector<ProductionRule>::size;
 		using std::vector<ProductionRule>::operator[];
@@ -58,7 +58,7 @@ namespace dpl {
 
 		std::string_view name;
 
-		friend std::ostream& operator<<(std::ostream& os, const Nonterminal& nt) {
+		friend std::ostream& operator<<(std::ostream& os, const NonterminalRules& nt) {
 			for (const auto& rule : nt) {
 				os << "    | " << rule << '\n';
 			}
@@ -67,10 +67,14 @@ namespace dpl {
 
 	};
 
-	class Grammar : std::unordered_map<std::string_view, Nonterminal> {
+	class Grammar : std::unordered_map<std::string_view, NonterminalRules> {
 	public:
 
-		Grammar(std::initializer_list<Nonterminal> l) : start_symbol((*l.begin()).name) {
+		using epsilon_type = std::monostate;
+		using terminal_type = Terminal;
+		using nonterminal_type = std::string_view;
+
+		Grammar(std::initializer_list<NonterminalRules> l) : start_symbol(l.begin()->name) {
 			std::for_each(l.begin(), l.end(), [&](const auto& e) {
 				(*this)[e.name] = e;
 			});
@@ -81,17 +85,17 @@ namespace dpl {
 			calcFollowSets();
 		}
 
-		using std::unordered_map <std::string_view, Nonterminal>::size;
-		using std::unordered_map <std::string_view, Nonterminal>::operator[];
-		using std::unordered_map <std::string_view, Nonterminal>::begin;
-		using std::unordered_map <std::string_view, Nonterminal>::end;
-		using std::unordered_map <std::string_view, Nonterminal>::contains;
+		using std::unordered_map<std::string_view, NonterminalRules>::size;
+		using std::unordered_map<std::string_view, NonterminalRules>::operator[];
+		using std::unordered_map<std::string_view, NonterminalRules>::begin;
+		using std::unordered_map<std::string_view, NonterminalRules>::end;
+		using std::unordered_map<std::string_view, NonterminalRules>::contains;
 
 
 	public:
 
-		std::unordered_map<std::string_view, std::unordered_set<std::variant<std::monostate, Terminal>>> firsts;
-		std::unordered_map<std::string_view, std::unordered_set<Terminal>> follows;
+		std::unordered_map<nonterminal_type, std::unordered_set<std::variant<epsilon_type, terminal_type>>> firsts;
+		std::unordered_map<nonterminal_type, std::unordered_set<terminal_type>> follows;
 
 		std::string start_symbol;
 
@@ -105,16 +109,17 @@ namespace dpl {
 			return os;
 		}
 
+
 	private:
 
 		void calcFirstSets() {
 			firsts.reserve(size());
-			for (auto& [name, nt] : (*this)) {
+			for (auto& [name, nt] : *this) {
 				firsts[name].reserve(nt.size());
 				for (auto& rule : nt) {
-					if (rule.empty()) {
-						firsts[name].insert(std::monostate());
-					} else if (const Terminal* t = std::get_if<Terminal>(&rule[0])) {
+					if (rule.isEpsilonProd()) {
+						firsts[name].insert(epsilon_type{});
+					} else if (const terminal_type* t = std::get_if<terminal_type>(&rule[0])) {
 						firsts[name].insert(*t);
 					}
 				}
@@ -145,8 +150,8 @@ namespace dpl {
 					if (rule.empty()) continue;
 
 					for (int i = 0; i < rule.size() - 1; i++) {
-						if (const auto* n = std::get_if<std::string_view>(&rule[i])) {
-							if (const auto* t = std::get_if<Terminal>(&rule[i + 1])) {
+						if (const auto* n = std::get_if<nonterminal_type>(&rule[i])) {
+							if (const auto* t = std::get_if<terminal_type>(&rule[i + 1])) {
 								follows[*n].insert(*t);
 							}
 						}
@@ -154,7 +159,7 @@ namespace dpl {
 				}
 			}
 
-			follows[start_symbol].insert(Token::Type::EndOfFile);
+			follows[start_symbol].insert(Terminal::Type::EndOfFile);
 
 			bool changed;
 			do {
@@ -162,18 +167,18 @@ namespace dpl {
 
 				for (auto& [name, nt] : (*this)) {
 					for (auto& rule : nt) {
-						if (rule.empty()) continue;
+						if (rule.isEpsilonProd()) continue;
 
 						for (int i = 0; i < rule.size() - 1; i++) {
-							if (const auto* v = std::get_if<std::string_view>(&rule[i])) {
+							if (const auto* v = std::get_if<nonterminal_type>(&rule[i])) {
 								auto size_before = follows[*v].size();
 
 								const auto first_of_rest = first_star(std::next(rule.begin(), i + 1), rule.end());
 								bool contains_epsilon = false;
 
 								std::for_each(first_of_rest.begin(), first_of_rest.end(), [&](const auto& e) {
-									if (std::holds_alternative<Terminal>(e)) follows[*v].insert(std::get<Terminal>(e));
-									else if (std::holds_alternative<std::monostate>(e)) contains_epsilon = true;
+									if (std::holds_alternative<terminal_type>(e)) follows[*v].insert(std::get<terminal_type>(e));
+									else if (std::holds_alternative<epsilon_type>(e)) contains_epsilon = true;
 								});
 
 								if (contains_epsilon) {
@@ -193,32 +198,30 @@ namespace dpl {
 
 	public:
 
-		// TASK: require constant iterators
+		// #TASK: require constant iterators
 		template<class InputIt> requires std::input_iterator<InputIt>
 		std::unordered_set<std::variant<std::monostate, Terminal>> first_star(InputIt first, InputIt last) {
 			if (std::distance(first, last) == 0) {
-				return { std::monostate() };
+				return { epsilon_type{} };
 			}
 
-			if (const auto* v = std::get_if<Terminal>(&(*first))) {
+			if (const auto* v = std::get_if<terminal_type>(&*first)) {
 				return { *v };
 			}
 
-			if (const auto* v = std::get_if<std::string_view>(&(*first))) {
+			if (const auto* v = std::get_if<nonterminal_type>(&*first)) {
 				auto result = firsts[*v];
 
-				if (firsts[*v].contains(std::monostate())) {
-					result.erase(std::monostate());
+				if (firsts[*v].contains(epsilon_type{})) {
+					result.erase(epsilon_type{});
 					auto rest = first_star(std::next(first), last);
 
 					std::for_each(rest.begin(), rest.end(), [&](const auto& e) {
 						result.insert(e);
 					});
-
-					return result;
-				} else {
-					return result;
 				}
+
+				return result;
 			}
 		}
 
