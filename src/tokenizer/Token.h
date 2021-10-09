@@ -37,8 +37,15 @@ namespace dpl {
 			return "";
 		}
 
-		constexpr auto operator<=>(const Terminal&) const = default;
-		constexpr bool operator==(const Terminal&) const = default;
+		constexpr friend auto operator<=>(const Terminal& lhs, const Terminal& rhs) {
+			if (lhs == rhs) return std::strong_ordering::equal;
+			else return std::tie(lhs.type, lhs.terminal_value) <=> std::tie(rhs.type, rhs.terminal_value);
+		}
+
+		constexpr friend bool operator==(const Terminal& lhs, const Terminal& rhs) {
+			if (lhs.type == Type::Unknown || rhs.type == Type::Unknown) return true;
+			else return lhs.type == rhs.type && lhs.terminal_value == rhs.terminal_value;
+		}
 
 		constexpr std::string stringify() const {
 			std::string type_name(magic_enum::enum_name(type));

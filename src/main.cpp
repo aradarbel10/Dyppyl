@@ -248,41 +248,36 @@ int main() {
 	//dpl::StringStream src{ "while zero 0 do { 1 -> x; ++x; }" };
 	//dpl::FileStream src{ "snippets/example.lang" };
 	//dpl::FileStream src{ "snippets/short.lang" };
-	//dpl::StringStream src{ "Int + ( Int + Int )" };
-	dpl::StringStream src{
-R"raw(
-PROGRAM DEMO1
-BEGIN
-	A := 3;
-	B := A;
-	BABOON := GIRAFFE;
-	TEXT := "Hello, World!";
-END
-)raw"
-	};
+	//dpl::StringStream src{ "Int + ( Int + Int ; ) ;" };
+	dpl::StringStream src{ "Int + ( Int + Int )" };
+//	dpl::StringStream src{
+//R"raw(
+//PROGRAM DEMO1
+//BEGIN
+//	A := 3;
+//	B := A;
+//	BABOON := GIRAFFE;
+//	TEXT := "Hello, World!";
+//END
+//)raw"
+//	};
 	//dpl::StringStream src{ "PROGRAM MyProg BEGIN + + + + + + END" };
 
 	dpl::Tokenizer tokenizer{ src };
-
-	dpl::ParseTree tree{ PascalLikeGrammar };
-
-	//dpl::LL1 ll1_parser{ example_grammar, tree, tokenizer };
-	//ll1_parser.printParseTable();
-
-	//dpl::LR1 lr0_parser{ PascalLikeGrammar, tree, tokenizer };
+	dpl::ParseTree tree{ non_lr0 };
 	
-	dpl::LR1 lr1_parser{ PascalLikeGrammar, tree, tokenizer };
-	
+	dpl::LR1 parser{ non_lr0, tree, tokenizer };
+	//parser.printParseTable();
 	
 
 
 	while (!src.closed()) {
 		dpl::Token tkn = tokenizer.fetchNext();
-		lr1_parser << tkn;
+		parser << tkn;
 	}
 	
 	std::cout << "\n\nGrammar:\n==============\n";
-	std::cout << PascalLikeGrammar << "\n";
+	std::cout << non_lr0 << "\n";
 
 	std::cout << "Input String:\n=============\n" << src.str << "\n";
 	std::cout << tree;

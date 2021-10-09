@@ -201,8 +201,7 @@ namespace dpl {
 	template<class ConfigT>
 	struct State : protected std::vector<ConfigT> {
 
-		// #TASK : rename this to config_type for consistency... then also actually use it
-		using config_t = ConfigT;
+		using config_type = ConfigT;
 
 		using terminal_type = Terminal;
 		using nonterminal_type = std::string_view;
@@ -214,12 +213,12 @@ namespace dpl {
 
 				// iterate through all configurations in state
 				for (int i = 0; i < size(); i++) {
-					const ConfigT& config = (*this)[i];
+					const config_type& config = (*this)[i];
 					const ProductionRule& rule = g[config.production.first][config.production.second];
 
 					const auto new_configs = computeConfigClosure(g, config);
 					
-					for (const ConfigT& new_config : new_configs) {
+					for (const config_type& new_config : new_configs) {
 						if (!contains(new_config)) {
 							push_back(new_config);
 						}
@@ -229,8 +228,8 @@ namespace dpl {
 			} while (size() != old_size);
 		}
 
-		bool contains(const ConfigT& cfg) const {
-			for (const ConfigT& config : *this) {
+		bool contains(const config_type& cfg) const {
+			for (const config_type& config : *this) {
 				if (config == cfg) return true;
 			}
 			return false;
@@ -239,11 +238,11 @@ namespace dpl {
 		State successor(std::variant<terminal_type, nonterminal_type> symbol, Grammar& g) const {
 			State result;
 
-			for (const ConfigT& config : *this) {
+			for (const config_type& config : *this) {
 				if (config.atEnd(g)) continue;
 
 				if (config.dot(g) == symbol) {
-					ConfigT next_config = config;
+					config_type next_config = config;
 					next_config.next();
 					result.push_back(next_config);
 				}
@@ -256,8 +255,8 @@ namespace dpl {
 		virtual std::map<typename LR<void>::terminal_type, typename LR<void>::action_type> getActions(Grammar& g) const {
 			std::map<typename LR<void>::terminal_type, typename LR<void>::action_type> result;
 
-			for (const ConfigT& config : *this) {
-				if (config == ConfigT::getStartConfig(g).toEnd(g))
+			for (const config_type& config : *this) {
+				if (config == config_type::getStartConfig(g).toEnd(g))
 					result[Terminal::Type::Unknown] = std::monostate{};
 				else if (config.atEnd(g))
 					result[Terminal::Type::Unknown] = config.production;
@@ -284,7 +283,7 @@ namespace dpl {
 			for (int i = 0; i < states.size(); i++) {
 				if (states[i].first.size() != other.size()) continue;
 
-				if (std::all_of(states[i].first.begin(), states[i].first.end(), [&other](const StateT::config_t& config) {
+				if (std::all_of(states[i].first.begin(), states[i].first.end(), [&other](const StateT::config_type& config) {
 					return other.contains(config);
 				})) return i;
 			}
@@ -295,8 +294,11 @@ namespace dpl {
 		
 		using terminal_type = Terminal;
 		using nonterminal_type = std::string_view;
+		using state_type = StateT;
+		using symbol_type = std::variant<std::monostate, terminal_type, nonterminal_type>;
+		using whole_state_type = std::pair<state_type, std::map<symbol_type, int>>;
 
-		std::vector<std::pair<StateT, std::map<std::variant<std::monostate, terminal_type, nonterminal_type>, int>>> states;
+		std::vector<whole_state_type> states;
 
 		LR0Automaton(Grammar& g) {
 			// augment grammar
@@ -313,21 +315,26 @@ namespace dpl {
 
 			// construct initial state
 			StateT start_state;
-			start_state.push_back(StateT::config_t::getStartConfig(g));
+			start_state.push_back(StateT::config_type::getStartConfig(g));
 			states.push_back({ start_state, {} });
 			states.back().first.computeClosure(g);
 
 			// add all states and transitions based on alg:
 			// #TASK : detect errors (shift/shift and shift/reduce) at automaton-construction
+			std::queue<int> chore_queue;
+			chore_queue.push(0);
+
 			size_t old_size = 0;
 			do {
 				old_size = states.size();
 
 				// #TASK : iterate more efficiently through stack (linaer time instead of polynomial!), probably by keeping a chore queue
-				for (int i = 0; i < states.size(); i++) {
-					auto& [state, transes] = states[i];
-					for (size_t j = 0; j < state.size(); j++) {
-						const StateT::config_t& config = state[j];
+				//for (int i = 0; i < states.size(); i++) {
+				while(!chore_queue.empty()) { int i = chore_queue.front();
+
+					for (size_t j = 0; j < states[i].first.size(); j++) {
+						auto& [state, transes] = states[i];
+						const StateT::config_type& config = states[i].first[j];
 
 						if (config.atEnd(g)) continue;
 
@@ -343,10 +350,13 @@ namespace dpl {
 
 							if (dest == -1) {
 								states.push_back({ succ, {} });
-								dest = states.size() - 1;
+								//dest = states.size() - 1;
+								chore_queue.push(states.size() - 1);
 							}
 						}
 					}
+
+					chore_queue.pop();
 				}
 			} while (states.size() != old_size);
 		}
