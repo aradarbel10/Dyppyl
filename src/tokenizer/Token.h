@@ -10,7 +10,7 @@
 
 #include <iostream>
 #include "magic_enum/magic_enum.hpp"
-#include "Logger.h"
+#include "../Logger.h"
 
 namespace dpl {
 
@@ -139,6 +139,13 @@ namespace dpl {
 	};
 }
 
+dpl::Terminal operator"" _kwd(const char* str, size_t) {
+	return { dpl::Terminal::Type::Keyword, dpl::Terminal::keywords[str] };
+}
+
+dpl::Terminal operator"" _sym(const char* str, size_t) {
+	return { dpl::Terminal::Type::Symbol, dpl::Terminal::symbols[str] };
+}
 
 namespace std {
 	template<> class hash<dpl::Token> {

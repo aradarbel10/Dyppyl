@@ -24,7 +24,6 @@
 // #TASK : find better way to handle exceptions
 // #TASK : ensure constexpr-ness of whatever's possible
 // #TASK : write tests
-// #TASK : separate code to header/cpp files
 
 #define SYMBOLS_MACRO \
 	X(LeftParen, "(") \
@@ -114,19 +113,6 @@
 	Y(BEGIN) \
 	Y(END) \
 
-
-
-
-
-
-dpl::Terminal operator"" _kwd(const char* str, size_t) {
-	return { dpl::Terminal::Type::Keyword, dpl::Terminal::keywords[str] };
-}
-
-dpl::Terminal operator"" _sym(const char* str, size_t) {
-	return { dpl::Terminal::Type::Symbol, dpl::Terminal::symbols[str] };
-}
-
 int main() {
 
 	#define X(name, symbol) name,
@@ -164,7 +150,7 @@ int main() {
 			{ "Term", "->"_sym, dpl::Token::Type::Identifier },
 			{ "zero"_kwd, "Term" },
 			{ "not"_kwd, "Expr"},
-			{ "++"_sym, dpl::Token::Type::Identifier},
+			{ "++"_sym, dpl::Token::Type::Identifier },
 			{ "--"_sym, dpl::Token::Type::Identifier }
 		}},
 		{ "Stmt", {
