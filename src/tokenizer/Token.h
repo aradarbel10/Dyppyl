@@ -58,9 +58,6 @@ namespace dpl {
 			case Type::Keyword:
 				return std::string{ keywordByIndex(std::get<size_t>(terminal_value)) };
 				break;
-			case Type::EndOfFile:
-				return "EOF";
-				break;
 			default:
 				return type_name;
 				break;
@@ -115,21 +112,19 @@ namespace dpl {
 
 			// #TASK : convert this to a switch
 			if (type == Type::Symbol) {
-				return std::string{symbolByIndex(std::get<size_t>(terminal_value))};
+				return "[" + std::string{symbolByIndex(std::get<size_t>(terminal_value))} + ", " + type_name + "]"; // "[+, Symbol]"
 			} else if (type == Type::Keyword) {
-				return std::string{ keywordByIndex(std::get<size_t>(terminal_value)) };
+				return "[" + std::string{ keywordByIndex(std::get<size_t>(terminal_value)) } + ", " + type_name + "]"; // "[bool, Keyword]"
 			} else if (type == Type::Identifier) {
-				return type_name + ": " + std::get<std::string>(value);
-			} else if (type == Type::EndOfFile) {
-				return "EOF";
+				return "[" + std::get<std::string>(value) + ", " + type_name + "]"; // "[myVar, Identifier]"
 			} else {
 				// #TASK : don't print strings that are too long / span over multiple lines
-				if (const auto* str = std::get_if<std::string>(&value)) return type_name + ": \"" + *str + '\"';
-				else if (const auto* dbl = std::get_if<long double>(&value)) return type_name + ": " + std::to_string(*dbl);
-				else return type_name;
+				if (const auto* str = std::get_if<std::string>(&value))
+					return "[\"" + *str + "\", " + type_name + "]"; // "["heya", String]"
+				else if (const auto* dbl = std::get_if<long double>(&value))
+					return "[" + std::to_string(*dbl) + ", " + type_name + "]"; // "[3.14, Number]"
+				else return "[" + type_name + "]"; // "[Unknown]" || "[EndOfFile]"
 			}
-
-			return type_name;
 		}
 
 		Token() = default;
