@@ -1,7 +1,5 @@
 #include "pch.h"
 
-#include "../src/tokenizer/Token.h"
-
 TEST(TokenTests, Terminal) {
 	dpl::Terminal::keywords = { {"int", 0}, {"float", 1}, {"bool", 2} };
 	dpl::Terminal::symbols = { {"+", 0}, {"-", 1}, {"*", 2}, {"/", 3} };
