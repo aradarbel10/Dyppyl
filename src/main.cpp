@@ -12,7 +12,7 @@
 #include "tokenizer/Token.h"
 #include "tokenizer/Tokenizer.h"
 #include "Grammar.h"
-//#include "LL1.h"
+#include "parser/LL1.h"
 #include "ParseTree.h"
 #include "TextStream.h"
 #include "parser/LR.h"
@@ -164,6 +164,26 @@ int main() {
 		}}
 	};
 
+	dpl::Grammar precedence_grammar{
+		{ "E", {
+			{ "T", "E'" }
+		}},
+		{ "E'", {
+			{ "+"_sym, "T", "E'" },
+			{ }
+		}},
+		{ "T", {
+			{ "F", "T'" }
+		}},
+		{ "T'", {
+			{ "*"_sym, "F", "T'" },
+			{ }
+		}},
+		{ "F", {
+			{ dpl::Token::Type::Identifier },
+			{ "("_sym, "E", ")"_sym }
+		}}
+	};
 
 	dpl::Grammar non_ll1{
 		{ "E" , {
@@ -235,7 +255,9 @@ int main() {
 	//dpl::FileStream src{ "snippets/example.lang" };
 	//dpl::FileStream src{ "snippets/short.lang" };
 	//dpl::StringStream src{ "Int + ( Int + Int ; ) ;" };
-	dpl::StringStream src{ "Int + ( Int + Int )" };
+	//dpl::StringStream src{ "Int + ( Int + Int )" };
+	//dpl::StringStream src{ "var1 * var2 * ( var3 * var4 ) + var5 * ( var6 + (var7 + var8) ) + var9 * var10 + var11" };
+	dpl::StringStream src{ "var1 + var2" };
 //	dpl::StringStream src{
 //R"raw(
 //PROGRAM DEMO1
@@ -250,9 +272,9 @@ int main() {
 	//dpl::StringStream src{ "PROGRAM MyProg BEGIN + + + + + + END" };
 
 	dpl::Tokenizer tokenizer{ src };
-	dpl::ParseTree tree{ non_lr0 };
+	dpl::ParseTree tree{ precedence_grammar };
 	
-	dpl::LR1 parser{ non_lr0, tree, tokenizer };
+	dpl::LL1 parser{ precedence_grammar, tree, tokenizer };
 	//parser.printParseTable();
 	
 
@@ -263,7 +285,7 @@ int main() {
 	}
 	
 	std::cout << "\n\nGrammar:\n==============\n";
-	std::cout << non_lr0 << "\n";
+	std::cout << precedence_grammar << "\n";
 
 	std::cout << "Input String:\n=============\n" << src.str << "\n";
 	std::cout << tree;
