@@ -32,12 +32,18 @@ namespace dpl {
 
 		friend std::ostream& operator<<(std::ostream& os, const ProductionRule& rule) {
 			if (rule.empty()) os << "epsilon";
-			else for (const auto& sym : rule) {
-				if (const auto* nonterminal = std::get_if<std::string_view>(&sym)) dpl::log::coloredStream(os, 0x0F, *nonterminal);
-				else if (const auto* tkn = std::get_if<Terminal>(&sym))
-					dpl::log::coloredStream(os, 0x03, tkn->stringify());
+			else {
+				for (auto i = rule.begin(); i != rule.end(); i++) {
+					const auto& sym = *i;
 
-				os << " ";
+					if (i != rule.begin()) {
+						os << " ";
+					}
+
+					if (const auto* nonterminal = std::get_if<std::string_view>(&sym)) dpl::log::coloredStream(os, 0x0F, *nonterminal);
+					else if (const auto* tkn = std::get_if<Terminal>(&sym))
+						dpl::log::coloredStream(os, 0x03, tkn->stringify());
+				}
 			}
 
 			return os;
@@ -110,7 +116,7 @@ namespace dpl {
 		}
 
 
-	private:
+	public:
 
 		void calcFirstSets() {
 			firsts.reserve(size());

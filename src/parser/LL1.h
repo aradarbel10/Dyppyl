@@ -19,19 +19,8 @@ namespace dpl{
 		using nonterminal_type = std::string_view;
 
 		using out_type = std::variant<Token, std::pair<std::string_view, int>>;
-		using symbol_type = std::variant<std::monostate, terminal_type>;		
-
-		LL1(Grammar& g, ParseTree& pt, Tokenizer& inp) : input(inp), grammar(g), out_tree(pt) {
-			grammar.initialize();
-
-			try {
-				generateParseTable();
-				parse_stack.push_back(Token::Type::EndOfFile);
-				parse_stack.push_back(grammar.start_symbol);
-			} catch (const std::invalid_argument& err) {
-				std::cerr << "LL(1) parser can't parse non-LL(1) grammar!\n";
-			}
-		}
+		using symbol_type = std::variant<std::monostate, terminal_type>;	
+		using table_type = std::unordered_map<symbol_type, std::unordered_map<nonterminal_type, int>>;
 
 		out_type fetchNext() {
 			next_node_ready = false;
@@ -100,9 +89,9 @@ namespace dpl{
 			//std::cout << "\n\n";
 		}
 
-	private:
+		const auto& generateParseTable() {
+			table.clear();
 
-		void generateParseTable() {
 			for (auto& [name, nt] : grammar) {
 				for (int i = 0; i < nt.size(); i++) {
 					auto& rule = nt[i];
@@ -125,6 +114,8 @@ namespace dpl{
 					}
 				}
 			}
+
+			return table;
 		}
 
 		bool hasEntry(const terminal_type& tkn, nonterminal_type nontr) {
@@ -136,6 +127,18 @@ namespace dpl{
 			table[tkn][name] = i;
 		}
 
+		LL1(Grammar& g, ParseTree& pt, Tokenizer& inp) : input(inp), grammar(g), out_tree(pt) {
+			grammar.initialize();
+
+			try {
+				generateParseTable();
+				parse_stack.push_back(Token::Type::EndOfFile);
+				parse_stack.push_back(grammar.start_symbol);
+			} catch (const std::invalid_argument& err) {
+				std::cerr << "LL(1) parser can't parse non-LL(1) grammar!\n";
+			}
+		}
+
 	private:
 
 		Tokenizer& input;
@@ -144,7 +147,7 @@ namespace dpl{
 
 		Grammar& grammar;
 
-		std::unordered_map<symbol_type, std::unordered_map<nonterminal_type, int>> table;
+		table_type table;
 
 		// #TASK : use list for debug, stack for release
 		std::list<std::variant<terminal_type, nonterminal_type>> parse_stack;

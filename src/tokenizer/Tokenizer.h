@@ -2,7 +2,7 @@
 
 #include "Automata.h"
 #include "Token.h"
-#include "TextStream.h"
+#include "../TextStream.h"
 
 #include <utility>
 #include <variant>
