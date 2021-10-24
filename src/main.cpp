@@ -272,9 +272,9 @@ int main() {
 	//dpl::StringStream src{ "PROGRAM MyProg BEGIN + + + + + + END" };
 
 	dpl::Tokenizer tokenizer{ src };
-	dpl::ParseTree tree{ precedence_grammar };
+	dpl::ParseTree tree{ };
 	
-	dpl::LL1 parser{ precedence_grammar, tree, tokenizer };
+	dpl::LL1 parser{ precedence_grammar, tokenizer };
 	//parser.printParseTable();
 	
 

@@ -17,37 +17,8 @@ namespace dpl {
 		using node_type = std::variant<Token, std::pair<std::string_view, int>, std::monostate>;
 
 
-		ParseTree(Grammar& g_) : grammar(g_) { }
-		ParseTree(Grammar& g_, node_type n_) : grammar(g_), value(n_) { }
-
-
-		bool operator<<(std::variant<Token, std::pair<std::string_view, int>> node) {
-			if (!value.has_value()) {
-				std::visit([&](const auto& v) { value.emplace(v); }, node);
-
-				if (auto* const pair_val = std::get_if<std::pair<std::string_view, int>>(&value.value())) {
-					const auto& rule = grammar[pair_val->first][pair_val->second];
-
-					if (rule.isEpsilonProd()) {
-						children.reserve(1);
-						children.push_back(std::make_unique<ParseTree>(grammar, std::monostate()));
-					} else {
-						children.reserve(rule.size());
-						for (int i = 0; i < children.capacity(); i++) {
-							children.push_back(std::make_unique<ParseTree>(grammar));
-						}
-					}
-				}
-				
-				return true;
-			}
-
-			for (auto& child : children) {
-				if (*child << node) return true;
-			}
-
-			return false;
-		}
+		ParseTree() {};
+		ParseTree(node_type n_) : value(n_) { }
 
 		friend std::ostream& operator<<(std::ostream& os, const ParseTree& tree) {
 			os << "\n\nParse Tree:\n===============\n";
@@ -83,13 +54,14 @@ namespace dpl {
 		}
 
 	private:
-
-		Grammar& grammar;
+		
+		//Grammar& grammar;
 
 		std::optional<node_type> value;
 		std::vector<std::unique_ptr<ParseTree>> children;
 
 		friend class BottomUpTreeBuilder;
+		friend class TopDownTreeBuilder;
 		
 	};
 
@@ -100,11 +72,11 @@ namespace dpl {
 		BottomUpTreeBuilder(Grammar& g_) : grammar(g_) { };
 
 		void addSubTree(ParseTree::node_type tree) {
-			sub_trees.emplace_back(std::make_unique<ParseTree>(grammar, tree));
+			sub_trees.emplace_back(std::make_unique<ParseTree>(tree));
 		}
 
 		void packTree(ParseTree::node_type tree, size_t n) {
-			std::unique_ptr<ParseTree> new_root{ std::make_unique<ParseTree>(grammar, tree) };
+			std::unique_ptr<ParseTree> new_root{ std::make_unique<ParseTree>(tree) };
 			for (int i = 0; i < n; i++) {
 				new_root->children.emplace_back(std::move(sub_trees.back()));
 				sub_trees.pop_back();
@@ -115,8 +87,7 @@ namespace dpl {
 		}
 
 		void assignToTree(ParseTree& tree) {
-			// #TASK : confirm there is exactly one sub-tree when accessing this
-			if (sub_trees.empty()) return;
+			if (sub_trees.size() != 1) return;
 			tree.children = std::move(sub_trees.front()->children);
 			tree.value = sub_trees.front()->value;
 		}
@@ -124,6 +95,57 @@ namespace dpl {
 	private:
 
 		std::vector<std::unique_ptr<ParseTree>> sub_trees;
+		Grammar& grammar;
+
+	};
+
+
+	class TopDownTreeBuilder {
+	public:
+
+		TopDownTreeBuilder(Grammar& g) : grammar(g) {
+
+		}
+
+		void pushNode(std::variant<Token, std::pair<std::string_view, int>> node) {
+			pushNode(node, inner_tree);
+		}
+
+		bool pushNode(std::variant<Token, std::pair<std::string_view, int>> node, ParseTree& tree) {
+			if (!tree.value.has_value()) {
+				std::visit([&](const auto& v) { tree.value.emplace(v); }, node);
+
+				if (auto* const pair_val = std::get_if<std::pair<std::string_view, int>>(&tree.value.value())) {
+					const auto& rule = grammar[pair_val->first][pair_val->second];
+
+					if (rule.isEpsilonProd()) {
+						tree.children.reserve(1);
+						tree.children.push_back(std::move(std::make_unique<ParseTree>(std::monostate{})));
+					} else {
+						tree.children.reserve(rule.size());
+						for (int i = 0; i < tree.children.capacity(); i++) {
+							tree.children.push_back(std::move(std::make_unique<ParseTree>()));
+						}
+					}
+				}
+
+				return true;
+			}
+
+			for (auto& child : tree.children) {
+				if (pushNode(node, *child)) return true;
+			}
+
+			return false;
+		}
+
+		void assignToTree(ParseTree& tree) {
+			tree = std::move(inner_tree);
+		}
+
+	private:
+
+		ParseTree inner_tree;
 		Grammar& grammar;
 
 	};

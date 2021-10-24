@@ -45,7 +45,7 @@ namespace dpl{
 
 						std::cout << "Production out: (" << nontr << ", " << table[t][nontr] << ")\n";
 						auto pair = std::make_pair(nontr, table[t][nontr]);
-						//tree_builder.pushNode(pair);
+						tree_builder.pushNode(pair);
 
 						parse_stack.pop_back();
 
@@ -67,12 +67,20 @@ namespace dpl{
 					if (*tr == t) {
 
 						std::cout << "Token out: " << t.stringify() << '\n';
-						//tree_builder.pushNode(t_);
+						tree_builder.pushNode(t_);
 						parse_stack.pop_back();
 
 						terminal_eliminated = true;
 
-						if (parse_stack.empty()) return;
+						if (parse_stack.empty()) {
+							std::cout << "end of parsing\n";
+
+							ParseTree out;
+							tree_builder.assignToTree(out);
+							std::cout << out;
+
+							return;
+						}
 					} else {
 						std::cerr << "Syntax error: unexpected token " << t_ << " at position (" << dpl::log::streamer{ t_.pos } << ")\n";
 						return;
@@ -131,7 +139,7 @@ namespace dpl{
 			table[tkn][name] = i;
 		}
 
-		LL1(Grammar& g, ParseTree& pt, Tokenizer& inp) : input(inp), grammar(g)/*, tree_builder(g)*/ {
+		LL1(Grammar& g, Tokenizer& inp) : input(inp), grammar(g), tree_builder(g) {
 			grammar.initialize();
 
 			try {
@@ -157,7 +165,6 @@ namespace dpl{
 		std::list<std::variant<terminal_type, nonterminal_type>> parse_stack;
 
 		// #TASK : use tree builder in LL1
-		//ParseTree& out_tree;
-		//TopDownTreeBuilder tree_builder;
+		TopDownTreeBuilder tree_builder;
 	};
 }

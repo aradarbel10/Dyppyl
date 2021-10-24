@@ -4,6 +4,7 @@
 #include "../src/Grammar.h"
 #include "../src/parser/LL1.h"
 #include "../src/TextStream.h"
+#include "../src/tokenizer/Tokenizer.h"
 
 TEST(TokenTests, Terminal) {
 	dpl::Terminal::keywords = { {"int", 0}, {"float", 1}, {"bool", 2} };
@@ -143,10 +144,10 @@ TEST(GrammarTests, Production) {
 //}
 
 struct parser_reqs {
-	parser_reqs(dpl::Grammar& g) : src(""), tree(g), tokenizer(src) {}
+	parser_reqs(dpl::Grammar& g) : src(""), tokenizer(src) {}
 
 	dpl::StringStream src;
-	dpl::ParseTree tree;
+	//dpl::ParseTree tree;
 	dpl::Tokenizer tokenizer;
 };
 
@@ -166,7 +167,7 @@ TEST(LL1Tests, SmallGrammar) {
 	};
 
 	parser_reqs prs{ grammar };
-	dpl::LL1 parser(grammar, prs.tree, prs.tokenizer);
+	dpl::LL1 parser(grammar, prs.tokenizer);
 
 	// LL(1) parse table generation
 	const auto& table = parser.generateParseTable();
@@ -182,10 +183,13 @@ TEST(LL1Tests, SmallGrammar) {
 
 
 	// LL(1) parsing
-	//prs.src.setString("(int + (int * int))");
-	//while (!prs.src.closed()) {
-	//	parser << prs.tokenizer.fetchNext();
-	//}
+	prs.src.setString("(int + (int * int))");
+	while (!prs.src.closed()) {
+		parser << prs.tokenizer.fetchNext();
+	}
+	
+	dpl::ParseTree out_tree;
+
 }
 
 // examples to use for testing
