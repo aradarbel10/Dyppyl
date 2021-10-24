@@ -32,16 +32,20 @@ namespace dpl{
 			return next_node;
 		}
 
-		void operator<<(const Token& t) {
+		void operator<<(const Token& t_) {
+			const terminal_type t = t_;
+
 			bool terminal_eliminated = false;
 			do {
-				if (const auto* nontr = std::get_if<nonterminal_type>(&parse_stack.back())) {
-					if (hasEntry(t, *nontr)) {
+				if (std::holds_alternative<nonterminal_type>(parse_stack.back())) {
+					const auto nontr = std::get<nonterminal_type>(parse_stack.back());
+					if (hasEntry(t, nontr)) {
 
-						auto& rule = grammar[*nontr][table[t][*nontr]];
+						auto& rule = grammar[nontr][table[t][nontr]];
 
-						std::cout << "Production out: (" << *nontr << ", " << table[t][*nontr] << ")\n";
-						out_tree << std::make_pair(*nontr, table[t][*nontr]);
+						std::cout << "Production out: (" << nontr << ", " << table[t][nontr] << ")\n";
+						auto pair = std::make_pair(nontr, table[t][nontr]);
+						//tree_builder.pushNode(pair);
 
 						parse_stack.pop_back();
 
@@ -54,7 +58,7 @@ namespace dpl{
 						});
 
 					} else {
-						std::cerr << "Syntax error: unexpected token " << t << " at position (" << dpl::log::streamer{ t.pos } << ")\n";
+						std::cerr << "Syntax error: unexpected token " << t_ << " at position (" << dpl::log::streamer{ t_.pos } << ")\n";
 						return;
 					}
 				}
@@ -63,14 +67,14 @@ namespace dpl{
 					if (*tr == t) {
 
 						std::cout << "Token out: " << t.stringify() << '\n';
-						out_tree << t;
+						//tree_builder.pushNode(t_);
 						parse_stack.pop_back();
 
 						terminal_eliminated = true;
 
 						if (parse_stack.empty()) return;
 					} else {
-						std::cerr << "Syntax error: unexpected token " << t << " at position (" << dpl::log::streamer{ t.pos } << ")\n";
+						std::cerr << "Syntax error: unexpected token " << t_ << " at position (" << dpl::log::streamer{ t_.pos } << ")\n";
 						return;
 					}
 				}
@@ -127,12 +131,12 @@ namespace dpl{
 			table[tkn][name] = i;
 		}
 
-		LL1(Grammar& g, ParseTree& pt, Tokenizer& inp) : input(inp), grammar(g), out_tree(pt) {
+		LL1(Grammar& g, ParseTree& pt, Tokenizer& inp) : input(inp), grammar(g)/*, tree_builder(g)*/ {
 			grammar.initialize();
 
 			try {
 				generateParseTable();
-				parse_stack.push_back(Token::Type::EndOfFile);
+				parse_stack.push_back(Terminal::Type::EndOfFile);
 				parse_stack.push_back(grammar.start_symbol);
 			} catch (const std::invalid_argument& err) {
 				std::cerr << "LL(1) parser can't parse non-LL(1) grammar!\n";
@@ -153,6 +157,7 @@ namespace dpl{
 		std::list<std::variant<terminal_type, nonterminal_type>> parse_stack;
 
 		// #TASK : use tree builder in LL1
-		ParseTree& out_tree;
+		//ParseTree& out_tree;
+		//TopDownTreeBuilder tree_builder;
 	};
 }

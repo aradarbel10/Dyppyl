@@ -143,7 +143,7 @@ TEST(GrammarTests, Production) {
 //}
 
 struct parser_reqs {
-	parser_reqs(dpl::Grammar g) : src(""), tree(g), tokenizer(src) {}
+	parser_reqs(dpl::Grammar& g) : src(""), tree(g), tokenizer(src) {}
 
 	dpl::StringStream src;
 	dpl::ParseTree tree;
@@ -171,15 +171,21 @@ TEST(LL1Tests, SmallGrammar) {
 	// LL(1) parse table generation
 	const auto& table = parser.generateParseTable();
 	
-	dpl::LL1::table_type expected{
+	dpl::LL1::table_type expected_table {
 		{ "int"_kwd, {{ "E" , 0 }}},
 		{ "("_sym, {{ "E", 1 }}},
 		{ "+"_sym, {{ "Op", 0 }}},
 		{ "*"_sym, {{ "Op", 1 }}}
 	};
 
-	EXPECT_EQ(table, expected);
+	EXPECT_EQ(table, expected_table);
 
+
+	// LL(1) parsing
+	//prs.src.setString("(int + (int * int))");
+	//while (!prs.src.closed()) {
+	//	parser << prs.tokenizer.fetchNext();
+	//}
 }
 
 // examples to use for testing

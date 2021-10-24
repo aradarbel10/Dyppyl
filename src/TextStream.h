@@ -30,7 +30,16 @@ namespace dpl{
 			return pos > str.length() + 1;
 		}
 
-	//private:
+		void setString(std::string_view str_) {
+			str = str_;
+			pos = 0;
+		}
+
+		std::string_view getString() const {
+			return str;
+		}
+
+	private:
 
 		std::string_view str;
 		size_t pos = 0;

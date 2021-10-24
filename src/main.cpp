@@ -287,7 +287,7 @@ int main() {
 	std::cout << "\n\nGrammar:\n==============\n";
 	std::cout << precedence_grammar << "\n";
 
-	std::cout << "Input String:\n=============\n" << src.str << "\n";
+	std::cout << "Input String:\n=============\n" << src.getString() << "\n";
 	std::cout << tree;
 	DplLogPrintTelemetry();
 
