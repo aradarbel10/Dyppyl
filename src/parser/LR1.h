@@ -20,7 +20,7 @@ namespace dpl {
 	struct LR1Configuration : public Configuration {
 		Terminal lookahead;
 
-		LR1Configuration(std::pair<std::string_view, int> prod_, int pos_, Terminal t_)
+		LR1Configuration(RuleRef prod_, int pos_, Terminal t_)
 			: Configuration(prod_, pos_), lookahead(t_) { }
 
 		friend bool operator==(const LR1Configuration& lhs, const LR1Configuration& rhs) {
@@ -28,7 +28,7 @@ namespace dpl {
 		}
 
 		static LR1Configuration getStartConfig(Grammar& g) {
-			return LR1Configuration{ {g.start_symbol, 0}, 0, Terminal::Type::EndOfFile };
+			return LR1Configuration{ {g, g.start_symbol, 0}, 0, Terminal::Type::EndOfFile };
 		}
 	};
 
@@ -39,7 +39,7 @@ namespace dpl {
 		auto symbol = config.dot(g);
 		if (const auto* nonterminal = std::get_if<std::string_view>(&symbol)) {
 			std::vector<LR1Configuration> result;
-			const ProductionRule& rule = g[config.production.first][config.production.second];
+			const ProductionRule& rule = g[config.production.name][config.production.prod];
 
 			for (int i = 0; i < g[*nonterminal].size(); i++) {
 				ProductionRule rule_for_first(std::next(rule.begin(), config.pos + 1), rule.end());
@@ -48,7 +48,7 @@ namespace dpl {
 
 				for (const auto terminal : first_star_set) {
 					if (!std::holds_alternative<std::monostate>(terminal)) {
-						const LR1Configuration new_config = { { *nonterminal, i }, 0, std::get<Terminal>(terminal) };
+						const LR1Configuration new_config = { { g, *nonterminal, i }, 0, std::get<Terminal>(terminal) };
 						result.push_back(new_config);
 					}
 				}

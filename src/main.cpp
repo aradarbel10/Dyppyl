@@ -274,7 +274,7 @@ int main() {
 	dpl::Tokenizer tokenizer{ src };
 	dpl::ParseTree tree{ };
 	
-	dpl::LL1 parser{ precedence_grammar, tokenizer };
+	dpl::LR1 parser{ precedence_grammar, tokenizer };
 	//parser.printParseTable();
 	
 

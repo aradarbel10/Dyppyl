@@ -19,7 +19,7 @@ namespace dpl{
 		using terminal_type = Terminal;
 		using nonterminal_type = std::string_view;
 
-		using out_type = std::variant<Token, std::pair<std::string_view, int>>;
+		using out_type = std::variant<Token, RuleRef>;
 		using symbol_type = std::variant<std::monostate, terminal_type>;	
 		using table_type = std::unordered_map<symbol_type, std::unordered_map<nonterminal_type, int>>;
 
@@ -45,8 +45,7 @@ namespace dpl{
 						auto& rule = grammar[nontr][table[t][nontr]];
 
 						std::cout << "Production out: (" << nontr << ", " << table[t][nontr] << ")\n";
-						auto pair = std::make_pair(nontr, table[t][nontr]);
-						this->tree_builder().pushNode(pair);
+						this->tree_builder().pushNode(RuleRef{ grammar, nontr, table[t][nontr] });
 
 						parse_stack.pop();
 

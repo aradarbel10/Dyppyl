@@ -232,4 +232,24 @@ namespace dpl {
 		}
 
 	};
+
+
+	struct RuleRef {
+	public:
+
+		RuleRef(Grammar& g, std::string_view n, int p) : grammar(&g), name(n), prod(p) { }
+
+		Grammar* grammar;
+		std::string_view name;
+		int prod;
+
+		const auto& getRule() const {
+			return (*grammar)[name][prod];
+		}
+
+		friend bool operator==(const RuleRef& lhs, const RuleRef& rhs) {
+			return (lhs.name == rhs.name) && (lhs.prod == rhs.prod);
+		}
+
+	};
 }

@@ -21,12 +21,12 @@ namespace dpl {
 		using terminal_type = Terminal;
 		using nonterminal_type = std::string_view;
 
-		using out_type = std::variant<Token, std::pair<std::string_view, int>>;
+		using out_type = std::variant<Token, RuleRef>;
 		using symbol_type = std::variant<std::monostate, terminal_type, nonterminal_type>;
 
-		using action_type = std::variant<accept_action, state_type, std::pair<std::string_view, int>>;
+		using action_type = std::variant<accept_action, state_type, RuleRef>;
 
-		LR(Grammar& g, Tokenizer& inp) : Parser(g, inp) {
+		LR(Grammar& g, Tokenizer& inp) : Parser(g, inp), tb(g) {
 			AutomatonT automaton{ grammar };
 
 			// generate parse tables
@@ -35,11 +35,12 @@ namespace dpl {
 
 				auto row = state.getActions(g);
 				for (const auto& [token, action] : row) {
-					if (!addActionEntry(i, token, action)) std::cerr << "Error: Duplicate Action Entries -- Non-" << getParserName<decltype(*this)> << " Grammar!\n";
+					// #TASK : get these error messages to work
+					if (!addActionEntry(i, token, action)) std::cerr << "Error: Duplicate Action Entries -- Non-" << /*getParserName<decltype(*this)> <<*/ " Grammar!\n";
 				}
 
 				for (const auto& [symbol, dest] : transes) {
-					if (!addGotoEntry(i, symbol, dest)) std::cerr << "Error: Duplicate Goto Entries -- Non-" << getParserName<decltype(*this)> << " Grammar!\n";
+					if (!addGotoEntry(i, symbol, dest)) std::cerr << "Error: Duplicate Goto Entries -- Non-" << /*getParserName<decltype(*this)> <<*/ " Grammar!\n";
 				}
 			}
 
@@ -67,17 +68,17 @@ namespace dpl {
 
 					std::cout << "Shift: " << t.stringify() << ", goto " << new_state << '\n';
 					tree_builder().pushNode(t);
-				} else if (const auto* prod = std::get_if<std::pair<std::string_view, int>>(&getActionEntry(parse_stack.top(), t_))) { // reduce action
-					const ProductionRule& rule = grammar[(*prod).first][(*prod).second];
+				} else if (const auto* prod = std::get_if<RuleRef>(&getActionEntry(parse_stack.top(), t_))) { // reduce action
+					const ProductionRule& rule = prod->getRule();
 
 					for (int i = 0; i < rule.size(); i++) parse_stack.pop();
 
-					if (!hasGotoEntry(parse_stack.top(), (*prod).first)) {
+					if (!hasGotoEntry(parse_stack.top(), prod->name)) {
 						std::cerr << "Syntax error: unexptected token " << t.stringify() << " at position (" << dpl::log::streamer{ t.pos } << ")\n";
 						return;
 					}
 
-					state_type new_state = getGotoEntry(parse_stack.top(), prod->first);
+					state_type new_state = getGotoEntry(parse_stack.top(), prod->name);
 					parse_stack.push(new_state);
 
 					std::cout << "Reduce: " << rule << ", goto " << new_state << '\n';
@@ -143,16 +144,16 @@ namespace dpl {
 	};
 
 	struct Configuration {
-		std::pair<std::string_view, int> production;
+		RuleRef production;
 		int pos = 0;
 
-		Configuration(std::pair<std::string_view, int> prod_, int pos_)
+		Configuration(RuleRef prod_, int pos_)
 			: production(prod_), pos(pos_) { }
 
 		bool operator==(const Configuration&) const = default;
 
 		auto dot(Grammar& g) const {
-			return g[production.first][production.second][pos];
+			return production.getRule()[pos];
 		}
 
 		void next() {
@@ -160,16 +161,16 @@ namespace dpl {
 		}
 
 		bool atEnd(Grammar& g) const {
-			return g[production.first][production.second].size() == pos;
+			return production.getRule().size() == pos;
 		}
 
 		static auto getStartConfig(Grammar& g) {
-			return Configuration{ {g.start_symbol, 0}, 0 };
+			return Configuration{ {g, g.start_symbol, 0}, 0 };
 		}
 
 		auto toEnd(Grammar& g) {
 			auto result = *this;
-			result.pos = g[production.first][production.second].size();
+			result.pos = production.getRule().size();
 			return result;
 		}
 
@@ -190,7 +191,7 @@ namespace dpl {
 			size_t prods_amount = g[*nonterminal].size();
 			result.reserve(prods_amount);
 			for (int i = 0; i < prods_amount; i++) {
-				result.push_back({ { *nonterminal, i }, 0 });
+				result.push_back({ { g, *nonterminal, i }, 0 });
 			}
 
 			return result;
@@ -215,7 +216,7 @@ namespace dpl {
 				// iterate through all configurations in state
 				for (int i = 0; i < size(); i++) {
 					const config_type& config = (*this)[i];
-					const ProductionRule& rule = g[config.production.first][config.production.second];
+					const ProductionRule& rule = config.production.getRule();
 
 					const auto new_configs = computeConfigClosure(g, config);
 					

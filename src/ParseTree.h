@@ -14,7 +14,7 @@ namespace dpl {
 	class ParseTree {
 	public:
 
-		using node_type = std::variant<Token, std::pair<std::string_view, int>, std::monostate>;
+		using node_type = std::variant<Token, RuleRef, std::monostate>;
 
 
 		ParseTree() {};
@@ -38,7 +38,7 @@ namespace dpl {
 			std::cout << (isLast ? "'---" : "|---");
 
 			if (value.has_value()) {
-				if (const auto* nt = std::get_if<std::pair<std::string_view, int>>(&value.value())) std::cout << nt->first << "(" << nt->second << ")\n";
+				if (const auto* nt = std::get_if<RuleRef>(&value.value())) std::cout << nt->name << "(" << nt->prod << ")\n";
 				else if (const auto* tkn = std::get_if<Token>(&value.value())) {
 					dpl::log::coloredStream(std::cout, 0x03, (*tkn).stringify());
 					std::cout << '\n';
@@ -98,8 +98,8 @@ namespace dpl {
 		}
 
 		void pushNode(ParseTree::node_type node) override {
-			if (const auto* prod = std::get_if<std::pair<std::string_view, int>>(&node)) {
-				packTree(node, grammar[prod->first][prod->second].size());
+			if (const auto* prod = std::get_if<RuleRef>(&node)) {
+				packTree(node, prod->getRule().size());
 			} else if (std::holds_alternative<Token>(node)) {
 				addSubTree(node);
 			}
@@ -131,8 +131,8 @@ namespace dpl {
 			if (!tree.value.has_value()) {
 				std::visit([&](const auto& v) { tree.value.emplace(v); }, node);
 
-				if (auto* const pair_val = std::get_if<std::pair<std::string_view, int>>(&tree.value.value())) {
-					const auto& rule = grammar[pair_val->first][pair_val->second];
+				if (auto* const prod = std::get_if<RuleRef>(&tree.value.value())) {
+					const auto& rule = prod->getRule();
 
 					if (rule.isEpsilonProd()) {
 						tree.children.reserve(1);
