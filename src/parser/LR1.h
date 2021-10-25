@@ -84,4 +84,7 @@ namespace dpl {
 
 	typedef LR<LR0Automaton<LR1State>> LR1;
 
+	template<>
+	const char* getParserName<LR1> = "LR(1)";
+
 }

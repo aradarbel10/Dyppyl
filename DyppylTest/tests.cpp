@@ -188,7 +188,6 @@ TEST(LL1Tests, SmallGrammar) {
 		parser << prs.tokenizer.fetchNext();
 	}
 	
-	dpl::ParseTree out_tree;
 
 }
 

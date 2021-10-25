@@ -11,6 +11,7 @@
 namespace dpl {
 
 
+
 	template<class AutomatonT>
 	class LR : public Parser {
 	public:
@@ -25,11 +26,7 @@ namespace dpl {
 
 		using action_type = std::variant<accept_action, state_type, std::pair<std::string_view, int>>;
 
-		virtual std::string_view getParserName() override {
-			return "LR(1)";
-		}
-
-		LR(Grammar& g, ParseTree& pt, Tokenizer& inp) : input(inp), grammar(g), out_tree(pt), tree_builder(grammar) {
+		LR(Grammar& g, Tokenizer& inp) : Parser(g, inp) {
 			AutomatonT automaton{ grammar };
 
 			// generate parse tables
@@ -38,11 +35,11 @@ namespace dpl {
 
 				auto row = state.getActions(g);
 				for (const auto& [token, action] : row) {
-					if (!addActionEntry(i, token, action)) std::cerr << "Error: Duplicate Action Entries -- Non-" << getParserName() << " Grammar!\n";
+					if (!addActionEntry(i, token, action)) std::cerr << "Error: Duplicate Action Entries -- Non-" << getParserName<decltype(*this)> << " Grammar!\n";
 				}
 
 				for (const auto& [symbol, dest] : transes) {
-					if (!addGotoEntry(i, symbol, dest)) std::cerr << "Error: Duplicate Goto Entries -- Non-" << getParserName() << " Grammar!\n";
+					if (!addGotoEntry(i, symbol, dest)) std::cerr << "Error: Duplicate Goto Entries -- Non-" << getParserName<decltype(*this)> << " Grammar!\n";
 				}
 			}
 
@@ -69,7 +66,7 @@ namespace dpl {
 					terminal_eliminated = true;
 
 					std::cout << "Shift: " << t.stringify() << ", goto " << new_state << '\n';
-					tree_builder.addSubTree(t);
+					tree_builder().pushNode(t);
 				} else if (const auto* prod = std::get_if<std::pair<std::string_view, int>>(&getActionEntry(parse_stack.top(), t_))) { // reduce action
 					const ProductionRule& rule = grammar[(*prod).first][(*prod).second];
 
@@ -84,10 +81,14 @@ namespace dpl {
 					parse_stack.push(new_state);
 
 					std::cout << "Reduce: " << rule << ", goto " << new_state << '\n';
-					tree_builder.packTree(*prod, rule.size());
+					tree_builder().pushNode(*prod);
 				} else if (std::holds_alternative<std::monostate>(getActionEntry(parse_stack.top(), t_))) { // accept
 					terminal_eliminated = true;
-					tree_builder.assignToTree(out_tree);
+
+					ParseTree out;
+					tree_builder().assignToTree(out);
+					std::cout << out;
+
 				} else { // report error
 					std::cerr << "Syntax error: unexpected token " << t.stringify() << " at position (" << dpl::log::streamer{ t.pos } << ")\n";
 				}
@@ -128,10 +129,10 @@ namespace dpl {
 
 	protected:
 
-		Tokenizer& input;
-		Grammar& grammar;
-		BottomUpTreeBuilder tree_builder;
-		ParseTree& out_tree;
+		BottomUpTreeBuilder tb;
+		TreeBuilder& tree_builder() {
+			return tb;
+		}
 
 		std::unordered_map<state_type, std::map<symbol_type, state_type>> goto_table;
 		std::unordered_map<state_type, std::map<terminal_type, action_type>> action_table;
@@ -329,7 +330,6 @@ namespace dpl {
 				old_size = states.size();
 
 				// #TASK : iterate more efficiently through stack (linaer time instead of polynomial!), probably by keeping a chore queue
-				//for (int i = 0; i < states.size(); i++) {
 				while(!chore_queue.empty()) { int i = chore_queue.front();
 
 					for (size_t j = 0; j < states[i].first.size(); j++) {
@@ -350,7 +350,6 @@ namespace dpl {
 
 							if (dest == -1) {
 								states.push_back({ succ, {} });
-								//dest = states.size() - 1;
 								chore_queue.push(states.size() - 1);
 							}
 						}
@@ -365,4 +364,7 @@ namespace dpl {
 
 
 	typedef LR<LR0Automaton<State<Configuration>>> LR0;
+
+	template<>
+	const char* getParserName<LR0> = "LR(0)";
 }

@@ -4,6 +4,7 @@
 #include "../tokenizer/Token.h"
 #include "../ParseTree.h"
 #include "../tokenizer/Tokenizer.h"
+#include "Parser.h"
 
 #include <unordered_map>
 #include <algorithm>
@@ -11,7 +12,7 @@
 #include <stack>
 
 namespace dpl{
-	class LL1 {
+	class LL1 : public Parser {
 	public:
 
 		using accept_action = std::monostate;
@@ -37,23 +38,23 @@ namespace dpl{
 
 			bool terminal_eliminated = false;
 			do {
-				if (std::holds_alternative<nonterminal_type>(parse_stack.back())) {
-					const auto nontr = std::get<nonterminal_type>(parse_stack.back());
+				if (std::holds_alternative<nonterminal_type>(parse_stack.top())) {
+					const auto nontr = std::get<nonterminal_type>(parse_stack.top());
 					if (hasEntry(t, nontr)) {
 
 						auto& rule = grammar[nontr][table[t][nontr]];
 
 						std::cout << "Production out: (" << nontr << ", " << table[t][nontr] << ")\n";
 						auto pair = std::make_pair(nontr, table[t][nontr]);
-						tree_builder.pushNode(pair);
+						this->tree_builder().pushNode(pair);
 
-						parse_stack.pop_back();
+						parse_stack.pop();
 
 						std::for_each(rule.rbegin(), rule.rend(), [&](const auto& e) {
 							if (const auto* v = std::get_if<terminal_type>(&e)) {
-								parse_stack.push_back(*v);
+								parse_stack.push(*v);
 							} else if (const auto* v = std::get_if<nonterminal_type>(&e)) {
-								parse_stack.push_back(*v);
+								parse_stack.push(*v);
 							}
 						});
 
@@ -63,12 +64,12 @@ namespace dpl{
 					}
 				}
 
-				if (const auto* tr = std::get_if<terminal_type>(&parse_stack.back())) {
+				if (const auto* tr = std::get_if<terminal_type>(&parse_stack.top())) {
 					if (*tr == t) {
 
 						std::cout << "Token out: " << t.stringify() << '\n';
-						tree_builder.pushNode(t_);
-						parse_stack.pop_back();
+						this->tree_builder().pushNode(t_);
+						parse_stack.pop();
 
 						terminal_eliminated = true;
 
@@ -76,7 +77,7 @@ namespace dpl{
 							std::cout << "end of parsing\n";
 
 							ParseTree out;
-							tree_builder.assignToTree(out);
+							this->tree_builder().assignToTree(out);
 							std::cout << out;
 
 							return;
@@ -139,32 +140,33 @@ namespace dpl{
 			table[tkn][name] = i;
 		}
 
-		LL1(Grammar& g, Tokenizer& inp) : input(inp), grammar(g), tree_builder(g) {
+		LL1(Grammar& g, Tokenizer& inp) : Parser(g, inp), tb(g) {
 			grammar.initialize();
 
 			try {
 				generateParseTable();
-				parse_stack.push_back(Terminal::Type::EndOfFile);
-				parse_stack.push_back(grammar.start_symbol);
+				parse_stack.push(Terminal::Type::EndOfFile);
+				parse_stack.push(grammar.start_symbol);
 			} catch (const std::invalid_argument& err) {
-				std::cerr << "LL(1) parser can't parse non-LL(1) grammar!\n";
+				std::cerr << "LL(1) parser can't accept non-LL(1) grammar!\n";
 			}
 		}
 
 	private:
 
-		Tokenizer& input;
+		TopDownTreeBuilder tb;
+		TreeBuilder& tree_builder() {
+			return tb;
+		}
+		
 		out_type next_node;
 		bool next_node_ready = false;
 
-		Grammar& grammar;
-
 		table_type table;
 
-		// #TASK : use list for debug, stack for release
-		std::list<std::variant<terminal_type, nonterminal_type>> parse_stack;
-
-		// #TASK : use tree builder in LL1
-		TopDownTreeBuilder tree_builder;
+		std::stack<std::variant<terminal_type, nonterminal_type>> parse_stack;
 	};
+
+	template<>
+	const char* getParserName<LL1> = "LL(1)";
 }

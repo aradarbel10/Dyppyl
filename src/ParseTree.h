@@ -54,8 +54,6 @@ namespace dpl {
 		}
 
 	private:
-		
-		//Grammar& grammar;
 
 		std::optional<node_type> value;
 		std::vector<std::unique_ptr<ParseTree>> children;
@@ -66,10 +64,23 @@ namespace dpl {
 	};
 
 	
-	class BottomUpTreeBuilder {
+	class TreeBuilder {
 	public:
 
-		BottomUpTreeBuilder(Grammar& g_) : grammar(g_) { };
+		TreeBuilder(Grammar& g_) : grammar(g_) { };
+		virtual void pushNode(ParseTree::node_type) = 0;
+		virtual void assignToTree(ParseTree&) = 0;
+
+	protected:
+
+		Grammar& grammar;
+
+	};
+
+	class BottomUpTreeBuilder : public TreeBuilder {
+	public:
+
+		BottomUpTreeBuilder(Grammar& g_) : TreeBuilder(g_) { };
 
 		void addSubTree(ParseTree::node_type tree) {
 			sub_trees.emplace_back(std::make_unique<ParseTree>(tree));
@@ -86,7 +97,15 @@ namespace dpl {
 			sub_trees.emplace_back(std::move(new_root));
 		}
 
-		void assignToTree(ParseTree& tree) {
+		void pushNode(ParseTree::node_type node) override {
+			if (const auto* prod = std::get_if<std::pair<std::string_view, int>>(&node)) {
+				packTree(node, grammar[prod->first][prod->second].size());
+			} else if (std::holds_alternative<Token>(node)) {
+				addSubTree(node);
+			}
+		}
+
+		void assignToTree(ParseTree& tree) override {
 			if (sub_trees.size() != 1) return;
 			tree.children = std::move(sub_trees.front()->children);
 			tree.value = sub_trees.front()->value;
@@ -95,23 +114,20 @@ namespace dpl {
 	private:
 
 		std::vector<std::unique_ptr<ParseTree>> sub_trees;
-		Grammar& grammar;
 
 	};
 
 
-	class TopDownTreeBuilder {
+	class TopDownTreeBuilder : public TreeBuilder {
 	public:
 
-		TopDownTreeBuilder(Grammar& g) : grammar(g) {
+		TopDownTreeBuilder(Grammar& g) : TreeBuilder(g) { }
 
-		}
-
-		void pushNode(std::variant<Token, std::pair<std::string_view, int>> node) {
+		void pushNode(ParseTree::node_type node) override {
 			pushNode(node, inner_tree);
 		}
 
-		bool pushNode(std::variant<Token, std::pair<std::string_view, int>> node, ParseTree& tree) {
+		bool pushNode(ParseTree::node_type node, ParseTree& tree) {
 			if (!tree.value.has_value()) {
 				std::visit([&](const auto& v) { tree.value.emplace(v); }, node);
 
@@ -139,14 +155,13 @@ namespace dpl {
 			return false;
 		}
 
-		void assignToTree(ParseTree& tree) {
+		void assignToTree(ParseTree& tree) override {
 			tree = std::move(inner_tree);
 		}
 
 	private:
 
 		ParseTree inner_tree;
-		Grammar& grammar;
 
 	};
 
