@@ -75,9 +75,7 @@ namespace dpl{
 						if (parse_stack.empty()) {
 							std::cout << "end of parsing\n";
 
-							ParseTree out;
-							this->tree_builder().assignToTree(out);
-							std::cout << out;
+							this->tree_builder().assignToTree(out_tree);
 
 							return;
 						}

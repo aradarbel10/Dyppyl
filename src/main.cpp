@@ -18,6 +18,8 @@
 #include "parser/LR.h"
 #include "parser/LR1.h"
 
+using namespace dpl::literals;
+
 // search this solution for "#TASK" to find places where optimizations/refactoring/improvements may be worth implementing
 
 // #TASK : wrap up tokenizer, parser, tree-gen in a separate "front end" object

@@ -8,6 +8,7 @@
 #include <array>
 #include <variant>
 #include <optional>
+#include <span>
 
 namespace dpl {
 
@@ -17,8 +18,12 @@ namespace dpl {
 		using node_type = std::variant<Token, RuleRef, std::monostate>;
 
 
-		ParseTree() {};
+		ParseTree() { }
+		ParseTree(Terminal n_) : value(static_cast<Token>(n_)) { }
 		ParseTree(node_type n_) : value(n_) { }
+		ParseTree(node_type n_, std::vector<ParseTree> cs) : value(n_) {
+			children = std::move(cs);
+		}
 
 		friend std::ostream& operator<<(std::ostream& os, const ParseTree& tree) {
 			os << "\n\nParse Tree:\n===============\n";
@@ -28,6 +33,9 @@ namespace dpl {
 			return os;
 		}
 
+		friend bool operator==(const ParseTree& lhs, const ParseTree& rhs) {
+			return (lhs.value == rhs.value) && (lhs.children == rhs.children);
+		}
 
 	private:
 
@@ -49,14 +57,14 @@ namespace dpl {
 
 
 			for (int i = 0; i < children.size(); i++) {
-				children[i]->recursivePrint(prefix + (isLast ? "    " : "|   "), i == children.size() - 1);
+				children[i].recursivePrint(prefix + (isLast ? "    " : "|   "), i == children.size() - 1);
 			}
 		}
 
 	private:
 
 		std::optional<node_type> value;
-		std::vector<std::unique_ptr<ParseTree>> children;
+		std::vector<ParseTree> children;
 
 		friend class BottomUpTreeBuilder;
 		friend class TopDownTreeBuilder;
@@ -83,16 +91,16 @@ namespace dpl {
 		BottomUpTreeBuilder(Grammar& g_) : TreeBuilder(g_) { };
 
 		void addSubTree(ParseTree::node_type tree) {
-			sub_trees.emplace_back(std::make_unique<ParseTree>(tree));
+			sub_trees.emplace_back(tree);
 		}
 
 		void packTree(ParseTree::node_type tree, size_t n) {
-			std::unique_ptr<ParseTree> new_root{ std::make_unique<ParseTree>(tree) };
+			ParseTree new_root{ tree };
 			for (int i = 0; i < n; i++) {
-				new_root->children.emplace_back(std::move(sub_trees.back()));
+				new_root.children.emplace_back(std::move(sub_trees.back()));
 				sub_trees.pop_back();
 			}
-			std::reverse(new_root->children.begin(), new_root->children.end());
+			std::reverse(new_root.children.begin(), new_root.children.end());
 
 			sub_trees.emplace_back(std::move(new_root));
 		}
@@ -107,13 +115,13 @@ namespace dpl {
 
 		void assignToTree(ParseTree& tree) override {
 			if (sub_trees.size() != 1) return;
-			tree.children = std::move(sub_trees.front()->children);
-			tree.value = sub_trees.front()->value;
+			tree.children = std::move(sub_trees.front().children);
+			tree.value = sub_trees.front().value;
 		}
 
 	private:
 
-		std::vector<std::unique_ptr<ParseTree>> sub_trees;
+		std::vector<ParseTree> sub_trees;
 
 	};
 
@@ -136,11 +144,11 @@ namespace dpl {
 
 					if (rule.isEpsilonProd()) {
 						tree.children.reserve(1);
-						tree.children.push_back(std::move(std::make_unique<ParseTree>(std::monostate{})));
+						tree.children.push_back({ std::monostate{} });
 					} else {
 						tree.children.reserve(rule.size());
 						for (int i = 0; i < tree.children.capacity(); i++) {
-							tree.children.push_back(std::move(std::make_unique<ParseTree>()));
+							tree.children.push_back(ParseTree{});
 						}
 					}
 				}
@@ -149,7 +157,7 @@ namespace dpl {
 			}
 
 			for (auto& child : tree.children) {
-				if (pushNode(node, *child)) return true;
+				if (pushNode(node, child)) return true;
 			}
 
 			return false;

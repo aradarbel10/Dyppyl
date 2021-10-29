@@ -130,18 +130,21 @@ namespace dpl {
 		}
 
 		Token() = default;
+		Token(Terminal t) : Terminal(t) { value = std::monostate(); }
 		Token(Type t) : Terminal(t) { value = std::monostate(); }
 		Token(Type t, value_type v) : Terminal(t), value(v) { }
 		Token(Type t, terminal_value_type v) : Terminal(t, v) { }
 	};
-}
 
-dpl::Terminal operator"" _kwd(const char* str, size_t) {
-	return { dpl::Terminal::Type::Keyword, dpl::Terminal::keywords[str] };
-}
+	namespace literals {
+		inline dpl::Terminal operator"" _kwd(const char* str, size_t) {
+			return { dpl::Terminal::Type::Keyword, dpl::Terminal::keywords[str] };
+		}
 
-dpl::Terminal operator"" _sym(const char* str, size_t) {
-	return { dpl::Terminal::Type::Symbol, dpl::Terminal::symbols[str] };
+		inline dpl::Terminal operator"" _sym(const char* str, size_t) {
+			return { dpl::Terminal::Type::Symbol, dpl::Terminal::symbols[str] };
+		}
+	}
 }
 
 namespace std {
