@@ -11,7 +11,7 @@
 #include <stack>
 
 #include "../tokenizer/Token.h"
-#include "Grammar.h"
+#include "../Grammar.h"
 #include "../tokenizer/Tokenizer.h"
 #include "LR.h"
 

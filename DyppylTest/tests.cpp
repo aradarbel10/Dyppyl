@@ -1,4 +1,5 @@
-#include "pch.h"
+#define CATCH_CONFIG_MAIN
+#include "catch2/catch.hpp"
 
 #include "../src/tokenizer/Token.h"
 #include "../src/Grammar.h"
@@ -6,52 +7,52 @@
 #include "../src/TextStream.h"
 #include "../src/tokenizer/Tokenizer.h"
 
-TEST(TokenTests, Terminal) {
+TEST_CASE("Terminal", "[TokenTests]") {
 	dpl::Terminal::keywords = { {"int", 0}, {"float", 1}, {"bool", 2} };
 	dpl::Terminal::symbols = { {"+", 0}, {"-", 1}, {"*", 2}, {"/", 3} };
 	
 
 	// bimap-like behavior
-	EXPECT_EQ(dpl::Terminal::keywordByIndex(0), "int");
-	EXPECT_EQ(dpl::Terminal::keywordByIndex(1), "float");
-	EXPECT_EQ(dpl::Terminal::keywordByIndex(2), "bool");
-	EXPECT_EQ(dpl::Terminal::keywordByIndex(50), "");
+	REQUIRE(dpl::Terminal::keywordByIndex(0)  == "int");
+	REQUIRE(dpl::Terminal::keywordByIndex(1)  == "float");
+	REQUIRE(dpl::Terminal::keywordByIndex(2)  == "bool");
+	REQUIRE(dpl::Terminal::keywordByIndex(50) == "");
 
-	EXPECT_EQ(dpl::Terminal::symbolByIndex(1), "-");
-	EXPECT_NE(dpl::Terminal::symbolByIndex(3), "*");
-	EXPECT_EQ(dpl::Terminal::symbolByIndex(4), "");
+	REQUIRE(dpl::Terminal::symbolByIndex(1) == "-");
+	REQUIRE(dpl::Terminal::symbolByIndex(3) != "*");
+	REQUIRE(dpl::Terminal::symbolByIndex(4) == "");
 
 	// comparisons
 	dpl::Terminal unk{ dpl::Terminal::Type::Unknown };
 	dpl::Terminal iden{ dpl::Terminal::Type::Identifier };
 	dpl::Terminal sym{ dpl::Terminal::Type::Symbol, size_t{1} };
 
-	EXPECT_NE(sym, iden);
+	REQUIRE(sym != iden);
 
-	EXPECT_EQ(iden, iden);
-	EXPECT_EQ(sym, sym);
-	EXPECT_EQ(unk, unk);
-	EXPECT_EQ(unk, sym);
-	EXPECT_EQ(unk, iden);
+	REQUIRE(iden == iden);
+	REQUIRE(sym  == sym);
+	REQUIRE(unk  == unk);
+	REQUIRE(unk  == sym);
+	REQUIRE(unk  == iden);
 
 	// terminal stringification
 	dpl::Terminal eof{ dpl::Terminal::Type::EndOfFile };
 	dpl::Terminal kwd{ dpl::Terminal::Type::Keyword, size_t{2} };
 
-	EXPECT_EQ(unk.stringify(), "Unknown");
-	EXPECT_EQ(iden.stringify(), "Identifier");
-	EXPECT_EQ(sym.stringify(), "-");
-	EXPECT_EQ(eof.stringify(), "EndOfFile");
-	EXPECT_EQ(kwd.stringify(), "bool");
+	REQUIRE(unk.stringify()  == "Unknown");
+	REQUIRE(iden.stringify() == "Identifier");
+	REQUIRE(sym.stringify()  == "-");
+	REQUIRE(eof.stringify()  == "EndOfFile");
+	REQUIRE(kwd.stringify()  == "bool");
 
 
 	// terminal literals
-	EXPECT_EQ(kwd, "bool"_kwd);
-	EXPECT_EQ(sym, "-"_sym);
+	REQUIRE(kwd == "bool"_kwd);
+	REQUIRE(sym == "-"_sym);
 }
 
 
-TEST(TokenTests, Token) {
+TEST_CASE("Token", "[TokenTests]") {
 	dpl::Terminal::keywords = { {"int", 0}, {"float", 1}, {"bool", 2} };
 	dpl::Terminal::symbols = { {"+", 0}, {"-", 1}, {"*", 2}, {"/", 3} };
 
@@ -62,16 +63,16 @@ TEST(TokenTests, Token) {
 	dpl::Token num1{ dpl::Token::Type::Number, 3.1415 };
 	dpl::Token num2{ dpl::Token::Type::Number, 2.7182 };
 
-	EXPECT_EQ(unk, unk);
-	EXPECT_EQ(unk, str);
-	EXPECT_EQ(unk, num1);
-	EXPECT_EQ(unk, num2);
+	REQUIRE(unk == unk);
+	REQUIRE(unk == str);
+	REQUIRE(unk == num1);
+	REQUIRE(unk == num2);
 
-	EXPECT_NE(str, num1);
-	EXPECT_NE(num1, num2);
+	REQUIRE(str  != num1);
+	REQUIRE(num1 != num2);
 
-	EXPECT_EQ(str, str);
-	EXPECT_EQ(num2, num2);
+	REQUIRE(str  == str);
+	REQUIRE(num2 == num2);
 
 	// token stringification
 	dpl::Token iden{ dpl::Token::Type::Identifier, "var"};
@@ -79,18 +80,18 @@ TEST(TokenTests, Token) {
 	dpl::Token kwd{ dpl::Token::Type::Keyword, size_t{0} };
 	dpl::Token sym{ dpl::Token::Type::Symbol, size_t{2} };
 
-	EXPECT_EQ(unk.stringify(), "[Unknown]");
-	EXPECT_EQ(str.stringify(), "[\"heyo\", String]");
-	EXPECT_EQ(num1.stringify(),"[3.141500, Number]");
-	EXPECT_EQ(iden.stringify(),"[var, Identifier]");
-	EXPECT_EQ(eof.stringify(), "[EndOfFile]");
-	EXPECT_EQ(kwd.stringify(), "[int, Keyword]");
-	EXPECT_EQ(sym.stringify(), "[*, Symbol]");
+	REQUIRE(unk.stringify()  == "[Unknown]");
+	REQUIRE(str.stringify()  == "[\"heyo\", String]");
+	REQUIRE(num1.stringify() == "[3.141500, Number]");
+	REQUIRE(iden.stringify() == "[var, Identifier]");
+	REQUIRE(eof.stringify()  == "[EndOfFile]");
+	REQUIRE(kwd.stringify()  == "[int, Keyword]");
+	REQUIRE(sym.stringify()  == "[*, Symbol]");
 
 }
 
 
-TEST(GrammarTests, Production) {
+TEST_CASE("Production", "[GrammarTests]") {
 	dpl::Terminal::keywords = { {"int", 0}, {"float", 1}, {"bool", 2} };
 	dpl::Terminal::symbols = { {"+", 0}, {"-", 1}, {"*", 2}, {"/", 3} };
 
@@ -99,17 +100,17 @@ TEST(GrammarTests, Production) {
 	dpl::ProductionRule prod_eps{};
 
 	// epsilon productions
-	EXPECT_TRUE(prod_eps.isEpsilonProd());
-	EXPECT_FALSE(prod_sum.isEpsilonProd());
+	REQUIRE( prod_eps.isEpsilonProd());
+	REQUIRE(!prod_sum.isEpsilonProd());
 
 	// production printing
 	std::ostringstream out;
 	out << prod_sum;
-	EXPECT_EQ(out.view(), "Identifier + Identifier");
+	REQUIRE(out.view() == "Identifier + Identifier");
 
 	std::ostringstream().swap(out);
 	out << prod_eps;
-	EXPECT_EQ(out.view(), "epsilon");
+	REQUIRE(out.view() == "epsilon");
 
 	// rule construction
 	dpl::NonterminalRules rule_exp{ "Exp", {
@@ -121,7 +122,7 @@ TEST(GrammarTests, Production) {
 	// rule printing
 	std::ostringstream().swap(out);
 	out << rule_exp;
-	EXPECT_EQ(out.view(), "    | Identifier - Identifier\n"
+	REQUIRE(out.view() == "    | Identifier - Identifier\n"
 						  "    | Identifier + Identifier\n"
 						  "    | epsilon\n");
 }
@@ -151,7 +152,7 @@ struct parser_reqs {
 	dpl::Tokenizer tokenizer;
 };
 
-TEST(LL1Tests, SmallGrammar) {
+TEST_CASE("SmallGrammar", "[LL1Tests]") {
 	dpl::Terminal::keywords = { {"int", 0} };
 	dpl::Terminal::symbols = { {"+", 0}, {"*", 1}, {"(", 2}, {")", 3} };
 
@@ -179,7 +180,7 @@ TEST(LL1Tests, SmallGrammar) {
 		{ "*"_sym, {{ "Op", 1 }}}
 	};
 
-	EXPECT_EQ(table, expected_table);
+	REQUIRE(table == expected_table);
 
 
 	// LL(1) parsing
@@ -187,8 +188,6 @@ TEST(LL1Tests, SmallGrammar) {
 	while (!prs.src.closed()) {
 		parser << prs.tokenizer.fetchNext();
 	}
-	
-
 }
 
 // examples to use for testing

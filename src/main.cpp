@@ -111,10 +111,9 @@
 	Y(World) \
 	Y(PROGRAM) \
 	Y(BEGIN) \
-	Y(END) \
+	Y(END)
 
 int main() {
-
 	#define X(name, symbol) name,
 	#define Y(name) name,
 	enum Symbols { SYMBOLS_MACRO };
@@ -290,7 +289,6 @@ int main() {
 	std::cout << "Input String:\n=============\n" << src.getString() << "\n";
 	std::cout << tree;
 	DplLogPrintTelemetry();
-
 	return 0;
 }
 

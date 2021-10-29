@@ -19,8 +19,6 @@
 #include <fstream>
 #include <cstdint>
 
-#include <magic_enum/magic_enum.hpp>
-
 #ifdef DPL_LOG
 #include <iostream>
 #endif //DPL_LOG

@@ -7,6 +7,8 @@
 #include <unordered_map>
 #include <string>
 #include <map>
+#include <string_view>
+#include <variant>
 
 #include <iostream>
 #include "magic_enum/magic_enum.hpp"
@@ -48,7 +50,7 @@ namespace dpl {
 		}
 
 		constexpr std::string stringify() const {
-			std::string type_name(magic_enum::enum_name(type));
+			std::string type_name{ magic_enum::enum_name(type) };
 			if (std::holds_alternative<std::monostate>(terminal_value)) return type_name;
 
 			switch (type) {

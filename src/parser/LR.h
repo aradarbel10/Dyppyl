@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../tokenizer//Token.h"
+#include "../tokenizer/Token.h"
 #include "../Grammar.h"
 #include "../ParseTree.h"
 #include "../tokenizer/Tokenizer.h"
@@ -9,9 +9,6 @@
 #include <stack>
 
 namespace dpl {
-
-
-
 	template<class AutomatonT>
 	class LR : public Parser {
 	public:
