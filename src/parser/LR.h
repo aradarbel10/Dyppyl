@@ -23,7 +23,7 @@ namespace dpl {
 
 		using action_type = std::variant<accept_action, state_type, RuleRef>;
 
-		LR(Grammar& g, Tokenizer& inp) : Parser(g, inp), tb(g) {
+		LR(Grammar& g) : Parser(g), tb(g) {
 			AutomatonT automaton{ grammar };
 
 			// generate parse tables
@@ -40,11 +40,13 @@ namespace dpl {
 					if (!addGotoEntry(i, symbol, dest)) std::cerr << "Error: Duplicate Goto Entries -- Non-" << /*getParserName<decltype(*this)> <<*/ " Grammar!\n";
 				}
 			}
-
-
-			parse_stack.push(0);
 		}
 		
+		void parse_init() override {
+			std::stack<state_type>{}.swap(parse_stack); // clear stack
+			parse_stack.push(0);
+		}
+
 		void operator<<(const Token& t) {
 			terminal_type t_ = t;
 
@@ -114,13 +116,13 @@ namespace dpl {
 		}
 
 		bool addGotoEntry(const int state, const symbol_type& t, state_type dest) {
-			state_type init_size = goto_table[state].size();
+			state_type init_size = state_type(goto_table[state].size());
 			goto_table[state][t] = dest;
 			return init_size != goto_table[state].size();
 		}
 
 		bool addActionEntry(const int state, const terminal_type& t, action_type dest) {
-			state_type init_size = action_table[state].size();
+			state_type init_size = state_type(action_table[state].size());
 			action_table[state][t] = dest;
 			return init_size != action_table[state].size();
 		}
@@ -167,7 +169,7 @@ namespace dpl {
 
 		auto toEnd(Grammar& g) {
 			auto result = *this;
-			result.pos = production.getRule().size();
+			result.pos = int(production.getRule().size());
 			return result;
 		}
 
@@ -348,7 +350,7 @@ namespace dpl {
 
 							if (dest == -1) {
 								states.push_back({ succ, {} });
-								chore_queue.push(states.size() - 1);
+								chore_queue.push(int(states.size()) - 1);
 							}
 						}
 					}

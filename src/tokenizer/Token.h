@@ -101,11 +101,7 @@ namespace dpl {
 		}
 
 		friend std::ostream& operator<<(std::ostream& os, const Token& t) {
-			os << "[" << magic_enum::enum_name(t.type) << ", ";
-
-			std::cout << dpl::log::streamer{ t.value };
-
-			os << "]";
+			os << t.stringify();
 			return os;
 		}
 

@@ -33,9 +33,10 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <ItemGroup>
-    <ClCompile Include="LL1Tests.cpp" />
+    <ClCompile Include="LL1.cpp" />
+    <ClCompile Include="SmallLL1.cpp" />
     <ClCompile Include="tests.cpp" />
-    <ClCompile Include="tokenTests.cpp" />
+    <ClCompile Include="Token.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Dyppyl.vcxproj">

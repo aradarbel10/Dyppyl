@@ -100,8 +100,11 @@ namespace dpl {
 
 	public:
 
-		std::unordered_map<nonterminal_type, std::unordered_set<std::variant<epsilon_type, terminal_type>>> firsts;
-		std::unordered_map<nonterminal_type, std::unordered_set<terminal_type>> follows;
+		using firsts_type = std::unordered_map<nonterminal_type, std::unordered_set<std::variant<epsilon_type, terminal_type>>>;
+		using follows_type = std::unordered_map<nonterminal_type, std::unordered_set<terminal_type>>;
+
+		firsts_type firsts;
+		follows_type follows;
 
 		std::string start_symbol;
 
@@ -229,6 +232,8 @@ namespace dpl {
 
 				return result;
 			}
+
+			return {};
 		}
 
 	};

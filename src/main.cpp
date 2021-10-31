@@ -272,18 +272,11 @@ int main() {
 //	};
 	//dpl::StringStream src{ "PROGRAM MyProg BEGIN + + + + + + END" };
 
-	dpl::Tokenizer tokenizer{ src };
-	dpl::ParseTree tree{ };
-	
-	dpl::LR1 parser{ precedence_grammar, tokenizer };
+	dpl::LR1 parser{ precedence_grammar };
 	//parser.printParseTable();
 	
 
-
-	while (!src.closed()) {
-		dpl::Token tkn = tokenizer.fetchNext();
-		parser << tkn;
-	}
+	dpl::ParseTree tree = parser.parse(src);
 	
 	std::cout << "\n\nGrammar:\n==============\n";
 	std::cout << precedence_grammar << "\n";

@@ -2,20 +2,11 @@
 
 #include "../src/Grammar.h"
 #include "../src/TextStream.h"
-#include "../src/tokenizer/Tokenizer.h"
 
 #include "../src/parser/LL1.h"
 
 #include <string_view>
 
-
-struct parser_reqs {
-	parser_reqs(dpl::Grammar& g) : src(""), tokenizer(src) { }
-
-	dpl::StringStream src;
-	//dpl::ParseTree tree;
-	dpl::Tokenizer tokenizer;
-};
 
 using namespace std::literals::string_view_literals;
 using namespace dpl::literals;
@@ -35,10 +26,9 @@ TEST_CASE("SmallGrammar", "[LL1Tests]") {
 		}}
 	};
 
-	parser_reqs prs{ grammar };
-	dpl::LL1 parser(grammar, prs.tokenizer);
+	dpl::LL1 parser{ grammar };
 
-	// LL(1) parse table generation
+	// LL(1) Parse Table Generation
 	const auto& table = parser.generateParseTable();
 
 	dpl::LL1::table_type expected_table{
@@ -51,9 +41,9 @@ TEST_CASE("SmallGrammar", "[LL1Tests]") {
 	REQUIRE(table == expected_table);
 
 
-	// LL(1) parsing
-	prs.src.setString("(int + (int * int))");
-	auto tree = parser.parse(prs.src);
+	// LL(1) Parsing
+	auto str_src = dpl::StringStream{ "(int + (int * int))"sv };
+	auto tree = parser.parse(str_src);
 
 	using dpl::RuleRef;
 
@@ -78,6 +68,5 @@ TEST_CASE("SmallGrammar", "[LL1Tests]") {
 	std::cout << tree;
 	std::cout << expected_tree;
 
-	bool tree_eq = expected_tree == tree;
-	REQUIRE(tree_eq);
+	REQUIRE(expected_tree == tree);
 }

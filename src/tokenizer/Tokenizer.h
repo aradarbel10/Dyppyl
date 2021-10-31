@@ -193,7 +193,7 @@ namespace dpl {
 					length_of_longest = automata[i]->getAge();
 					if (i < misc_automata_count) {
 						all_dead = true;
-						break;
+						//break;
 					}
 				}
 			}
@@ -229,7 +229,7 @@ namespace dpl {
 
 			} else if (machine == 0) {
 				if (Terminal::keywords.contains(str)) {
-					next_tkn = Token{ Token::Type::Keyword, Token::keywords[str] };
+					next_tkn = Terminal{ Token::Type::Keyword, Token::keywords[str] };
 				} else {
 					next_tkn = Token{ Token::Type::Identifier, std::string{ str } };
 				}
@@ -245,6 +245,8 @@ namespace dpl {
 			} else {
 				std::cerr << "Error: Programmar is an idiot!\n";
 			}
+
+			std::cout << "Token recognized " << next_tkn << "\n";
 
 			next_tkn.pos = { pos_in_file.first, pos_in_file.second };
 			next_tkn_ready = true;

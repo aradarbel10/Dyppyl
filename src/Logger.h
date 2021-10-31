@@ -63,7 +63,7 @@ namespace dpl {
 		private: friend
 			std::ostream& operator<<(std::ostream& os, FileSize hr) {
 			int i{};
-			double mantissa = hr.size;
+			double mantissa = static_cast<double>(hr.size);
 			for (; mantissa >= 1024.; mantissa /= 1024., ++i) {}
 			mantissa = std::ceil(mantissa * 10.) / 10.;
 			os << mantissa << "BKMGTPE"[i];

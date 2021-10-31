@@ -20,18 +20,8 @@ namespace dpl{
 		using nonterminal_type = std::string_view;
 
 		using out_type = std::variant<Token, RuleRef>;
-		using symbol_type = std::variant<std::monostate, terminal_type>;	
-		using table_type = std::unordered_map<symbol_type, std::unordered_map<nonterminal_type, int>>;
-
-		out_type fetchNext() {
-			next_node_ready = false;
-
-			while (!next_node_ready && !input.closed()) {
-				*this << input.fetchNext();
-			}
-
-			return next_node;
-		}
+		using symbol_type = std::variant<terminal_type, nonterminal_type>;	
+		using table_type = std::unordered_map<std::variant<std::monostate, terminal_type>, std::unordered_map<nonterminal_type, int>>;
 
 		void operator<<(const Token& t_) {
 			const terminal_type t = t_;
@@ -135,18 +125,24 @@ namespace dpl{
 		bool addEntry(const terminal_type& tkn, nonterminal_type name, int i) {
 			if (hasEntry(tkn, name)) throw std::invalid_argument("non LL(1) grammar");
 			table[tkn][name] = i;
+			return false; // returns whether entry already existed
 		}
 
-		LL1(Grammar& g, Tokenizer& inp) : Parser(g, inp), tb(g) {
+		LL1(Grammar& g) : Parser(g), tb(g) {
 			grammar.initialize();
 
 			try {
 				generateParseTable();
-				parse_stack.push(Terminal::Type::EndOfFile);
-				parse_stack.push(grammar.start_symbol);
-			} catch (const std::invalid_argument& err) {
+			} catch (const std::invalid_argument&) {
 				std::cerr << "LL(1) parser can't accept non-LL(1) grammar!\n";
 			}
+		}
+
+		void parse_init() override {
+			std::stack<symbol_type>{}.swap(parse_stack); // clear stack
+
+			parse_stack.push(Terminal::Type::EndOfFile);
+			parse_stack.push(grammar.start_symbol);
 		}
 
 	private:
@@ -161,7 +157,7 @@ namespace dpl{
 
 		table_type table;
 
-		std::stack<std::variant<terminal_type, nonterminal_type>> parse_stack;
+		std::stack<symbol_type> parse_stack;
 	};
 
 	template<>

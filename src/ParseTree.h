@@ -21,6 +21,7 @@ namespace dpl {
 		ParseTree() { }
 		ParseTree(Terminal n_) : value(static_cast<Token>(n_)) { }
 		ParseTree(node_type n_) : value(n_) { }
+		ParseTree(Token n_) : value(n_) { }
 		ParseTree(node_type n_, std::vector<ParseTree> cs) : value(n_) {
 			children = std::move(cs);
 		}
@@ -165,6 +166,7 @@ namespace dpl {
 
 		void assignToTree(ParseTree& tree) override {
 			tree = std::move(inner_tree);
+			inner_tree.value.reset();
 		}
 
 	private:

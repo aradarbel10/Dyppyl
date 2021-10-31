@@ -51,7 +51,7 @@ TEST_CASE("Production", "[GrammarTests]") {
 // [l03, s164] - LL(1) parse table V
 // [l03, s216] - a simple LL(1) grammar V
 // [l03, s216] - a simple LL(1) grammar's parsing table V
-// [l03, s249] - epsilon-less first sets
+// [l03, s249] - epsilon-less first sets V
 // [l03, s282] - expanded LL(1) grammar
 // [l03, s249] - first sets with epsilon
 // [l03, s330] - small LL(1) parse table with epsilon

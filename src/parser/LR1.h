@@ -46,7 +46,7 @@ namespace dpl {
 				rule_for_first.push_back(config.lookahead);
 				auto first_star_set = g.first_star(rule_for_first.begin(), rule_for_first.end());
 
-				for (const auto terminal : first_star_set) {
+				for (const auto& terminal : first_star_set) {
 					if (!std::holds_alternative<std::monostate>(terminal)) {
 						const LR1Configuration new_config = { { g, *nonterminal, i }, 0, std::get<Terminal>(terminal) };
 						result.push_back(new_config);
