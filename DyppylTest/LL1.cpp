@@ -12,6 +12,8 @@ using namespace std::literals::string_view_literals;
 using namespace dpl::literals;
 
 TEST_CASE("SimpleGrammar", "[LL1Tests]") {
+	std::cout << " ===== SimpleGrammar [LL1Tests] =============================\n";
+
 	dpl::Terminal::keywords = { {"if", 0}, {"then", 1}, {"while", 2}, {"do", 3}, {"not", 4} };
 	dpl::Terminal::symbols = { {"->", 0}, {";", 1}, {"zero?", 2}, {"++", 3}, {"--", 4} };
 

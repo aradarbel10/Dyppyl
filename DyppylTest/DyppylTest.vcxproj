@@ -34,8 +34,9 @@
   <PropertyGroup Label="UserMacros" />
   <ItemGroup>
     <ClCompile Include="LL1.cpp" />
+    <ClCompile Include="NonLL1.cpp" />
     <ClCompile Include="SmallLL1.cpp" />
-    <ClCompile Include="tests.cpp" />
+    <ClCompile Include="Production.cpp" />
     <ClCompile Include="Token.cpp" />
   </ItemGroup>
   <ItemGroup>

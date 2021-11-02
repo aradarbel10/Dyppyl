@@ -7,6 +7,8 @@
 #include "../src/tokenizer/Tokenizer.h"
 
 TEST_CASE("Production", "[GrammarTests]") {
+	std::cout << " ===== Production [GrammarTests] =============================\n";
+
 	using namespace std::literals::string_view_literals;
 	using namespace dpl::literals;
 

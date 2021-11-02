@@ -5,6 +5,8 @@
 using namespace dpl::literals;
 
 TEST_CASE("Terminal", "[TokenTests]") {
+	std::cout << " ===== Terminal [TokenTests] =============================\n";
+
 	dpl::Terminal::keywords = { {"int", 0}, {"float", 1}, {"bool", 2} };
 	dpl::Terminal::symbols = { {"+", 0}, {"-", 1}, {"*", 2}, {"/", 3} };
 

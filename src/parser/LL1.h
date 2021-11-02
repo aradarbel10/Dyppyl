@@ -109,7 +109,7 @@ namespace dpl{
 							}
 						} catch (const std::invalid_argument& err) {
 							table.clear();
-							throw err;
+							throw err; // rethrow
 						}
 					}
 				}
