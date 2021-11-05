@@ -85,9 +85,7 @@ namespace dpl {
 				} else if (std::holds_alternative<std::monostate>(getActionEntry(parse_stack.top(), t_))) { // accept
 					terminal_eliminated = true;
 
-					ParseTree out;
-					tree_builder().assignToTree(out);
-					std::cout << out;
+					this->tree_builder().assignToTree(out_tree);
 
 				} else { // report error
 					std::cerr << "Syntax error: unexpected token " << t.stringify() << " at position (" << dpl::log::streamer{ t.pos } << ")\n";
