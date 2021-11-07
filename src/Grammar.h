@@ -3,13 +3,15 @@
 #include <string_view>
 #include <variant>
 #include <vector>
+#include <tuple>
 #include <unordered_set>
 
 #include "tokenizer/Token.h"
 
 namespace dpl {
 
-	class ProductionRule : private std::vector<std::variant<Terminal, std::string_view>> {
+	template <size_t N>
+	class ProductionRule : private std::array<std::variant<Terminal, std::string_view>, N> {
 	public:
 
 		using symbol_type = value_type;
@@ -51,7 +53,10 @@ namespace dpl {
 
 	};
 
-	class NonterminalRules : private std::vector<ProductionRule> {
+	class BaseNonterminalRules {};
+
+	template<size_t ...Ns>
+	class NonterminalRules : private std::tuple<ProductionRule<Ns>...>, BaseNonterminalRules {
 	public:
 
 		NonterminalRules() = default;
@@ -73,14 +78,17 @@ namespace dpl {
 
 	};
 
-	class Grammar : std::unordered_map<std::string_view, NonterminalRules> {
+	class Grammar {
 	public:
+
+		std::unordered_map<std::string_view, BaseNonterminalRules*> rules;
 
 		using epsilon_type = std::monostate;
 		using terminal_type = Terminal;
 		using nonterminal_type = std::string_view;
 
-		Grammar(std::initializer_list<NonterminalRules> l) : start_symbol(l.begin()->name) {
+		template <typename ...Ts>
+		Grammar(std::tuple<Ts...> l) : start_symbol(l.begin()->name) {
 			std::for_each(l.begin(), l.end(), [&](const auto& e) {
 				(*this)[e.name] = e;
 			});
@@ -91,11 +99,15 @@ namespace dpl {
 			calcFollowSets();
 		}
 
-		using std::unordered_map<std::string_view, NonterminalRules>::size;
-		using std::unordered_map<std::string_view, NonterminalRules>::operator[];
-		using std::unordered_map<std::string_view, NonterminalRules>::begin;
-		using std::unordered_map<std::string_view, NonterminalRules>::end;
-		using std::unordered_map<std::string_view, NonterminalRules>::contains;
+		size_t size() const { return rules.size(); }
+		BaseNonterminalRules& operator[](std::string_view key) override { return *rules[key]; }
+
+		using std::unordered_map<std::string_view, BaseNonterminalRules*>::operator[];
+		using std::unordered_map<std::string_view, BaseNonterminalRules*>::begin;
+		using std::unordered_map<std::string_view, BaseNonterminalRules*>::end;
+		using std::unordered_map<std::string_view, BaseNonterminalRules*>::contains;
+
+		
 
 
 	public:
@@ -107,6 +119,9 @@ namespace dpl {
 		follows_type follows;
 
 		std::string start_symbol;
+
+		std::map<std::string_view, size_t> terminal_keywords, terminal_symbols;
+
 
 		friend std::ostream& operator<<(std::ostream& os, const Grammar& grammar) {
 			for (const auto& [name, nonterminal] : grammar) {
@@ -242,9 +257,9 @@ namespace dpl {
 	struct RuleRef {
 	public:
 
-		RuleRef(Grammar& g, std::string_view n, int p) : grammar(&g), name(n), prod(p) { }
+		RuleRef(BaseGrammar& g, std::string_view n, int p) : grammar(&g), name(n), prod(p) { }
 
-		Grammar* grammar;
+		BaseGrammar* grammar;
 		std::string_view name;
 		int prod;
 

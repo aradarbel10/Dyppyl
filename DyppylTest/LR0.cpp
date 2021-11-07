@@ -14,8 +14,6 @@ using namespace dpl::literals;
 TEST_CASE("SimpleMathGrammar", "[LR0Tests]") {
 	std::cout << " ===== SimpleGrammar [LR0Tests] =============================\n";
 
-	dpl::Terminal::symbols = { {"+", 0}, {";", 1}, {"(", 2}, {")", 3} };
-
 	dpl::Grammar grammar{
 		{ "S" , {
 			{ "E" },
@@ -29,6 +27,8 @@ TEST_CASE("SimpleMathGrammar", "[LR0Tests]") {
 			{ "("_sym, "E", ")"_sym }
 		}}
 	};
+
+	grammar.terminal_symbols = { {"+", 0}, {";", 1}, {"(", 2}, {")", 3} };
 
 	dpl::LR0 parser{ grammar };
 

@@ -3,6 +3,7 @@
 #include "Automata.h"
 #include "Token.h"
 #include "../TextStream.h"
+#include "../Grammar.h"
 
 #include <utility>
 #include <variant>
@@ -33,7 +34,7 @@ namespace dpl {
 		int inside_hider = -1;
 		std::string hiders_queue;
 
-		const size_t symbols_count = Token::symbols.size();
+		size_t symbols_count;
 
 		dpl::IdentifierDFA identifier_automaton;
 		dpl::NumberDFA number_automaton;
@@ -61,17 +62,21 @@ namespace dpl {
 		std::pair<unsigned int, unsigned int> pos_in_file{ 1, 1 };
 		std::string_view current_line;
 
+		dpl::Grammar& grammar;
+
 		TextStream& input;
 		Token next_tkn;
 		bool next_tkn_ready = false;
 
 	public:
 
-		Tokenizer(TextStream& inp) : input(inp) {
-			symbols_automata.reserve(Token::symbols.size());
-			automata.reserve(automata.size() + Token::symbols.size());
+		Tokenizer(TextStream& inp, Grammar& g) : input(inp), grammar(g) {
+			symbols_count = grammar.terminal_symbols.size();
 
-			for (const auto& [key, val] : Token::symbols) {
+			symbols_automata.reserve(symbols_count);
+			automata.reserve(automata.size() + symbols_count);
+
+			for (const auto& [key, val] : grammar.terminal_symbols) {
 				symbols_automata.push_back(key.data());
 				automata.push_back(&*std::prev(symbols_automata.end()));
 			}
@@ -228,8 +233,9 @@ namespace dpl {
 				std::cerr << "Illegal token at character " << pos_in_file.first << " of line " << pos_in_file.second;
 
 			} else if (machine == 0) {
-				if (Terminal::keywords.contains(str)) {
-					next_tkn = Terminal{ Token::Type::Keyword, Token::keywords[str] };
+				const auto entry = grammar.terminal_keywords.find(str);
+				if (entry != grammar.terminal_keywords.end()) {
+					next_tkn = Terminal{ Token::Type::Keyword, entry->first };
 				} else {
 					next_tkn = Token{ Token::Type::Identifier, std::string{ str } };
 				}
@@ -241,7 +247,7 @@ namespace dpl {
 				next_tkn = Token{ Token::Type::String, std::move(dpl::StringDFA::recent_string) };
 			} else if (machine <= symbols_count - 1 + misc_automata_count) {
 				std::string_view name = static_cast<LinearDFA*>(automata[machine])->getStates();
-				next_tkn = Token{ Token::Type::Symbol, Token::symbols[name]};
+				next_tkn = Terminal{ Token::Type::Symbol, name };
 			} else {
 				std::cerr << "Error: Programmar is an idiot!\n";
 			}

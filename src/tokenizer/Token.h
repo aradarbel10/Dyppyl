@@ -12,32 +12,17 @@
 
 #include <iostream>
 #include "magic_enum/magic_enum.hpp"
+#include "frozen/map.h"
 #include "../Logger.h"
 
 namespace dpl {
 
 	struct Terminal {
-		inline static std::map<std::string_view, size_t> keywords, symbols;
-
-		using terminal_value_type = std::variant<std::monostate, size_t>;
+		using terminal_value_type = std::variant<std::monostate, std::string_view>;
 		enum class Type { Identifier, Number, String, Symbol, Keyword, Unknown, EndOfFile };
 
 		Type type = Type::Unknown;
 		terminal_value_type terminal_value = std::monostate{};
-
-		static std::string_view symbolByIndex(size_t index) {
-			for (const auto& [key, val] : symbols) {
-				if (index == val) return key;
-			}
-			return "";
-		}
-
-		static std::string_view keywordByIndex(size_t index) {
-			for (const auto& [key, val] : keywords) {
-				if (index == val) return key;
-			}
-			return "";
-		}
 
 		constexpr friend auto operator<=>(const Terminal& lhs, const Terminal& rhs) {
 			if (lhs == rhs) return std::strong_ordering::equal;
@@ -55,10 +40,10 @@ namespace dpl {
 
 			switch (type) {
 			case Type::Symbol:
-				return std::string{ symbolByIndex(std::get<size_t>(terminal_value)) };
+				return std::string{ std::get<std::string_view>(terminal_value) };
 				break;
 			case Type::Keyword:
-				return std::string{ keywordByIndex(std::get<size_t>(terminal_value)) };
+				return std::string{ std::get<std::string_view>(terminal_value) };
 				break;
 			default:
 				return type_name;
@@ -66,9 +51,9 @@ namespace dpl {
 			}
 		}
 
-		Terminal() = default;
-		Terminal(Type t) : type(t) { }
-		Terminal(Type t, terminal_value_type v) : type(t), terminal_value(v) { }
+		constexpr Terminal() = default;
+		constexpr Terminal(Type t) : type(t) { }
+		constexpr Terminal(Type t, terminal_value_type v) : type(t), terminal_value(v) { }
 		
 	};
 
@@ -78,8 +63,6 @@ namespace dpl {
 
 		using Type = Terminal::Type;
 		using Terminal::type;
-		using Terminal::keywords;
-		using Terminal::symbols;
 
 		using value_type = std::variant<std::monostate, std::string, long double>;
 
@@ -110,9 +93,9 @@ namespace dpl {
 
 			// #TASK : convert this to a switch
 			if (type == Type::Symbol) {
-				return "[" + std::string{symbolByIndex(std::get<size_t>(terminal_value))} + ", " + type_name + "]"; // "[+, Symbol]"
+				return "[" + std::string{ std::get<std::string_view>(terminal_value) } + ", " + type_name + "]"; // "[+, Symbol]"
 			} else if (type == Type::Keyword) {
-				return "[" + std::string{ keywordByIndex(std::get<size_t>(terminal_value)) } + ", " + type_name + "]"; // "[bool, Keyword]"
+				return "[" + std::string{ std::get<std::string_view>(terminal_value) } + ", " + type_name + "]"; // "[bool, Keyword]"
 			} else if (type == Type::Identifier) {
 				return "[" + std::get<std::string>(value) + ", " + type_name + "]"; // "[myVar, Identifier]"
 			} else {
@@ -128,17 +111,33 @@ namespace dpl {
 		Token() = default;
 		Token(Terminal t) : Terminal(t) { value = std::monostate(); }
 		Token(Type t) : Terminal(t) { value = std::monostate(); }
-		Token(Type t, value_type v) : Terminal(t), value(v) { }
-		Token(Type t, terminal_value_type v) : Terminal(t, v) { }
+		Token(Type t, std::string_view v) : Terminal(t) {
+			if (type == Type::Symbol || type == Type::Keyword) {
+				value = std::monostate{};
+				terminal_value = v;
+			} else {
+				value = std::string{ v };
+				terminal_value = std::monostate{};
+			}
+		}
+		Token(Type t, long double num) : Terminal(t) {
+			value = num;
+		}
+		//Token(Type t, std::string_view v) {
+		//	type = t;
+		//	if (type == Type::Symbol || type == Type::Keyword) terminal_value = v;
+		//	else value = std::string{ v };
+		//}
+		//Token(Type t, terminal_value_type v) : Terminal(t, v) { }
 	};
 
 	namespace literals {
-		inline dpl::Terminal operator"" _kwd(const char* str, size_t) {
-			return { dpl::Terminal::Type::Keyword, dpl::Terminal::keywords[str] };
+		constexpr dpl::Terminal operator"" _kwd(const char* str, size_t) {
+			return { dpl::Terminal::Type::Keyword, std::string_view{str} };
 		}
 
-		inline dpl::Terminal operator"" _sym(const char* str, size_t) {
-			return { dpl::Terminal::Type::Symbol, dpl::Terminal::symbols[str] };
+		constexpr dpl::Terminal operator"" _sym(const char* str, size_t) {
+			return { dpl::Terminal::Type::Symbol, std::string_view{str} };
 		}
 	}
 }
