@@ -14,6 +14,9 @@ using namespace dpl::literals;
 TEST_CASE("SimpleGrammar", "[LL1Tests]") {
 	std::cout << " ===== SimpleGrammar [LL1Tests] =============================\n";
 
+	dpl::Terminal::keywords = { {"if", 0}, {"then", 1}, {"while", 2}, {"do", 3}, {"not", 4} };
+	dpl::Terminal::symbols = { {"->", 0}, {";", 1}, {"zero?", 2}, {"++", 3}, {"--", 4} };
+
 	dpl::Grammar grammar {
 		{ "Stmt", {
 			{ "if"_kwd, "Expr", "then"_kwd, "Stmt" },
@@ -32,8 +35,6 @@ TEST_CASE("SimpleGrammar", "[LL1Tests]") {
 			{ dpl::Token::Type::Number }
 		}}
 	};
-	grammar.terminal_keywords = { {"if", 0}, {"then", 1}, {"while", 2}, {"do", 3}, {"not", 4} };
-	grammar.terminal_symbols = { {"->", 0}, {";", 1}, {"zero?", 2}, {"++", 3}, {"--", 4} };
 
 	dpl::LL1 parser{ grammar };
 
@@ -85,10 +86,10 @@ TEST_CASE("SimpleGrammar", "[LL1Tests]") {
 	dpl::ParseTree expected_tree1{ RuleRef{grammar, "Stmt", 2}, {
 		{ RuleRef{ grammar, "Expr", 0 }, {
 			{ RuleRef{ grammar, "Term", 0 }, {
-				{ dpl::Token{ dpl::Token::Type::Identifier, "x" } }
+				{{ dpl::Token::Type::Identifier, "x" }}
 			}},
 			{ "->"_sym },
-			{ dpl::Token{ dpl::Token::Type::Identifier, "y" } }
+			{{ dpl::Token::Type::Identifier, "y" }}
 		}},
 		{ ";"_sym }
 	} };
@@ -111,7 +112,7 @@ TEST_CASE("SimpleGrammar", "[LL1Tests]") {
 			{ RuleRef{ grammar, "Expr", 1 }, {
 				{ "zero?"_sym },
 				{ RuleRef{ grammar, "Term", 0 }, {
-					{ dpl::Token{ dpl::Token::Type::Identifier, "id" } }
+					{{ dpl::Token::Type::Identifier, "id" }}
 				}}
 			}}
 		}},
@@ -119,7 +120,7 @@ TEST_CASE("SimpleGrammar", "[LL1Tests]") {
 		{ RuleRef{ grammar, "Stmt", 2 }, {
 			{ RuleRef{ grammar, "Expr", 4 }, {
 				{ "--"_sym },
-				{ dpl::Token{ dpl::Token::Type::Identifier, "id" } }
+				{{ dpl::Token::Type::Identifier, "id" }}
 			}},
 			{ ";"_sym }
 		}}
@@ -144,7 +145,7 @@ TEST_CASE("SimpleGrammar", "[LL1Tests]") {
 			{ RuleRef{ grammar, "Expr", 1 }, {
 				{ "zero?"_sym },
 				{ RuleRef{ grammar, "Term", 0 }, {
-					{ dpl::Token{ dpl::Token::Type::Identifier, "id" } }
+					{{ dpl::Token::Type::Identifier, "id" }}
 				}}
 			}}
 		}},
@@ -156,7 +157,7 @@ TEST_CASE("SimpleGrammar", "[LL1Tests]") {
 				{ RuleRef{ grammar, "Expr", 1 }, {
 					{ "zero?"_sym },
 					{ RuleRef{ grammar, "Term", 0 }, {
-						{ dpl::Token{ dpl::Token::Type::Identifier, "id" } }
+						{{ dpl::Token::Type::Identifier, "id" }}
 					}}
 				}}
 			}},
@@ -164,10 +165,10 @@ TEST_CASE("SimpleGrammar", "[LL1Tests]") {
 			{ RuleRef{grammar, "Stmt", 2}, {
 				{ RuleRef{ grammar, "Expr", 0 }, {
 					{ RuleRef{ grammar, "Term", 0 }, {
-						{ dpl::Token{ dpl::Token::Type::Identifier, "constant" } }
+						{{ dpl::Token::Type::Identifier, "constant" }}
 					}},
 					{ "->"_sym },
-					{ dpl::Token{ dpl::Token::Type::Identifier, "id" } }
+					{{ dpl::Token::Type::Identifier, "id" }}
 				}},
 				{ ";"_sym }
 			}}

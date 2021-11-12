@@ -9,7 +9,7 @@ namespace dpl{
 		Parser(Grammar& g) : grammar(g) { }
 
 		ParseTree parse(dpl::TextStream& src) {
-			Tokenizer input{ src, grammar };
+			Tokenizer input{ src };
 			parse_init();
 
 			while (!src.closed()) {

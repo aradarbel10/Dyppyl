@@ -133,6 +133,9 @@ int main() {
 	#undef X
 	#undef Y
 
+	dpl::Token::keywords = keywords;
+	dpl::Token::symbols = symbols;
+
 	using Token = dpl::Token;
 
 	dpl::Grammar example_grammar{
@@ -161,8 +164,6 @@ int main() {
 			{ "{"_sym, "Stmts", "}"_sym }
 		}}
 	};
-	example_grammar.terminal_keywords = keywords;
-	example_grammar.terminal_symbols = symbols;
 
 	dpl::Grammar precedence_grammar{
 		{ "E", {
@@ -184,8 +185,6 @@ int main() {
 			{ "("_sym, "E", ")"_sym }
 		}}
 	};
-	precedence_grammar.terminal_keywords = keywords;
-	precedence_grammar.terminal_symbols = symbols;
 
 	dpl::Grammar non_ll1{
 		{ "E" , {
@@ -197,8 +196,6 @@ int main() {
 			{ "("_sym, "E", ")"_sym }
 		}}
 	};
-	non_ll1.terminal_keywords = keywords;
-	non_ll1.terminal_symbols = symbols;
 
 
 	dpl::Grammar non_lr0{
@@ -211,9 +208,6 @@ int main() {
 			{ "("_sym, "E", ")"_sym }
 		}},
 	};
-	non_lr0.terminal_keywords = keywords;
-	non_lr0.terminal_symbols = symbols;
-
 
 	dpl::Grammar lr1_test{
 		{ "S", {
@@ -224,8 +218,6 @@ int main() {
 			{ "-"_sym }
 		}}
 	};
-	lr1_test.terminal_keywords = keywords;
-	lr1_test.terminal_symbols = symbols;
 
 
 
@@ -238,8 +230,6 @@ int main() {
 			{ }
 		}}
 	};
-	lr1_epsilon.terminal_keywords = keywords;
-	lr1_epsilon.terminal_symbols = symbols;
 
 
 	dpl::Grammar PascalLikeGrammar{
@@ -259,8 +249,6 @@ int main() {
 			{ Token::Type::Identifier }
 		}}
 	};
-	PascalLikeGrammar.terminal_keywords = keywords;
-	PascalLikeGrammar.terminal_symbols = symbols;
 	
 	
 

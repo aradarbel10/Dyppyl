@@ -14,6 +14,9 @@ using namespace dpl::literals;
 TEST_CASE("NonLL1Grammar", "[LL1Tests]") {
 	std::cout << " ===== NonLL1Grammar [LL1Tests] =============================\n";
 
+	dpl::Terminal::keywords = { {"Int", 0} };
+	dpl::Terminal::symbols = { {";", 0}, {"+", 1}, {"(", 2}, {")", 3} };
+
 	dpl::Grammar non_ll1{
 		{ "E" , {
 			{ "T", ";"_sym },
@@ -24,8 +27,6 @@ TEST_CASE("NonLL1Grammar", "[LL1Tests]") {
 			{ "("_sym, "E", ")"_sym }
 		}}
 	};
-	non_ll1.terminal_keywords = { {"Int", 0} };
-	non_ll1.terminal_symbols = { {";", 0}, {"+", 1}, {"(", 2}, {")", 3} };
 
 	dpl::LL1 parser{ non_ll1 };
 	bool good_grammar = true;

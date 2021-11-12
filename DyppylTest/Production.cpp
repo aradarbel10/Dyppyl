@@ -11,11 +11,13 @@ TEST_CASE("Production", "[GrammarTests]") {
 
 	using namespace std::literals::string_view_literals;
 	using namespace dpl::literals;
-	
+
+	dpl::Terminal::keywords = { {"int", 0}, {"float", 1}, {"bool", 2} };
+	dpl::Terminal::symbols = { {"+", 0}, {"-", 1}, {"*", 2}, {"/", 3} };
 
 	// production construction
-	constexpr dpl::ProductionRule prod_sum{ dpl::Terminal::Type::Identifier, "+"_sym, dpl::Terminal::Type::Identifier };
-	constexpr dpl::ProductionRule prod_eps{};
+	dpl::ProductionRule prod_sum{ dpl::Terminal::Type::Identifier, "+"_sym, dpl::Terminal::Type::Identifier };
+	dpl::ProductionRule prod_eps{};
 
 	// epsilon productions
 	REQUIRE( prod_eps.isEpsilonProd());
@@ -44,12 +46,6 @@ TEST_CASE("Production", "[GrammarTests]") {
 						  "    | Identifier + Identifier\n"
 						  "    | epsilon\n");
 }
-
-
-TEST_CASE("StaticGrammar", "[GrammarTests], [constexpr]") {
-	
-}
-
 
 
 
