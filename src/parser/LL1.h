@@ -21,7 +21,7 @@ namespace dpl{
 
 		using out_type = std::variant<Token, RuleRef>;
 		using symbol_type = std::variant<terminal_type, nonterminal_type>;	
-		using table_type = std::unordered_map<std::variant<std::monostate, terminal_type>, std::unordered_map<nonterminal_type, int>>;
+		using table_type = dpl::cc::map<std::variant<std::monostate, terminal_type>, dpl::cc::map<nonterminal_type, int>>;
 
 		void operator<<(const Token& t_) {
 			const terminal_type t = t_;
@@ -89,8 +89,8 @@ namespace dpl{
 			//std::cout << "\n\n";
 		}
 
-		const auto& generateParseTable() {
-			table.clear();
+		static auto generateParseTable(const dpl::Grammar& grammar) {
+			table_type table;
 
 			for (auto& [name, nt] : grammar) {
 				for (int i = 0; i < nt.size(); i++) {
@@ -100,11 +100,14 @@ namespace dpl{
 
 					for (const auto& f : firsts_of_def) {
 						try {
-							if (const auto* t = std::get_if<terminal_type>(&f)) {
-								addEntry(*t, name, i);
+							if (const auto* tkn = std::get_if<terminal_type>(&f)) {
+								if (table.contains(*tkn) && table[*tkn].contains(name)) throw std::invalid_argument("non LL(1) grammar");
+								table[*tkn][name] = i;
+
 							} else {
-								std::for_each(grammar.follows[name].begin(), grammar.follows[name].end(), [&](const auto& e) {
-									addEntry(e, name, i);
+								std::for_each(grammar.follows.at(name).begin(), grammar.follows.at(name).end(), [&](const auto& e) {
+									if (table.contains(*tkn) && table[*tkn].contains(name)) throw std::invalid_argument("non LL(1) grammar");
+									table[*tkn][name] = i;
 								});
 							}
 						} catch (const std::invalid_argument& err) {
@@ -115,6 +118,11 @@ namespace dpl{
 				}
 			}
 
+			return std::move(table);
+		}
+
+		const auto& generateParseTable() {
+			table = generateParseTable(grammar);
 			return table;
 		}
 

@@ -6,6 +6,7 @@
 #include <unordered_set>
 
 #include "tokenizer/Token.h"
+#include "ConstexprUtils.h"
 
 namespace dpl {
 
@@ -54,8 +55,8 @@ namespace dpl {
 	class NonterminalRules : private std::vector<ProductionRule> {
 	public:
 
-		NonterminalRules() = default;
-		NonterminalRules(std::string_view n, std::initializer_list<ProductionRule> l) : std::vector<ProductionRule>(l), name(n) { }
+		constexpr NonterminalRules() = default;
+		constexpr NonterminalRules(std::string_view n, std::initializer_list<ProductionRule> l) : std::vector<ProductionRule>(l), name(n) { }
 
 		using std::vector<ProductionRule>::size;
 		using std::vector<ProductionRule>::operator[];
@@ -73,14 +74,14 @@ namespace dpl {
 
 	};
 
-	class Grammar : std::unordered_map<std::string_view, NonterminalRules> {
+	class Grammar : dpl::cc::map<std::string_view, NonterminalRules> {
 	public:
 
 		using epsilon_type = std::monostate;
 		using terminal_type = Terminal;
 		using nonterminal_type = std::string_view;
 
-		Grammar(std::initializer_list<NonterminalRules> l) : start_symbol(l.begin()->name) {
+		constexpr Grammar(std::initializer_list<NonterminalRules> l) : start_symbol(l.begin()->name) {
 			std::for_each(l.begin(), l.end(), [&](const auto& e) {
 				(*this)[e.name] = e;
 			});
@@ -91,24 +92,25 @@ namespace dpl {
 			calcFollowSets();
 		}
 
-		using std::unordered_map<std::string_view, NonterminalRules>::size;
-		using std::unordered_map<std::string_view, NonterminalRules>::operator[];
-		using std::unordered_map<std::string_view, NonterminalRules>::begin;
-		using std::unordered_map<std::string_view, NonterminalRules>::end;
-		using std::unordered_map<std::string_view, NonterminalRules>::contains;
+		using dpl::cc::map<std::string_view, NonterminalRules>::size;
+		using dpl::cc::map<std::string_view, NonterminalRules>::operator[];
+		using dpl::cc::map<std::string_view, NonterminalRules>::begin;
+		using dpl::cc::map<std::string_view, NonterminalRules>::end;
+		using dpl::cc::map<std::string_view, NonterminalRules>::contains;
 
 
 	public:
 
-		using firsts_type = std::unordered_map<nonterminal_type, std::unordered_set<std::variant<epsilon_type, terminal_type>>>;
-		using follows_type = std::unordered_map<nonterminal_type, std::unordered_set<terminal_type>>;
+		using firsts_type = dpl::cc::map<nonterminal_type, dpl::cc::set<std::variant<epsilon_type, terminal_type>>>;
+		using follows_type = dpl::cc::map<nonterminal_type, dpl::cc::set<terminal_type>>;
 
 		firsts_type firsts;
 		follows_type follows;
 
 		std::string start_symbol;
+		dpl::cc::set<std::string_view> keywords, symbols;
 
-		friend std::ostream& operator<<(std::ostream& os, const Grammar& grammar) {
+		friend std::ostream& operator<<(std::ostream& os, Grammar& grammar) {
 			for (const auto& [name, nonterminal] : grammar) {
 				dpl::log::coloredStream(std::cout, (name == grammar.start_symbol ? 0x02 : 0x0F), name);
 				os << " ::=\n";
@@ -209,7 +211,7 @@ namespace dpl {
 
 		// #TASK: require constant iterators
 		template<class InputIt> requires std::input_iterator<InputIt>
-		std::unordered_set<std::variant<std::monostate, Terminal>> first_star(InputIt first, InputIt last) {
+		dpl::cc::set<std::variant<std::monostate, Terminal>> first_star(const InputIt first, const InputIt last) const {
 			if (std::distance(first, last) == 0) {
 				return { epsilon_type{} };
 			}
@@ -219,9 +221,9 @@ namespace dpl {
 			}
 
 			if (const auto* v = std::get_if<nonterminal_type>(&*first)) {
-				auto result = firsts[*v];
+				auto result = firsts.at(*v);
 
-				if (firsts[*v].contains(epsilon_type{})) {
+				if (firsts.at(*v).contains(epsilon_type{})) {
 					result.erase(epsilon_type{});
 					auto rest = first_star(std::next(first), last);
 

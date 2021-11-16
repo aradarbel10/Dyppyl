@@ -14,8 +14,6 @@ using namespace dpl::literals;
 TEST_CASE("SimpleMathGrammar", "[LR0Tests]") {
 	std::cout << " ===== SimpleGrammar [LR0Tests] =============================\n";
 
-	dpl::Terminal::symbols = { {"+", 0}, {";", 1}, {"(", 2}, {")", 3} };
-
 	dpl::Grammar grammar{
 		{ "S" , {
 			{ "E" },
@@ -30,6 +28,8 @@ TEST_CASE("SimpleMathGrammar", "[LR0Tests]") {
 		}}
 	};
 
+	grammar.symbols = { "+", ";", "(", ")" };
+
 	dpl::LR0 parser{ grammar };
 
 	auto src = dpl::StringStream("5 + ( 10 + 1.5; );");
@@ -41,7 +41,7 @@ TEST_CASE("SimpleMathGrammar", "[LR0Tests]") {
 	dpl::ParseTree expected_tree{ RuleRef{ grammar, "S", 0 }, {
 		{ RuleRef{ grammar, "E", 1 }, {
 			{ RuleRef{ grammar, "T", 0 }, {
-				{{ dpl::Token::Type::Number, 5.0 }}
+				{dpl::Token{ dpl::Token::Type::Number, 5.0 }}
 			}},
 			{ "+"_sym },
 			{ RuleRef{ grammar, "E", 0 }, {
@@ -49,12 +49,12 @@ TEST_CASE("SimpleMathGrammar", "[LR0Tests]") {
 					{ "("_sym },
 					{ RuleRef{ grammar, "E", 1 }, {
 						{ RuleRef{ grammar, "T", 0 }, {
-							{{ dpl::Token::Type::Number, 10.0 }}
+							{dpl::Token{ dpl::Token::Type::Number, 10.0 }}
 						}},
 						{ "+"_sym },
 						{ RuleRef{ grammar, "E", 0 }, {
 							{ RuleRef{ grammar, "T", 0 }, {
-								{{ dpl::Token::Type::Number, 1.5 }}
+								{dpl::Token{ dpl::Token::Type::Number, 1.5 }}
 							}},
 							{ ";"_sym }
 						}}

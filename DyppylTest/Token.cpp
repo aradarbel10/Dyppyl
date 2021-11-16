@@ -7,24 +7,10 @@ using namespace dpl::literals;
 TEST_CASE("Terminal", "[TokenTests]") {
 	std::cout << " ===== Terminal [TokenTests] =============================\n";
 
-	dpl::Terminal::keywords = { {"int", 0}, {"float", 1}, {"bool", 2} };
-	dpl::Terminal::symbols = { {"+", 0}, {"-", 1}, {"*", 2}, {"/", 3} };
-
-
-	// bimap-like behavior
-	REQUIRE(dpl::Terminal::keywordByIndex(0) == "int");
-	REQUIRE(dpl::Terminal::keywordByIndex(1) == "float");
-	REQUIRE(dpl::Terminal::keywordByIndex(2) == "bool");
-	REQUIRE(dpl::Terminal::keywordByIndex(50) == "");
-
-	REQUIRE(dpl::Terminal::symbolByIndex(1) == "-");
-	REQUIRE(dpl::Terminal::symbolByIndex(3) != "*");
-	REQUIRE(dpl::Terminal::symbolByIndex(4) == "");
-
 	// comparisons
 	dpl::Terminal unk{ dpl::Terminal::Type::Unknown };
 	dpl::Terminal iden{ dpl::Terminal::Type::Identifier };
-	dpl::Terminal sym{ dpl::Terminal::Type::Symbol, size_t{1} };
+	dpl::Terminal sym{ dpl::Terminal::Type::Symbol, "-" };
 
 	REQUIRE(sym != iden);
 
@@ -36,7 +22,7 @@ TEST_CASE("Terminal", "[TokenTests]") {
 
 	// terminal stringification
 	dpl::Terminal eof{ dpl::Terminal::Type::EndOfFile };
-	dpl::Terminal kwd{ dpl::Terminal::Type::Keyword, size_t{2} };
+	dpl::Terminal kwd{ dpl::Terminal::Type::Keyword, "bool" };
 
 	REQUIRE(unk.stringify() == "Unknown");
 	REQUIRE(iden.stringify() == "Identifier");
@@ -52,10 +38,6 @@ TEST_CASE("Terminal", "[TokenTests]") {
 
 
 TEST_CASE("Token", "[TokenTests]") {
-	dpl::Terminal::keywords = { {"int", 0}, {"float", 1}, {"bool", 2} };
-	dpl::Terminal::symbols = { {"+", 0}, {"-", 1}, {"*", 2}, {"/", 3} };
-
-
 	// comparisons
 	dpl::Token unk{ dpl::Token::Type::Unknown };
 	dpl::Token str{ dpl::Token::Type::String, "heyo" };
@@ -76,8 +58,8 @@ TEST_CASE("Token", "[TokenTests]") {
 	// token stringification
 	dpl::Token iden{ dpl::Token::Type::Identifier, "var" };
 	dpl::Token eof{ dpl::Token::Type::EndOfFile };
-	dpl::Token kwd{ dpl::Token::Type::Keyword, size_t{0} };
-	dpl::Token sym{ dpl::Token::Type::Symbol, size_t{2} };
+	dpl::Token kwd{ dpl::Token::Type::Keyword, "int" };
+	dpl::Token sym{ dpl::Token::Type::Symbol, "*" };
 
 	REQUIRE(unk.stringify() == "[Unknown]");
 	REQUIRE(str.stringify() == "[\"heyo\", String]");

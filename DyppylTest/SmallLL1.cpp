@@ -14,9 +14,6 @@ using namespace dpl::literals;
 TEST_CASE("SmallGrammar", "[LL1Tests]") {
 	std::cout << " ===== SmallGrammar [LL1Tests] =============================\n";
 
-	dpl::Terminal::keywords = { {"int", 0} };
-	dpl::Terminal::symbols = { {"+", 0}, {"*", 1}, {"(", 2}, {")", 3} };
-
 	dpl::Grammar grammar{
 		{ "E", {
 			{ "int"_kwd },
@@ -27,6 +24,9 @@ TEST_CASE("SmallGrammar", "[LL1Tests]") {
 			{ "*"_sym }
 		}}
 	};
+
+	grammar.keywords = { "int" };
+	grammar.symbols = { "+", "*", "(", ")" };
 
 	dpl::LL1 parser{ grammar };
 
@@ -44,24 +44,24 @@ TEST_CASE("SmallGrammar", "[LL1Tests]") {
 
 
 	// LL(1) Parsing
-	auto str_src = dpl::StringStream{ "(int + (int * int))"sv };
+	auto str_src = dpl::StringStream{ "(int + (int * int))" };
 	auto tree = parser.parse(str_src);
 
 	using dpl::RuleRef;
 
-	dpl::ParseTree expected_tree{ RuleRef{grammar, "E"sv, 1}, {
+	dpl::ParseTree expected_tree{ RuleRef{grammar, "E", 1}, {
 		{ "("_sym },
-		{ RuleRef{ grammar, "E"sv, 0 }, { "int"_kwd } },
-		{ RuleRef{ grammar, "Op"sv, 0 }, {
+		{ RuleRef{ grammar, "E", 0 }, {{ "int"_kwd }} },
+		{ RuleRef{ grammar, "Op", 0 }, {
 			{ "+"_sym }
 		}},
-		{ RuleRef{grammar, "E"sv, 1}, {
+		{ RuleRef{grammar, "E", 1}, {
 			{ "("_sym },
-			{ RuleRef{ grammar, "E"sv, 0 }, { "int"_kwd } },
-			{ RuleRef{ grammar, "Op"sv, 1 }, {
+			{ RuleRef{ grammar, "E", 0 }, {{ "int"_kwd }} },
+			{ RuleRef{ grammar, "Op", 1 }, {
 				{ "*"_sym }
 			}},
-			{ RuleRef{ grammar, "E"sv, 0 }, { "int"_kwd } },
+			{ RuleRef{ grammar, "E", 0 }, {{ "int"_kwd }} },
 			{ ")"_sym }
 		}},
 		{ ")"_sym }

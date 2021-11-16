@@ -133,8 +133,8 @@ int main() {
 	#undef X
 	#undef Y
 
-	dpl::Token::keywords = keywords;
-	dpl::Token::symbols = symbols;
+	//dpl::Token::keywords = keywords;
+	//dpl::Token::symbols = symbols;
 
 	using Token = dpl::Token;
 

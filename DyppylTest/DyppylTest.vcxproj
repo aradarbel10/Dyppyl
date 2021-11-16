@@ -38,6 +38,7 @@
     <ClCompile Include="NonLL1.cpp" />
     <ClCompile Include="SmallLL1.cpp" />
     <ClCompile Include="Production.cpp" />
+    <ClCompile Include="TableGen.cpp" />
     <ClCompile Include="Token.cpp" />
   </ItemGroup>
   <ItemGroup>

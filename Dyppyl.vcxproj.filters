@@ -53,5 +53,8 @@
     <ClInclude Include="src\parser\Parser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\ConstexprUtils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

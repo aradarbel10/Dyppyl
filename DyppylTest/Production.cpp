@@ -6,14 +6,12 @@
 #include "../src/TextStream.h"
 #include "../src/tokenizer/Tokenizer.h"
 
+
 TEST_CASE("Production", "[GrammarTests]") {
 	std::cout << " ===== Production [GrammarTests] =============================\n";
 
 	using namespace std::literals::string_view_literals;
 	using namespace dpl::literals;
-
-	dpl::Terminal::keywords = { {"int", 0}, {"float", 1}, {"bool", 2} };
-	dpl::Terminal::symbols = { {"+", 0}, {"-", 1}, {"*", 2}, {"/", 3} };
 
 	// production construction
 	dpl::ProductionRule prod_sum{ dpl::Terminal::Type::Identifier, "+"_sym, dpl::Terminal::Type::Identifier };
@@ -46,7 +44,6 @@ TEST_CASE("Production", "[GrammarTests]") {
 						  "    | Identifier + Identifier\n"
 						  "    | epsilon\n");
 }
-
 
 
 // examples to use for testing

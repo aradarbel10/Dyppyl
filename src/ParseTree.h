@@ -9,6 +9,7 @@
 #include <variant>
 #include <optional>
 #include <span>
+#include <type_traits>
 
 namespace dpl {
 
@@ -19,11 +20,10 @@ namespace dpl {
 
 
 		ParseTree() { }
-		ParseTree(Terminal n_) : value(static_cast<Token>(n_)) { }
-		ParseTree(node_type n_) : value(n_) { }
-		ParseTree(Token n_) : value(n_) { }
-		ParseTree(node_type n_, std::vector<ParseTree> cs) : value(n_) {
-			children = std::move(cs);
+		//ParseTree(Terminal node) : value(node) { }
+		ParseTree(node_type node) : value(node) { }
+		ParseTree(node_type node, std::vector<ParseTree> cs) : value(node) {
+			children = cs;
 		}
 
 		friend std::ostream& operator<<(std::ostream& os, const ParseTree& tree) {
@@ -96,7 +96,8 @@ namespace dpl {
 		}
 
 		void packTree(ParseTree::node_type tree, size_t n) {
-			ParseTree new_root{ tree };
+			ParseTree new_root = std::visit([](const auto& t_) { return ParseTree{ t_ }; }, tree);
+
 			for (int i = 0; i < n; i++) {
 				new_root.children.emplace_back(std::move(sub_trees.back()));
 				sub_trees.pop_back();

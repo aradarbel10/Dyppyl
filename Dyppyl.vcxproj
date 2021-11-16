@@ -154,6 +154,7 @@
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\ConstexprUtils.h" />
     <ClInclude Include="src\Grammar.h" />
     <ClInclude Include="src\Logger.h" />
     <ClInclude Include="src\parser\LL1.h" />
