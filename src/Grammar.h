@@ -3,7 +3,6 @@
 #include <string_view>
 #include <variant>
 #include <vector>
-#include <unordered_set>
 
 #include "tokenizer/Token.h"
 #include "ConstexprUtils.h"
@@ -14,6 +13,7 @@ namespace dpl {
 	public:
 
 		using symbol_type = value_type;
+		using std::vector<std::variant<Terminal, std::string_view>>::iterator;
 
 		constexpr ProductionRule(std::initializer_list<symbol_type> l) : std::vector<symbol_type>(l) { }
 
@@ -82,18 +82,21 @@ namespace dpl {
 		using nonterminal_type = std::string_view;
 
 		constexpr Grammar(std::initializer_list<NonterminalRules> l) : start_symbol(l.begin()->name) {
-			std::for_each(l.begin(), l.end(), [&](const auto& e) {
-				(*this)[e.name] = e;
-			});
+			for (auto i = l.begin(); i != l.end(); i++) {
+				insert(i->name, *i);
+			}
+			initialize();
 		}
+		constexpr ~Grammar() = default;
 
-		void initialize() {
+		constexpr void initialize() {
 			calcFirstSets();
 			calcFollowSets();
 		}
 
 		using dpl::cc::map<std::string_view, NonterminalRules>::size;
 		using dpl::cc::map<std::string_view, NonterminalRules>::operator[];
+		using dpl::cc::map<std::string_view, NonterminalRules>::at;
 		using dpl::cc::map<std::string_view, NonterminalRules>::begin;
 		using dpl::cc::map<std::string_view, NonterminalRules>::end;
 		using dpl::cc::map<std::string_view, NonterminalRules>::contains;
@@ -122,15 +125,20 @@ namespace dpl {
 
 
 	public:
+		
+		constexpr void calcFirstSets() {
+			
 
-		void calcFirstSets() {
-			firsts.reserve(size());
-			for (auto& [name, nt] : *this) {
-				firsts[name].reserve(nt.size());
-				for (auto& rule : nt) {
-					if (rule.isEpsilonProd()) {
+			if constexpr (!std::is_constant_evaluated()) firsts.reserve(size());
+			for (const auto& [name, nt] : *this) {
+				firsts.insert(name, {});
+
+				if constexpr (!std::is_constant_evaluated()) firsts[name].reserve(nt.size());
+				// #TASK : change loop to "auto& rule : nt" (why doesn't it work in constexpr??)
+				for (int i = 0; i < nt.size(); i++) {
+					if (nt[i].isEpsilonProd()) {
 						firsts[name].insert(epsilon_type{});
-					} else if (const terminal_type* t = std::get_if<terminal_type>(&rule[0])) {
+					} else if (const terminal_type* t = std::get_if<terminal_type>(&nt[i][0])) {
 						firsts[name].insert(*t);
 					}
 				}
@@ -140,11 +148,12 @@ namespace dpl {
 			do {
 				changed = false;
 
-				for (auto& [name, nt] : (*this)) {
-					for (auto& rule : nt) {
+				for (auto& [name, nt] : *this) {
+					// #TASK : change loop to "auto& rule : nt" (why doesn't it work in constexpr??)
+					for (int i = 0; i < nt.size(); i++) {
 						auto size_before = firsts[name].size();
 
-						auto first_star_set = first_star(rule.begin(), rule.end());
+						auto first_star_set = first_star(nt[i]);
 						for (const auto& symbol : first_star_set) {
 							firsts[name].insert(symbol);
 						}
@@ -155,14 +164,17 @@ namespace dpl {
 			} while (changed);
 		}
 
-		void calcFollowSets() {
-			for (auto& [name, nt] : (*this)) {
-				for (auto& rule : nt) {
+		constexpr void calcFollowSets() {
+			for (auto& [name, nt] : *this) {
+				// #TASK : change loop to "auto& rule : nt" (why doesn't it work in constexpr??)
+				for (int j = 0; j < nt.size(); j++) {
+					auto& rule = nt[j];
 					if (rule.empty()) continue;
 
 					for (int i = 0; i < rule.size() - 1; i++) {
 						if (const auto* n = std::get_if<nonterminal_type>(&rule[i])) {
 							if (const auto* t = std::get_if<terminal_type>(&rule[i + 1])) {
+								follows.insert(*n, {});
 								follows[*n].insert(*t);
 							}
 						}
@@ -170,21 +182,28 @@ namespace dpl {
 				}
 			}
 
+			follows.insert(start_symbol, {});
 			follows[start_symbol].insert(Terminal::Type::EndOfFile);
 
+			// #TASK : rewrite this huge ass nested loop
 			bool changed;
 			do {
 				changed = false;
 
 				for (auto& [name, nt] : (*this)) {
-					for (auto& rule : nt) {
+					for (int j = 0; j < nt.size(); j++) {
+						auto& rule = nt[j];
 						if (rule.isEpsilonProd()) continue;
 
 						for (int i = 0; i < rule.size() - 1; i++) {
 							if (const auto* v = std::get_if<nonterminal_type>(&rule[i])) {
 								auto size_before = follows[*v].size();
-
-								const auto first_of_rest = first_star(std::next(rule.begin(), i + 1), rule.end());
+								
+								dpl::ProductionRule rest_of_rule = {};
+								for (int k = i + 1; k < rule.size(); k++) {
+									rest_of_rule.push_back(rule[k]);
+								}
+								auto first_of_rest = first_star(rest_of_rule);
 								bool contains_epsilon = false;
 
 								std::for_each(first_of_rest.begin(), first_of_rest.end(), [&](const auto& e) {
@@ -210,22 +229,26 @@ namespace dpl {
 	public:
 
 		// #TASK: require constant iterators
-		template<class InputIt> requires std::input_iterator<InputIt>
-		dpl::cc::set<std::variant<std::monostate, Terminal>> first_star(const InputIt first, const InputIt last) const {
-			if (std::distance(first, last) == 0) {
+		constexpr dpl::cc::set<std::variant<epsilon_type, terminal_type>> first_star(const ProductionRule& rule) const {
+			// first* of an epsilon-production is epsilon
+			if (rule.isEpsilonProd()) {
 				return { epsilon_type{} };
 			}
 
-			if (const auto* v = std::get_if<terminal_type>(&*first)) {
+			// first* of a string that begins with a terminal is that terminal
+			if (const auto* v = std::get_if<terminal_type>(&rule[0])) {
 				return { *v };
 			}
 
-			if (const auto* v = std::get_if<nonterminal_type>(&*first)) {
+			// first* of a string that begins with a nonterminal
+			if (const auto* v = std::get_if<nonterminal_type>(&rule[0])) {
+				// use the first set of that nonterminal
 				auto result = firsts.at(*v);
 
+				// if that nonterminal can begin with epsilon, remove epsilon and add first* of the remaining string
 				if (firsts.at(*v).contains(epsilon_type{})) {
 					result.erase(epsilon_type{});
-					auto rest = first_star(std::next(first), last);
+					auto rest = first_star({ std::next(rule.begin()), rule.end() });
 
 					std::for_each(rest.begin(), rest.end(), [&](const auto& e) {
 						result.insert(e);
@@ -235,7 +258,7 @@ namespace dpl {
 				return result;
 			}
 
-			return {};
+			return { };
 		}
 
 	};

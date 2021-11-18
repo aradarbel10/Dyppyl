@@ -6,7 +6,6 @@
 #include "../tokenizer/Tokenizer.h"
 #include "Parser.h"
 
-#include <unordered_map>
 #include <algorithm>
 #include <array>
 #include <stack>
@@ -89,26 +88,29 @@ namespace dpl{
 			//std::cout << "\n\n";
 		}
 
-		static auto generateParseTable(const dpl::Grammar& grammar) {
+		constexpr static auto generateParseTable(const dpl::Grammar& grammar) {
 			table_type table;
 
 			for (auto& [name, nt] : grammar) {
 				for (int i = 0; i < nt.size(); i++) {
 					auto& rule = nt[i];
 
-					auto firsts_of_def = grammar.first_star(rule.begin(), rule.end());
+					auto firsts_of_def = grammar.first_star(rule);
 
 					for (const auto& f : firsts_of_def) {
 						try {
 							if (const auto* tkn = std::get_if<terminal_type>(&f)) {
 								if (table.contains(*tkn) && table[*tkn].contains(name)) throw std::invalid_argument("non LL(1) grammar");
-								table[*tkn][name] = i;
 
+								table.insert(*tkn, {});
+								table[*tkn].insert(name, i);
 							} else {
-								std::for_each(grammar.follows.at(name).begin(), grammar.follows.at(name).end(), [&](const auto& e) {
-									if (table.contains(*tkn) && table[*tkn].contains(name)) throw std::invalid_argument("non LL(1) grammar");
-									table[*tkn][name] = i;
-								});
+								for (auto iter = grammar.follows.at(name).begin(); iter != grammar.follows.at(name).end(); iter++) {
+									if (table.contains(*iter) && table[*iter].contains(name)) throw std::invalid_argument("non LL(1) grammar");
+
+									table.insert(*iter, {});
+									table[*iter].insert(name, i);
+								}
 							}
 						} catch (const std::invalid_argument& err) {
 							table.clear();
@@ -118,7 +120,7 @@ namespace dpl{
 				}
 			}
 
-			return std::move(table);
+			return table;
 		}
 
 		const auto& generateParseTable() {

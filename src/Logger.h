@@ -1,6 +1,6 @@
 #pragma once
 
-#include <windows.h>
+//#include <windows.h>
 
 #include <iostream>
 #include <variant>
@@ -48,12 +48,13 @@ namespace dpl {
 			return os;
 		}
 
+		// #TASK : support colored printing on non-windows systems
 		inline void coloredStream(std::ostream& os, int color, std::string_view str) {
-			static HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+			//static HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 
-			SetConsoleTextAttribute(hConsole, color);
+			//SetConsoleTextAttribute(hConsole, color);
 			os << str;
-			SetConsoleTextAttribute(hConsole, 0x07);
+			//SetConsoleTextAttribute(hConsole, 0x07);
 		}
 
 		#ifdef DPL_LOG

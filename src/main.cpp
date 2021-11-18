@@ -115,7 +115,68 @@ using namespace dpl::literals;
 	Y(BEGIN) \
 	Y(END)
 
+
+
+
+
+/*constexpr dpl::cc::set<int> range(int start, int amount) {
+	dpl::cc::set<int> res;
+	for (int i = 0; i < amount; i++) {
+		res.insert(i + start);
+	}
+	return res;
+}
+
+constexpr int use_vector(int start, int amount) {
+	auto set = range(start, amount);
+	return *std::prev(set.end());
+}*/
+
+constexpr int gen_table_size() {
+	auto grammar = dpl::Grammar{
+		{ "Stmt", {
+			{ "if"_kwd, "Expr", "then"_kwd, "Stmt" },
+			{ "while"_kwd, "Expr", "do"_kwd, "Stmt" },
+			{ "Expr", ";"_sym }
+		}},
+		{ "Expr", {
+			{ "Term", "->"_sym, dpl::Token::Type::Identifier },
+			{ "zero?"_sym, "Term" },
+			{ "not"_kwd, "Expr" },
+			{ "++"_sym, dpl::Token::Type::Identifier },
+			{ "--"_sym, dpl::Token::Type::Identifier }
+		}},
+		{ "Term", {
+			{ dpl::Token::Type::Identifier },
+			{ dpl::Token::Type::Number }
+		}}
+	};
+	auto table = dpl::LL1::generateParseTable(grammar);
+
+	return grammar.follows.size();
+}
+
+
+
 int main() {
+
+
+	constexpr int table_size = gen_table_size();
+	std::cout << table_size;
+
+	return 0;
+
+
+
+
+
+
+
+
+
+
+
+	/*
 	#define X(name, symbol) name,
 	#define Y(name) name,
 	enum Symbols { SYMBOLS_MACRO };
@@ -285,6 +346,8 @@ int main() {
 	std::cout << tree;
 	DplLogPrintTelemetry();
 	return 0;
+
+	*/
 }
 
 #undef SYMBOLS_MACRO

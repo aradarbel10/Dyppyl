@@ -57,58 +57,47 @@ namespace dpl::cc {
 	};
 
 	template <typename KeyT, typename ValT>
-	class map {
+	class map : private std::vector<std::pair<KeyT, ValT>> {
 
-		std::vector<std::pair<KeyT, ValT>> underlying;
-
-		constexpr auto index_impl(const KeyT& key) {
-			return std::find_if(begin(), end(), [&key](const auto& pair) { return pair.first == key; });
-		}
-
-		constexpr auto index_impl(const KeyT& key) const {
-			return std::find_if(cbegin(), cend(), [&key](const auto& pair) { return pair.first == key; });
-		}
-
-		constexpr auto index_or_create_impl(const KeyT& key) {
-			auto iter = index_impl(key);
-			if (iter != end()) return iter;
-			else {
-				std::pair<KeyT, ValT> pair;
-				pair.first = key;
-				underlying.emplace_back(std::move(pair));
-
-				return std::prev(end());
-			}
-		}
+		using std::vector<std::pair<KeyT, ValT>>::push_back;
+		using std::vector<std::pair<KeyT, ValT>>::operator[];
 
 	public:
 
-		constexpr map(std::initializer_list<std::pair<KeyT, ValT>> il) : underlying(il) { }
-		constexpr map() = default;
-
-		[[nodiscard]] constexpr size_t size() { return underlying.size(); }
-		[[nodiscard]] constexpr bool empty() { return underlying.empty(); }
-
-		[[nodiscard]] constexpr auto begin() const { return underlying.begin(); }
-		[[nodiscard]] constexpr auto end() const { return underlying.end(); }
-		[[nodiscard]] constexpr auto begin() { return underlying.begin(); }
-		[[nodiscard]] constexpr auto end() { return underlying.end(); }
-		[[nodiscard]] constexpr auto cbegin() const { return underlying.cbegin(); }
-		[[nodiscard]] constexpr auto cend() const { return underlying.cend(); }
-
-		constexpr void reserve(size_t s) { return underlying.reserve(s); }
-		constexpr void clear() { underlying.clear(); }
-
-		[[nodiscard]] constexpr ValT& operator[](const KeyT& key) { return index_or_create_impl(key)->second; }
-		[[nodiscard]] constexpr const ValT& at(const KeyT& key) const { return index_impl(key)->second; }
+		constexpr map(std::initializer_list<std::pair<KeyT, ValT>> il) : std::vector<std::pair<KeyT, ValT>>(il) { }
+		constexpr void insert(const KeyT& key, const ValT& val) {
+			if (!contains(key)) push_back({ key, val });
+		}
+		[[nodiscard]] constexpr ValT& operator[](const KeyT& key) {
+			auto iter = std::find_if(begin(), end(), [&key](const auto& pair) { return pair.first == key; });
+			if (iter == end()) {
+				std::pair<KeyT, ValT> pair;
+				pair.first = key;
+				push_back(pair);
+				return std::prev(end())->second;
+			} else {
+				return iter->second;
+			}
+		}
+		[[nodiscard]] constexpr const ValT& at(const KeyT& key) const {
+			return std::find_if(begin(), end(), [&key](const auto& pair) { return pair.first == key; })->second;
+		}
 
 		[[nodiscard]] constexpr bool contains(const KeyT& key) const {
-			return std::any_of(cbegin(), cend(), [&key](const auto& pair) { return pair.first == key; });
+			return std::any_of(begin(), end(), [&key](const auto& pair) { return pair.first == key; });
 		}
 
 		constexpr friend bool operator==(const map<KeyT, ValT>& lhs, const map<KeyT, ValT>& rhs) {
 			return std::is_permutation(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
 		}
+
+		using std::vector<std::pair<KeyT, ValT>>::vector;
+		using std::vector<std::pair<KeyT, ValT>>::size;
+		using std::vector<std::pair<KeyT, ValT>>::empty;
+		using std::vector<std::pair<KeyT, ValT>>::begin;
+		using std::vector<std::pair<KeyT, ValT>>::end;
+		using std::vector<std::pair<KeyT, ValT>>::reserve;
+		using std::vector<std::pair<KeyT, ValT>>::clear;
 
 	};
 
@@ -116,6 +105,12 @@ namespace dpl::cc {
 	template <typename ValT>
 	class set : private std::vector<ValT> {
 	public:
+
+		constexpr set(std::initializer_list<ValT> il) {
+			for (auto i = il.begin(); i != il.end(); i++) {
+				insert(*i);
+			}
+		}
 
 		using std::vector<ValT>::vector;
 		using std::vector<ValT>::size;
@@ -128,15 +123,17 @@ namespace dpl::cc {
 		using std::vector<ValT>::rend;
 		using std::vector<ValT>::reserve;
 
-		constexpr bool insert(const ValT& val) {
+		constexpr void insert(const ValT& val) {
 			if (!contains(val)) {
 				this->push_back(val);
-				return true;
-			} else return false;
+			};
 		}
 
 		constexpr bool contains(const ValT& val) const {
-			return std::find(begin(), end(), val) != end();
+			for (int i = 0; i < size(); i++) {
+				if (this->at(i) == val) return true;
+			}
+			return false;
 		}
 
 		constexpr bool erase(const ValT& val) {
