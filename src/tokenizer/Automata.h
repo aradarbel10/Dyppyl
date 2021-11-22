@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-
+#include <cctype>
 #include <iostream>
 
 namespace dpl {
@@ -33,16 +33,6 @@ namespace dpl {
 
 		int current_state = 0;
 		int age = 0;
-
-		static bool isLetter(char c) {
-			//65-90, 97-122
-			return (c >= 65 && c <= 90) || (c >= 97 && c <= 122);
-		}
-
-		static bool isDigit(char c) {
-			//48-57
-			return c >= 48 && c <= 57;
-		}
 
 	};
 
@@ -104,14 +94,14 @@ namespace dpl {
 			if (!isAlive()) return;
 
 			if (current_state == 0) { // waiting for init
-				if (isLetter(c) || c == '_' || c == '\'') {
+				if (std::isalpha(c) || c == '_' || c == '\'') {
 					age++;
 					current_state++;
 				} else {
 					kill();
 				}
 			} else if (current_state == 1) { // waiting for init / any
-				if (isLetter(c) || c == '_' || c == '\'' || isDigit(c)) {
+				if (std::isalpha(c) || c == '_' || c == '\'' || std::isdigit(c)) {
 					age++;
 				} else {
 					current_state = 2;
@@ -136,21 +126,21 @@ namespace dpl {
 				if (c == '+' || c == '-') {
 					age++;
 					current_state = 1;
-				} else if (isDigit(c)) {
+				} else if (std::isdigit(c)) {
 					age++;
 					current_state = 2;
 				} else {
 					kill();
 				}
 			} else if (current_state == 1) {
-				if (isDigit(c)) {
+				if (std::isdigit(c)) {
 					age++;
 					current_state = 2;
 				} else {
 					kill();
 				}
 			} else if (current_state == 2) {
-				if (isDigit(c)) {
+				if (std::isdigit(c)) {
 					age++;
 				} else if (c == '.') {
 					age++;
@@ -159,7 +149,7 @@ namespace dpl {
 					current_state = 4;
 				}
 			} else if (current_state == 3) {
-				if (isDigit(c)) {
+				if (std::isdigit(c)) {
 					age++;
 				} else {
 					current_state = 4;
@@ -232,6 +222,7 @@ namespace dpl {
 			}
 		}
 
+		// #TASK : what the fuck is this aweful design.. fix fast fix soon
 		inline static std::string recent_string = "";
 
 	};
