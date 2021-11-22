@@ -58,9 +58,9 @@ TEST_CASE("SimpleGrammar", "[LL1Tests]") {
 	REQUIRE(std::is_permutation(expected_firsts.begin(), expected_firsts.end(), grammar.firsts.begin(), grammar.firsts.end()));
 
 	// LL(1) Parse Table Generation
-	const auto& table = parser.generateParseTable();
+	const auto& table = parser.getParseTable();
 
-	dpl::LL1::table_type expected_table {
+	auto expected_table = dpl::LLTable{grammar, {
 		{ "if"_kwd, {{ "Stmt" , 0 }}},
 
 		{ "while"_kwd, {{ "Stmt", 1 }}},
@@ -72,9 +72,9 @@ TEST_CASE("SimpleGrammar", "[LL1Tests]") {
 
 		{ dpl::Token::Type::Identifier, {{ "Stmt", 2 }, { "Expr", 0 }, { "Term", 0 }}},
 		{ dpl::Token::Type::Number, {{ "Stmt", 2 }, { "Expr", 0 }, { "Term", 1 }}}
-	};
+	}};
 
-	REQUIRE(std::is_permutation(table.begin(), table.end(), expected_table.begin(), expected_table.end()));
+	REQUIRE(table.compareTo(expected_table));
 
 	// LL(1) Parsing
 	using dpl::RuleRef;

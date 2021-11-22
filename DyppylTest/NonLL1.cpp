@@ -31,12 +31,6 @@ TEST_CASE("NonLL1Grammar", "[LL1Tests]") {
 	dpl::LL1 parser{ non_ll1 };
 	bool good_grammar = true;
 
-	try {
-		parser.generateParseTable();
-	} catch (...) {
-		good_grammar = false;
-	}
-
-	REQUIRE(!good_grammar);
+	REQUIRE(!parser.getParseTable().isLL1());
 
 }

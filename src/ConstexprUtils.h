@@ -82,13 +82,16 @@ namespace dpl::cc {
 		[[nodiscard]] constexpr const ValT& at(const KeyT& key) const {
 			return std::find_if(begin(), end(), [&key](const auto& pair) { return pair.first == key; })->second;
 		}
+		[[nodiscard]] constexpr const ValT& operator[](const KeyT& key) const {
+			return at(key);
+		}
 
 		[[nodiscard]] constexpr bool contains(const KeyT& key) const {
 			return std::any_of(begin(), end(), [&key](const auto& pair) { return pair.first == key; });
 		}
 
-		constexpr friend bool operator==(const map<KeyT, ValT>& lhs, const map<KeyT, ValT>& rhs) {
-			return std::is_permutation(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
+		constexpr bool operator==(const map<KeyT, ValT>& rhs) {
+			return std::is_permutation(begin(), end(), rhs.begin(), rhs.end());
 		}
 
 		using std::vector<std::pair<KeyT, ValT>>::vector;

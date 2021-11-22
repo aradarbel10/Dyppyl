@@ -31,16 +31,16 @@ TEST_CASE("SmallGrammar", "[LL1Tests]") {
 	dpl::LL1 parser{ grammar };
 
 	// LL(1) Parse Table Generation
-	const auto& table = parser.generateParseTable();
+	const auto& table = parser.getParseTable();
 
-	dpl::LL1::table_type expected_table{
+	auto expected_table = dpl::LLTable{grammar, {
 		{ "int"_kwd, {{ "E" , 0 }}},
 		{ "("_sym, {{ "E", 1 }}},
 		{ "+"_sym, {{ "Op", 0 }}},
 		{ "*"_sym, {{ "Op", 1 }}}
-	};
+	}};
 
-	REQUIRE(table == expected_table);
+	REQUIRE(table.compareTo(expected_table));
 
 
 	// LL(1) Parsing

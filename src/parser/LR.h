@@ -128,9 +128,7 @@ namespace dpl {
 	protected:
 
 		BottomUpTreeBuilder tb;
-		TreeBuilder& tree_builder() {
-			return tb;
-		}
+		TreeBuilder& tree_builder() { return tb; }
 
 		std::unordered_map<state_type, std::map<symbol_type, state_type>> goto_table;
 		std::unordered_map<state_type, std::map<terminal_type, action_type>> action_table;
