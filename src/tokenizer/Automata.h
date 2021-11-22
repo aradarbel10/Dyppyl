@@ -235,7 +235,4 @@ namespace dpl {
 		inline static std::string recent_string = "";
 
 	};
-
-	// symbol DFA = basially the same as the identifier DFA but even simpler
-
 }

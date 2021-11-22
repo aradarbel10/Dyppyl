@@ -114,10 +114,6 @@ namespace dpl {
 			if (type == Type::Identifier || type == Type::String) value = v;
 			else throw std::invalid_argument{ "can't put string in token of type " + std::string{magic_enum::enum_name(type)} };
 		}
-		//Token(Type t, std::string_view v) {
-		//	if (type == Type::Keyword || type == Type::Symbol) terminal_value = v;
-		//	else throw std::invalid_argument{ "can't put string_view in token of type " + std::string{magic_enum::enum_name(type)} };
-		//}
 		Token(Type t, const char* v) : Terminal(t) {
 			if (type == Type::Identifier || type == Type::String) value = v;
 			else if (type == Type::Keyword || type == Type::Symbol) terminal_value = v;

@@ -20,13 +20,6 @@
 
 using namespace dpl::literals;
 
-// search this solution for "#TASK" to find places where optimizations/refactoring/improvements may be worth implementing
-
-// #TASK : wrap up tokenizer, parser, tree-gen in a separate "front end" object
-// #TASK : find better way to handle exceptions
-// #TASK : ensure constexpr-ness of whatever's possible
-// #TASK : write tests
-
 #define SYMBOLS_MACRO \
 	X(LeftParen, "(") \
 	X(RightParen, ")") \

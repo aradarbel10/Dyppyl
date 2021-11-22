@@ -6,39 +6,39 @@
 
 #include <string_view>
 
+#include "hybrid/hybrid.hpp"
 
 using namespace std::literals::string_view_literals;
 using namespace dpl::literals;
 
-constexpr int gen_table_size() {
-	auto grammar = dpl::Grammar{
-		{ "Stmt", {
-			{ "if"_kwd, "Expr", "then"_kwd, "Stmt" },
-			{ "while"_kwd, "Expr", "do"_kwd, "Stmt" },
-			{ "Expr", ";"_sym }
+constexpr auto gen_table() {
+	dpl::Grammar grammar{
+		{ "E", {
+			{ "int"_kwd },
+			{ "("_sym, "E", "Op", "E", ")"_sym }
 		}},
-		{ "Expr", {
-			{ "Term", "->"_sym, dpl::Token::Type::Identifier },
-			{ "zero?"_sym, "Term" },
-			{ "not"_kwd, "Expr" },
-			{ "++"_sym, dpl::Token::Type::Identifier },
-			{ "--"_sym, dpl::Token::Type::Identifier }
-		}},
-		{ "Term", {
-			{ dpl::Token::Type::Identifier },
-			{ dpl::Token::Type::Number }
+		{ "Op", {
+			{ "+"_sym },
+			{ "*"_sym }
 		}}
 	};
-	dpl::LLTable table{ grammar };
 
-	return table.size();
+	auto table = dpl::LLTable{ grammar };
+
+	hybrid::map<std::pair<dpl::LLTable::terminal_type, dpl::LLTable::nonterminal_type>, int> hybrid_table;
+	for (const auto& [pair, val] : table) {
+		hybrid_table.insert(pair, val);
+	}
+
+	return hybrid_table;
 }
 
 TEST_CASE("TableGen", "[constexpr]") {
 	std::cout << " ===== TableGen [constexpr] =============================\n";
 
-	constexpr int table_size = gen_table_size();
-	std::cout << table_size;
-	
-	//REQUIRE(table_size == 6);
+	constexpr auto table = hybrid_compute(gen_table);
+
+	for (const auto& [pair, val] : table) {
+		std::cout << pair.first.stringify() << ", " << pair.second << ": " << val << '\n';
+	}
 }
