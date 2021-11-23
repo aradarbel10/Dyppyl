@@ -127,13 +127,11 @@ namespace dpl {
 	public:
 		
 		constexpr void calcFirstSets() {
-			
-
-			if constexpr (!std::is_constant_evaluated()) firsts.reserve(size());
+			if (!std::is_constant_evaluated()) firsts.reserve(size());
 			for (const auto& [name, nt] : *this) {
 				firsts.insert(name, {});
 
-				if constexpr (!std::is_constant_evaluated()) firsts[name].reserve(nt.size());
+				if (!std::is_constant_evaluated()) firsts[name].reserve(nt.size());
 				// #TASK : change loop to "auto& rule : nt" (why doesn't it work in constexpr??)
 				for (int i = 0; i < nt.size(); i++) {
 					if (nt[i].isEpsilonProd()) {

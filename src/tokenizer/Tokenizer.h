@@ -48,28 +48,16 @@ namespace dpl {
 		int longest_accepted = -1, length_of_longest = 0;
 		std::string lexeme_buff, lexer_queue;
 
-		#ifdef DPL_LOG
-		std::chrono::time_point<std::chrono::steady_clock> frontend_clock_begin;
-		std::chrono::time_point<std::chrono::steady_clock> char_clock_begin;
-		std::chrono::duration<long double> char_avg_dur{ 0 };
-
-		unsigned long long char_count{ 0 };
-		unsigned long long token_count{ 0 };
-
-		std::uintmax_t source_size;
-		#endif //DPL_LOG
-
 		std::pair<unsigned int, unsigned int> pos_in_file{ 1, 1 };
 		std::string_view current_line;
 
 		Grammar& grammar;
-		TextStream& input;
-		Token next_tkn;
-		bool next_tkn_ready = false;
+		//TextStream& input;
+		std::function<void(Token)> output_func;
 
 	public:
 
-		Tokenizer(TextStream& inp, Grammar& g) : input(inp), grammar(g) {
+		Tokenizer(Grammar& g) : grammar(g) {
 			symbols_count = grammar.symbols.size();
 
 			symbols_automata.reserve(grammar.symbols.size());
@@ -81,27 +69,17 @@ namespace dpl {
 			}
 		}
 
-		Token fetchNext() {
-			next_tkn_ready = false;
+		void tokenize(TextStream& input, std::function<void(Token)> out_f) {
+			output_func = out_f;
 
-			while (!next_tkn_ready) {
+			while (!input.closed()) {
 				*this << input.fetchNext();
 			}
-
-			return next_tkn;
-		}
-
-		bool closed() {
-			return input.closed();
 		}
 
 	private:
 
 		void operator<<(const char& c) {
-			#ifdef DPL_LOG
-			char_clock_begin = std::chrono::steady_clock::now();
-			char_count++;
-			#endif
 			if (c == '\n') {
 				pos_in_file.first = 1;
 				pos_in_file.second++;
@@ -109,27 +87,10 @@ namespace dpl {
 
 			if (c == '\0') endStream();
 			else passHiders(c);
-			#ifdef DPL_LOG
-			char_avg_dur *= char_count - 1;
-			char_avg_dur += std::chrono::steady_clock::now() - char_clock_begin;
-			char_avg_dur /= char_count;
-			#endif
 		}
 
 		void endStream() {
-			next_tkn = Token{ Token::Type::EndOfFile };
-			next_tkn_ready = true;
-
-			#ifdef DPL_LOG
-			auto duration = std::chrono::steady_clock::now() - frontend_clock_begin;
-
-			dpl::log::telemetry_info.add("total time for frontend", duration);
-			dpl::log::telemetry_info.add("avg. time per character", char_avg_dur);
-			dpl::log::telemetry_info.add("# of characters", char_count);
-			dpl::log::telemetry_info.add("# of tokens", token_count);
-
-			dpl::log::telemetry_info.add("Apprx. speed [MB/sec]", static_cast<long double>(source_size * 1000.0l / duration.count()));
-			#endif //DPL_LOG
+			output_func(Token{ Token::Type::EndOfFile });
 		}
 
 		void passHiders(char c) {
@@ -220,14 +181,9 @@ namespace dpl {
 		}
 
 		void evaluate(int machine, std::string_view str) {
-			#ifdef DPL_LOG
-			token_count++;
-			#endif //DPL_LOG
+			Token next_tkn;
 
 			if (machine == -1) {
-				#ifdef DPL_LOG
-				token_count--;
-				#endif //DPL_LOG
 
 				std::cerr << "Illegal token at character " << pos_in_file.first << " of line " << pos_in_file.second;
 
@@ -255,7 +211,8 @@ namespace dpl {
 			std::cout << "Token recognized " << next_tkn << "\n";
 
 			next_tkn.pos = { pos_in_file.first, pos_in_file.second };
-			next_tkn_ready = true;
+
+			output_func(next_tkn);
 		}
 
 	};

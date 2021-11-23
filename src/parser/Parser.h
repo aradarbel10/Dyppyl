@@ -6,15 +6,12 @@ namespace dpl{
 	class Parser {
 	public:
 		
-		Parser(Grammar& g) : grammar(g) { }
+		Parser(Grammar& g) : grammar(g), tokenizer(grammar) { }
 
 		ParseTree parse(dpl::TextStream& src) {
-			Tokenizer input{ src, grammar };
 			parse_init();
 
-			while (!src.closed()) {
-				(*this) << input.fetchNext();
-			}
+			tokenizer.tokenize(src, [this](const Token& tkn) { *this << tkn; });
 
 			return std::move(out_tree);
 		}
@@ -27,6 +24,7 @@ namespace dpl{
 
 		Grammar& grammar;
 		ParseTree out_tree;
+		Tokenizer tokenizer;
 
 	};
 
