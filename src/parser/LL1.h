@@ -217,7 +217,4 @@ namespace dpl{
 
 		std::stack<symbol_type> parse_stack;
 	};
-
-	template<>
-	const char* getParserName<LL1> = "LL(1)";
 }

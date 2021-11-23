@@ -27,9 +27,4 @@ namespace dpl{
 		Tokenizer tokenizer;
 
 	};
-
-	template<class P> requires std::derived_from<P, Parser>
-	const char* getParserName = "Parser";
-
-
 }

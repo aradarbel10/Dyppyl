@@ -32,11 +32,11 @@ namespace dpl {
 
 				auto row = state.getActions(g);
 				for (const auto& [token, action] : row) {
-					// #TASK : get these error messages to work
-					if (!addActionEntry(i, token, action)) std::cerr << "Error: Duplicate Action Entries -- Non-" << /*getParserName<decltype(*this)> <<*/ " Grammar!\n";
+					if (!addActionEntry(i, token, action)) std::cerr << "Error: Duplicate Action Entries -- Non-LL0 Grammar!\n";
 				}
 
 				for (const auto& [symbol, dest] : transes) {
+					// #TASK : get these error messages to work
 					if (!addGotoEntry(i, symbol, dest)) std::cerr << "Error: Duplicate Goto Entries -- Non-" << /*getParserName<decltype(*this)> <<*/ " Grammar!\n";
 				}
 			}
@@ -325,7 +325,6 @@ namespace dpl {
 			do {
 				old_size = states.size();
 
-				// #TASK : iterate more efficiently through stack (linaer time instead of polynomial!), probably by keeping a chore queue
 				while(!chore_queue.empty()) { int i = chore_queue.front();
 
 					for (size_t j = 0; j < states[i].first.size(); j++) {
@@ -360,7 +359,4 @@ namespace dpl {
 
 
 	typedef LR<LR0Automaton<State<Configuration>>> LR0;
-
-	template<>
-	const char* getParserName<LR0> = "LR(0)";
 }
