@@ -13,20 +13,33 @@
 
 namespace dpl {
 
-	class ParseTree {
-	public:
+	template <typename T>
+	class Tree {
+	private:
+		
+		void recursivePrint(const std::string& prefix, bool isLast) const {
+			std::cout << prefix;
+			std::cout << (isLast ? "'---" : "|---");
 
-		using node_type = std::variant<Token, RuleRef, std::monostate>;
+			std::cout << value;
 
-
-		ParseTree() { }
-		//ParseTree(Terminal node) : value(node) { }
-		ParseTree(node_type node) : value(node) { }
-		ParseTree(node_type node, std::vector<ParseTree> cs) : value(node) {
-			children = cs;
+			for (int i = 0; i < children.size(); i++) {
+				children[i].recursivePrint(prefix + (isLast ? "    " : "|   "), i == children.size() - 1);
+			}
 		}
 
-		friend std::ostream& operator<<(std::ostream& os, const ParseTree& tree) {
+	protected:
+		std::optional<T> value;
+		std::vector<Tree<T>> children;
+
+	public:
+		using node_type = T;
+
+		Tree() = default;
+		Tree(T node) : value(node) { }
+		Tree(T node, std::initializer_list<Tree<T>> cs) : value(node), children(cs) { }
+
+		friend std::ostream& operator<<(std::ostream& os, const Tree<T>& tree) {
 			os << "\n\nParse Tree:\n===============\n";
 			tree.recursivePrint("", true);
 			os << "\n\n";
@@ -34,44 +47,36 @@ namespace dpl {
 			return os;
 		}
 
-		friend bool operator==(const ParseTree& lhs, const ParseTree& rhs) {
+		friend bool operator==(const Tree<T>& lhs, const Tree<T>& rhs) {
 			return (lhs.value == rhs.value) && (lhs.children == rhs.children);
 		}
 
+
+	};
+
+	typedef dpl::Tree<std::variant<std::string_view, dpl::Terminal>> TreePattern;
+
+	class ParseTree : public dpl::Tree<std::variant<std::string_view, Token, RuleRef, std::monostate>> {
 	private:
-
-		void recursivePrint(const std::string& prefix, bool isLast) const {
-			
-
-			std::cout << prefix;
-			std::cout << (isLast ? "'---" : "|---");
-
-			if (value.has_value()) {
-				if (const auto* nt = std::get_if<RuleRef>(&value.value())) std::cout << nt->name << "(" << nt->prod << ")\n";
-				else if (const auto* tkn = std::get_if<Token>(&value.value())) {
-					dpl::log::coloredStream(std::cout, 0x03, (*tkn).stringify());
-					std::cout << '\n';
-				} else {
-					std::cout << "null\n";
-				}
-			}
-
-
-			for (int i = 0; i < children.size(); i++) {
-				children[i].recursivePrint(prefix + (isLast ? "    " : "|   "), i == children.size() - 1);
-			}
-		}
-
-	private:
-
-		std::optional<node_type> value;
-		std::vector<ParseTree> children;
+		using parent = dpl::Tree<std::variant<std::string_view, Token, RuleRef, std::monostate>>;
+		using parent::parent;
 
 		friend class BottomUpTreeBuilder;
 		friend class TopDownTreeBuilder;
-		
 	};
 
+	inline std::ostream& operator<<(std::ostream& os, const std::optional<std::variant<std::string_view, Token, RuleRef, std::monostate>> value) {
+		if (value.has_value()) {
+			if (const auto* nt = std::get_if<RuleRef>(&value.value())) std::cout << nt->name << "(" << nt->prod << ")\n";
+			else if (const auto* tkn = std::get_if<Token>(&value.value())) {
+				dpl::log::coloredStream(std::cout, 0x03, (*tkn).stringify());
+				std::cout << '\n';
+			} else {
+				std::cout << "null\n";
+			}
+		}
+		return os;
+	}
 	
 	class TreeBuilder {
 	public:
@@ -96,7 +101,7 @@ namespace dpl {
 		}
 
 		void packTree(ParseTree::node_type tree, size_t n) {
-			ParseTree new_root = std::visit([](const auto& t_) { return ParseTree{ t_ }; }, tree);
+			ParseTree new_root = ParseTree{ tree };
 
 			for (int i = 0; i < n; i++) {
 				new_root.children.emplace_back(std::move(sub_trees.back()));
@@ -159,7 +164,7 @@ namespace dpl {
 			}
 
 			for (auto& child : tree.children) {
-				if (pushNode(node, child)) return true;
+				if (pushNode(node, static_cast<ParseTree&>(child))) return true;
 			}
 
 			return false;

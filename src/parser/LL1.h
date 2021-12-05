@@ -124,7 +124,7 @@ namespace dpl{
 			do {
 				if (std::holds_alternative<nonterminal_type>(parse_stack.top())) {
 					const auto nontr = std::get<nonterminal_type>(parse_stack.top());
-					if (hasEntry(t, nontr)) {
+					if (table.contains({ t, nontr })) {
 
 						auto& rule = grammar[nontr][table[{t, nontr}]];
 
@@ -171,29 +171,7 @@ namespace dpl{
 			} while (!terminal_eliminated);
 		}
 
-		void printParseTable() {
-			//std::cout << "\n\nParse Table:\n";
-			//for (const auto& [tkn, row] : table) {
-			//	std::cout << tkn << " :   ";
-			//	for (const auto& [key, rule] : row) {
-			//		std::cout << key << " (" << rule << ")  ";
-			//	}
-			//	std::cout << '\n';
-			//}
-			//std::cout << "\n\n";
-		}
-
 		const auto& getParseTable() { return table; }
-
-		bool hasEntry(const terminal_type& tkn, nonterminal_type nontr) {
-			return table.contains({tkn, nontr});
-		}
-
-		bool addEntry(const terminal_type& tkn, nonterminal_type name, int i) {
-			if (hasEntry(tkn, name)) throw std::invalid_argument("non LL(1) grammar");
-			table.insert({ tkn, name }, i);
-			return false; // returns whether entry already existed
-		}
 
 		LL1(Grammar& g) : Parser(g), tb(g), table(g) { }
 		LL1(const LLTable& t) : table(t), Parser(t.grammar), tb(t.grammar) { }

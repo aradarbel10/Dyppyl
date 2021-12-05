@@ -113,174 +113,59 @@ using namespace dpl::literals;
 
 
 int main() {
-	#define X(name, symbol) name,
-	#define Y(name) name,
-	enum Symbols { SYMBOLS_MACRO };
-	enum Keywords { KEYWORDS_MACRO };
-	#undef X
-	#undef Y
+	//#define X(name, symbol) name,
+	//#define Y(name) name,
+	//enum Symbols { SYMBOLS_MACRO };
+	//enum Keywords { KEYWORDS_MACRO };
+	//#undef X
+	//#undef Y
 
-	#define X(name, symbol) {symbol, Symbols:: name},
-	const std::map<std::string_view, size_t> symbols{ SYMBOLS_MACRO };
-	#undef X
-	
-	#define X(name, str) {str, Keywords:: name},
-	#define Y(name) {#name, Keywords:: name},
-	const std::map<std::string_view, size_t> keywords{ KEYWORDS_MACRO };
-	#undef X
-	#undef Y
+	//#define X(name, symbol) {symbol, Symbols:: name},
+	//const std::map<std::string_view, size_t> symbols{ SYMBOLS_MACRO };
+	//#undef X
+	//
+	//#define X(name, str) {str, Keywords:: name},
+	//#define Y(name) {#name, Keywords:: name},
+	//const std::map<std::string_view, size_t> keywords{ KEYWORDS_MACRO };
+	//#undef X
+	//#undef Y
 
-	//dpl::Token::keywords = keywords;
-	//dpl::Token::symbols = symbols;
+	//using Token = dpl::Token;
 
-	using Token = dpl::Token;
-
-	dpl::Grammar example_grammar{
-		{ "Stmts", {
-			{ "Stmt", "Stmts" },
-			{ }
-		}},
-		{ "Term", {
-			{ dpl::Token::Type::Identifier },
+	dpl::Grammar grammar{
+		{ "E", {
+			{ "("_sym, "E", "Op", "E", ")"_sym },
 			{ dpl::Token::Type::Number }
 		}},
-		{ "Expr", {
-			{ "Term", "->"_sym, dpl::Token::Type::Identifier },
-			{ "zero"_kwd, "Term" },
-			{ "not"_kwd, "Expr"},
-			{ "++"_sym, dpl::Token::Type::Identifier },
-			{ "--"_sym, dpl::Token::Type::Identifier }
-		}},
-		{ "Stmt", {
-			{ "if"_kwd, "Expr" , "then"_kwd, "Block" },
-			{ "while"_kwd, "Expr", "do"_kwd, "Block"},
-			{ "Expr", ";"_sym}
-		}},
-		{ "Block", {
-			{ "Stmt" },
-			{ "{"_sym, "Stmts", "}"_sym }
+		{ "Op", {
+			{ "+"_sym },
+			{ "*"_sym }
 		}}
 	};
-
-	dpl::Grammar precedence_grammar{
-		{ "E", {
-			{ "T", "E'" }
-		}},
-		{ "E'", {
-			{ "+"_sym, "T", "E'" },
-			{ }
-		}},
-		{ "T", {
-			{ "F", "T'" }
-		}},
-		{ "T'", {
-			{ "*"_sym, "F", "T'" },
-			{ }
-		}},
-		{ "F", {
-			{ dpl::Token::Type::Identifier },
-			{ "("_sym, "E", ")"_sym }
-		}}
-	};
-
-	dpl::Grammar non_ll1{
-		{ "E" , {
-			{ "T", ";"_sym },
-			{ "T", "+"_sym, "E"}
-		}},
-		{ "T", {
-			{ "Int"_kwd },
-			{ "("_sym, "E", ")"_sym }
-		}}
-	};
-
-
-	dpl::Grammar non_lr0{
-		{ "E" , {
-			{ "T" },
-			{ "E", "+"_sym, "T"}
-		}},
-		{ "T", {
-			{ "Int"_kwd },
-			{ "("_sym, "E", ")"_sym }
-		}},
-	};
-
-	dpl::Grammar lr1_test{
-		{ "S", {
-			{ "C", "C" }
-		}},
-		{ "C", {
-			{ "+"_sym, "C" },
-			{ "-"_sym }
-		}}
-	};
-
-
-
-	dpl::Grammar lr1_epsilon{
-		{ "Program", {
-			{ "PROGRAM"_kwd, Token::Type::Identifier, "BEGIN"_kwd, "Stmts", "END"_kwd }
-		}},
-		{ "Stmts", {
-			{ "Stmts", "+"_sym },
-			{ }
-		}}
-	};
-
-
-	dpl::Grammar PascalLikeGrammar{
-		{ "Program", {
-			{ "PROGRAM"_kwd, Token::Type::Identifier, "BEGIN"_kwd, "Stmts", "END"_kwd }
-		}},
-		{ "Stmts", {
-			{ "Stmts", "Stmt" },
-			{ }
-		}},
-		{ "Stmt", {
-			{ Token::Type::Identifier, ":="_sym, "Rvalue", ";"_sym }
-		}},
-		{ "Rvalue", {
-			{ Token::Type::Number },
-			{ Token::Type::String },
-			{ Token::Type::Identifier }
-		}}
-	};
+	grammar.symbols = { "+", "*", "(", ")" };
 	
-	
+	dpl::StringStream src{ "(( 5 + 4.0 ) * ( 18.2 + -2 ))" };
 
-	//dpl::StringStream src{ "while zero 0 do { 1 -> x; ++x; }" };
-	//dpl::FileStream src{ "snippets/example.lang" };
-	//dpl::FileStream src{ "snippets/short.lang" };
-	//dpl::StringStream src{ "Int + ( Int + Int ; ) ;" };
-	//dpl::StringStream src{ "Int + ( Int + Int )" };
-	//dpl::StringStream src{ "var1 * var2 * ( var3 * var4 ) + var5 * ( var6 + (var7 + var8) ) + var9 * var10 + var11" };
-	dpl::StringStream src{ "var1 + var2" };
-//	dpl::StringStream src{
-//R"raw(
-//PROGRAM DEMO1
-//BEGIN
-//	A := 3;
-//	B := A;
-//	BABOON := GIRAFFE;
-//	TEXT := "Hello, World!";
-//END
-//)raw"
-//	};
-	//dpl::StringStream src{ "PROGRAM MyProg BEGIN + + + + + + END" };
-
-	dpl::LR1 parser{ precedence_grammar };
-	//parser.printParseTable();
-	
-
+	dpl::LL1 parser{ grammar };
 	dpl::ParseTree tree = parser.parse(src);
 	
+	using dpl::RuleRef;
+	dpl::TreePattern expected_tree
+	{ "E", {
+		{ "("_sym },
+		{ "E" },
+		{ "Op", {{ "+"_sym }}},
+		{ "E" },
+		{ ")"_sym }
+	}};
+
+
 	std::cout << "\n\nGrammar:\n==============\n";
-	std::cout << precedence_grammar << "\n";
+	std::cout << grammar << "\n";
 
 	std::cout << "Input String:\n=============\n" << src.getString() << "\n";
 	std::cout << tree;
-	DplLogPrintTelemetry();
+
 	return 0;
 }
 
