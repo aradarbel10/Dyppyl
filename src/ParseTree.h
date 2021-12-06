@@ -94,14 +94,20 @@ namespace dpl {
 		}
 
 		void replace(const Tree<T>& pattern, const T& node) {
-			for (auto& child : children) {
-				child.replace(pattern, node);
-			}
+			const auto apply_root = [&] {
+				if (auto subs = this->match(pattern)) {
+					value = node;
+					children = *subs;
+				}
+			};
 
-			if (auto subs = this->match(pattern)) {
-				value = node;
-				children = *subs;
-			}
+			const auto apply_children = [&] {
+				for (auto& child : children) {
+					child.replace(pattern, node);
+				}
+			};
+
+			call_by_traversal_order(apply_root, apply_children, order);
 		}
 
 		template <typename Func> requires std::invocable<Func, std::vector<Tree<T>>>
@@ -123,7 +129,7 @@ namespace dpl {
 		}
 	};
 
-	template <typename T, typename Func> //requires std::invocable<Func, Tree<T>>
+	template <typename T, typename Func> requires std::invocable<Func, Tree<T>&>
 	void tree_visit(Tree<T>& tree, const Func& func, TraverseOrder order = TraverseOrder::BottomUp) {
 		const auto apply_root = [&] {
 			func(tree);
