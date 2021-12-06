@@ -275,9 +275,11 @@ namespace dpl {
 			return (*grammar)[name][prod];
 		}
 
-		friend bool operator==(const RuleRef& lhs, const RuleRef& rhs) {
-			return (lhs.name == rhs.name) && (lhs.prod == rhs.prod);
-		}
-
+		friend bool operator==(const RuleRef& lhs, const RuleRef& rhs) { return (lhs.name == rhs.name) && (lhs.prod == rhs.prod); }
+		operator std::string_view() const { return name; }
 	};
+
+	inline bool operator==(const RuleRef& lhs, const std::string_view rhs) { return lhs.name == rhs; }
+	inline bool operator==(const std::string_view lhs, const RuleRef& rhs) { return rhs == lhs; }
+	static_assert(std::equality_comparable_with<RuleRef, std::string_view>);
 }

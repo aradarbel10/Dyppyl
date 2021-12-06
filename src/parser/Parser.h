@@ -11,7 +11,9 @@ namespace dpl{
 		ParseTree parse(dpl::TextStream& src) {
 			parse_init();
 
-			tokenizer.tokenize(src, [this](const Token& tkn) { *this << tkn; });
+			tokenizer.tokenize(src, [this](const Token& tkn) {
+				*this << tkn;
+			});
 
 			return std::move(out_tree);
 		}

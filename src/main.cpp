@@ -143,28 +143,42 @@ int main() {
 		}}
 	};
 	grammar.symbols = { "+", "*", "(", ")" };
-	
+
+	dpl::LR1 parser{ grammar };
+
+
 	dpl::StringStream src{ "(( 5 + 4.0 ) * ( 18.2 + -2 ))" };
-
-	dpl::LL1 parser{ grammar };
 	dpl::ParseTree tree = parser.parse(src);
+
+	tree.replace_with(
+		dpl::ParseTree{ "E", {{ "("_sym }, {}, { "Op" }, {}, {")"_sym}}},
+		[](const std::vector<dpl::ParseTree>& cs) {
+			return dpl::ParseTree{ cs[1][0].value, {
+				(cs[0].match({"E"}) ? cs[0][0].value : cs[0]),
+				(cs[2].match({"E"}) ? cs[2][0].value : cs[2])
+			}};
+		},
+		dpl::TraverseOrder::BottomUp
+	);
+
+	std::cout << "\n\nAST:\n" << tree << "\n\n";
+
+	dpl::tree_visit(tree, [](dpl::ParseTree& tree) {
+		if (tree.children.size() == 2) {
+			long double lhs = std::get<long double>(std::get<dpl::Token>(tree[0].value).value);
+			long double rhs = std::get<long double>(std::get<dpl::Token>(tree[1].value).value);
+
+			if (tree.match({"+"_sym}))
+				tree = dpl::ParseTree{{ dpl::Token{dpl::Token::Type::Number, lhs + rhs }}};
+			else if (tree.match({"*"_sym }))
+				tree = dpl::ParseTree{{ dpl::Token{dpl::Token::Type::Number, lhs * rhs }}};
+		}
+	});
 	
-	using dpl::RuleRef;
-	dpl::TreePattern expected_tree
-	{ "E", {
-		{ "("_sym },
-		{ "E" },
-		{ "Op", {{ "+"_sym }}},
-		{ "E" },
-		{ ")"_sym }
-	}};
+	std::cout << "Input String: " << src.getString() << "\n";
+	std::cout << "Result: " << std::get<long double>(std::get<dpl::Token>(tree.value).value);
 
-
-	std::cout << "\n\nGrammar:\n==============\n";
-	std::cout << grammar << "\n";
-
-	std::cout << "Input String:\n=============\n" << src.getString() << "\n";
-	std::cout << tree;
+	
 
 	return 0;
 }

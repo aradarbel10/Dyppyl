@@ -28,7 +28,13 @@ namespace dpl {
 
 		template<typename T1, typename T2>
 		inline std::ostream& operator<<(std::ostream& os, streamer<std::pair<T1, T2>> pr) {
-			os << pr.val.first << ", " << streamer{ pr.val.second };
+			os << streamer{ pr.val.first } << ", " << streamer{ pr.val.second };
+			return os;
+		}
+
+		template<typename T>
+		inline std::ostream& operator<<(std::ostream& os, streamer<std::optional<T>> strm) {
+			os << streamer{ strm.val.value_or("null") };
 			return os;
 		}
 

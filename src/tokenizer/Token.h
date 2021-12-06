@@ -76,6 +76,7 @@ namespace dpl {
 		friend constexpr bool operator==(const Token& lhs, const Token& rhs) {
 			if (lhs.type == Type::Unknown || rhs.type == Type::Unknown) return true;
 			if (lhs.type != rhs.type) return false;
+			if (lhs.terminal_value != rhs.terminal_value) return false;
 			if (std::holds_alternative<std::monostate>(lhs.value) || std::holds_alternative<std::monostate>(rhs.value)) {
 				return true;
 			}
