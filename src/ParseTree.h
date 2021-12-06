@@ -93,7 +93,7 @@ namespace dpl {
 			return result;
 		}
 
-		void replace(const Tree<T>& pattern, const T& node) {
+		void replace(const Tree<T>& pattern, const T& node, TraverseOrder order = TraverseOrder::BottomUp) {
 			const auto apply_root = [&] {
 				if (auto subs = this->match(pattern)) {
 					value = node;
