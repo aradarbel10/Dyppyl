@@ -23,7 +23,7 @@ namespace dpl {
 
 		using action_type = std::variant<accept_action, state_type, RuleRef>;
 
-		LR(Grammar& g) : Parser(g), tb(g) {
+		LR(Grammar& g, Options ops = {}) : Parser(g, ops), tb(g) {
 			AutomatonT automaton{ grammar };
 
 			// generate parse tables
@@ -32,12 +32,14 @@ namespace dpl {
 
 				auto row = state.getActions(g);
 				for (const auto& [token, action] : row) {
-					if (!addActionEntry(i, token, action)) std::cerr << "Error: Duplicate Action Entries -- Non-LL0 Grammar!\n";
+					if (!addActionEntry(i, token, action) && options.log_errors)
+						options.logprintln("Errors", "grammar error: Duplicate Action Entries -- Non-LL0 Grammar!");
 				}
 
 				for (const auto& [symbol, dest] : transes) {
 					// #TASK : get these error messages to work
-					if (!addGotoEntry(i, symbol, dest)) std::cerr << "Error: Duplicate Goto Entries -- Non-" << /*getParserName<decltype(*this)> <<*/ " Grammar!\n";
+					if (!addGotoEntry(i, symbol, dest) && options.log_errors)
+						options.logprintln("Errors", "grammar error: Duplicate Action Entries -- Non-LL0 Grammar!");
 				}
 			}
 		}
@@ -47,40 +49,44 @@ namespace dpl {
 			parse_stack.push(0);
 		}
 
-		void operator<<(const Token& t) {
-			terminal_type t_ = t;
+		void operator<<(const Token& t_) {
+			terminal_type t = t_;
 
 			bool terminal_eliminated = false;
 			do {
 
 				// #TASK : make sure stack is non-empty
-				if (!hasActionEntry(parse_stack.top(), t_)) { // not contains means the action is shift
-					if (!hasGotoEntry(parse_stack.top(), t_)) {
-						std::cerr << "Syntax error: unexptected token " << t.stringify() << " at position (" << dpl::log::streamer{ t.pos } << ")\n";
+				if (!hasActionEntry(parse_stack.top(), t)) { // not contains means the action is shift
+					if (!hasGotoEntry(parse_stack.top(), t)) {
+						err_unexpected_token(t_);
 						return;
 					}
 
-					state_type new_state = getGotoEntry(parse_stack.top(), t_);
+					state_type new_state = getGotoEntry(parse_stack.top(), t);
 					parse_stack.push(new_state);
 
 					terminal_eliminated = true;
 
-					std::cout << "Shift: " << t.stringify() << ", goto " << new_state << '\n';
-					tree_builder().pushNode(t);
-				} else if (const auto* prod = std::get_if<RuleRef>(&getActionEntry(parse_stack.top(), t_))) { // reduce action
+					if (options.log_step_by_step)
+						options.logprintln("Parser Trace", "Shift: ", t.stringify(), ", goto ", new_state);
+
+					tree_builder().pushNode(t_);
+				} else if (const auto* prod = std::get_if<RuleRef>(&getActionEntry(parse_stack.top(), t))) { // reduce action
 					const ProductionRule& rule = prod->getRule();
 
 					for (int i = 0; i < rule.size(); i++) parse_stack.pop();
 
 					if (!hasGotoEntry(parse_stack.top(), prod->name)) {
-						std::cerr << "Syntax error: unexptected token " << t.stringify() << " at position (" << dpl::log::streamer{ t.pos } << ")\n";
+						err_unexpected_token(t_);
 						return;
 					}
 
 					state_type new_state = getGotoEntry(parse_stack.top(), prod->name);
 					parse_stack.push(new_state);
 
-					std::cout << "Reduce: " << rule << ", goto " << new_state << '\n';
+					if (options.log_step_by_step)
+						options.logprintln("Parser Trace", "Reduce: ", rule, ", goto ", new_state);
+
 					tree_builder().pushNode(*prod);
 				} else if (std::holds_alternative<std::monostate>(getActionEntry(parse_stack.top(), t_))) { // accept
 					terminal_eliminated = true;
@@ -88,7 +94,7 @@ namespace dpl {
 					this->tree_builder().assignToTree(out_tree);
 
 				} else { // report error
-					std::cerr << "Syntax error: unexpected token " << t.stringify() << " at position (" << dpl::log::streamer{ t.pos } << ")\n";
+					err_unexpected_token(t_);
 				}
 
 			} while (!terminal_eliminated);

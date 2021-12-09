@@ -34,14 +34,14 @@ namespace dpl {
 		
 		template <typename S> friend class Tree;
 
-		void recursivePrint(const std::string& prefix, bool isLast) const {
-			std::cout << prefix;
-			std::cout << (isLast ? "'---" : "|---");
+		void recursivePrint(std::ostream& os, const std::string& prefix, bool isLast) const {
+			os << prefix;
+			os << (isLast ? "'---" : "|---");
 
-			std::cout << dpl::log::streamer{ value } << "\n";
+			os << dpl::log::streamer{ value } << "\n";
 
 			for (int i = 0; i < children.size(); i++) {
-				children[i].recursivePrint(prefix + (isLast ? "    " : "|   "), i == children.size() - 1);
+				children[i].recursivePrint(os, prefix + (isLast ? "    " : "|   "), i == children.size() - 1);
 			}
 		}
 
@@ -61,7 +61,7 @@ namespace dpl {
 		const auto& operator[](size_t index) const { return children[index]; }
 
 		friend std::ostream& operator<<(std::ostream& os, const Tree<T>& tree) {
-			tree.recursivePrint("", true);
+			tree.recursivePrint(os, "", true);
 			return os;
 		}
 
@@ -148,11 +148,11 @@ namespace dpl {
 
 	inline std::ostream& operator<<(std::ostream& os, const std::optional<std::variant<std::string_view, Token, RuleRef, std::monostate>> value) {
 		if (value.has_value()) {
-			if (const auto* nt = std::get_if<RuleRef>(&value.value())) std::cout << nt->name << "(" << nt->prod << ")";
+			if (const auto* nt = std::get_if<RuleRef>(&value.value())) os << nt->name << "(" << nt->prod << ")";
 			else if (const auto* tkn = std::get_if<Token>(&value.value())) {
-				dpl::log::coloredStream(std::cout, 0x03, (*tkn).stringify());
+				dpl::log::coloredStream(os, 0x03, (*tkn).stringify());
 			} else {
-				std::cout << "null";
+				os << "null";
 			}
 		}
 		return os;

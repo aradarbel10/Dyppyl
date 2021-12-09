@@ -144,8 +144,14 @@ int main() {
 	};
 	grammar.symbols = { "+", "*", "(", ")" };
 
-	dpl::LR1 parser{ grammar };
+	dpl::LR1 parser{ grammar, {
+		.log_step_by_step		= true,
+		.log_parse_tree			= true,
+		.log_tokenizer			= true,
 
+		.log_to_file			= true,
+	}};
+	std::cout << parser.options.log_dir;
 
 	dpl::StringStream src{ "(( 5 + 4.0 ) * ( 18.2 + -2 ))" };
 	dpl::ParseTree tree = parser.parse(src);

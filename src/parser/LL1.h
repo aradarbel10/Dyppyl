@@ -128,7 +128,9 @@ namespace dpl{
 
 						auto& rule = grammar[nontr][table[{t, nontr}]];
 
-						std::cout << "Production out: (" << nontr << ", " << table[{t, nontr}] << ")\n";
+						if (options.log_step_by_step)
+							options.logprintln("Parser Trace", "Production out: (", nontr, ", ", table[{t, nontr}], ")");
+
 						this->tree_builder().pushNode(RuleRef{ grammar, nontr, table[{t, nontr}] });
 
 						parse_stack.pop();
@@ -142,7 +144,7 @@ namespace dpl{
 						});
 
 					} else {
-						std::cerr << "Syntax error: unexpected token " << t_ << " at position (" << dpl::log::streamer{ t_.pos } << ")\n";
+						err_unexpected_token(t_);
 						return;
 					}
 				}
@@ -150,21 +152,25 @@ namespace dpl{
 				if (const auto* tr = std::get_if<terminal_type>(&parse_stack.top())) {
 					if (*tr == t) {
 
-						std::cout << "Token out: " << t.stringify() << '\n';
+						if (options.log_step_by_step)
+							options.logprintln("Parser Trace", "Token out: ", t.stringify());
+
 						this->tree_builder().pushNode(t_);
 						parse_stack.pop();
 
 						terminal_eliminated = true;
 
 						if (parse_stack.empty()) {
-							std::cout << "end of parsing\n";
+							if (options.log_step_by_step)
+								options.logprintln("Parser Trace", "end of parsing");
 
 							this->tree_builder().assignToTree(out_tree);
 
 							return;
 						}
 					} else {
-						std::cerr << "Syntax error: unexpected token " << t_ << " at position (" << dpl::log::streamer{ t_.pos } << ")\n";
+						err_unexpected_token(t_);
+
 						return;
 					}
 				}
@@ -173,8 +179,8 @@ namespace dpl{
 
 		const auto& getParseTable() { return table; }
 
-		LL1(Grammar& g) : Parser(g), tb(g), table(g) { }
-		LL1(const LLTable& t) : table(t), Parser(t.grammar), tb(t.grammar) { }
+		LL1(Grammar& g, const Options& ops = {}) : Parser(g, ops), tb(g), table(g) { }
+		LL1(const LLTable& t, const Options& ops = {}) : table(t), Parser(t.grammar, ops), tb(t.grammar) { }
 
 		void parse_init() override {
 			std::stack<symbol_type>{}.swap(parse_stack); // clear stack

@@ -52,7 +52,6 @@ namespace dpl {
 		std::string_view current_line;
 
 		Grammar& grammar;
-		//TextStream& input;
 		std::function<void(Token)> output_func;
 
 	public:
@@ -207,8 +206,6 @@ namespace dpl {
 			} else {
 				std::cerr << "Error: Programmar is an idiot!\n";
 			}
-
-			std::cout << "Token recognized " << next_tkn << "\n";
 
 			next_tkn.pos = { pos_in_file.first, pos_in_file.second };
 
