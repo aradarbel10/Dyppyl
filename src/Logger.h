@@ -38,6 +38,16 @@ namespace dpl {
 			return os;
 		}
 
+		template<typename T, template <typename> class Container>
+			requires requires (Container<T> cont) { cont.begin(); cont.end(); }
+		inline std::ostream& operator<<(std::ostream& os, streamer<Container<T>> cont) {
+			os << streamer{ *cont.val.begin() };
+			for (auto iter = cont.val.begin() + 1; iter != cont.val.end(); ++iter) {
+				os << ", " << streamer{*iter};
+			}
+			return os;
+		}
+
 		template<typename T> requires std::is_enum_v<T>
 		inline std::ostream& operator<<(std::ostream& os, streamer<T> strm) {
 			os << magic_enum::enum_name(strm.val);

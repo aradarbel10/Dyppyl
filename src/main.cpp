@@ -149,6 +149,9 @@ int main() {
 		.log_parse_tree			= true,
 		.log_tokenizer			= true,
 
+		.log_grammar			= true,
+		.log_grammar_info		= true,
+
 		.log_to_file			= false,
 	}};
 

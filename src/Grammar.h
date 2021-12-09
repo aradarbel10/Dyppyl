@@ -113,12 +113,12 @@ namespace dpl {
 		std::string start_symbol;
 		dpl::cc::set<std::string_view> keywords, symbols;
 
-		friend std::ostream& operator<<(std::ostream& os, Grammar& grammar) {
+		friend std::ostream& operator<<(std::ostream& os, const Grammar& grammar) {
 			for (const auto& [name, nonterminal] : grammar) {
-				dpl::log::coloredStream(std::cout, (name == grammar.start_symbol ? 0x02 : 0x0F), name);
+				dpl::log::coloredStream(os, (name == grammar.start_symbol ? 0x02 : 0x0F), name);
 				os << " ::=\n";
 				os << nonterminal;
-				os << "  ;\n\n";
+				os << "    ;";
 			}
 			return os;
 		}

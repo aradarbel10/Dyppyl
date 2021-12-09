@@ -82,6 +82,8 @@ namespace dpl{
 				}
 
 				if (log_to_file) delete log_dest;
+
+				log_dests.clear();
 			}
 
 		private:
@@ -106,6 +108,20 @@ namespace dpl{
 
 			if (options.log_parse_tree)
 				options.logprintln("Parse Tree", out_tree);
+
+			if (options.log_grammar)
+				options.logprintln("Grammar", grammar);
+			if (options.log_grammar_info) {
+				options.logprint("Grammar", "\n\nFirst Sets:");
+				for (const auto& [nonterminal, terminals] : grammar.firsts) {
+					options.logprint("Grammar", "\n", nonterminal, ": ", terminals);
+				}
+
+				options.logprint("Grammar", "\n\n\Follow Sets:");
+				for (const auto& [nonterminal, terminals] : grammar.follows) {
+					options.logprint("Grammar", "\n", nonterminal, ": ", terminals);
+				}
+			}
 
 			options.flush_logs();
 
