@@ -60,6 +60,11 @@ namespace dpl {
 		auto& operator[](size_t index) { return children[index]; }
 		const auto& operator[](size_t index) const { return children[index]; }
 
+		template <typename T> requires requires (T t) { std::get<T>(value); }
+		T& get() {
+			return std::get<T>(value);
+		}
+
 		friend std::ostream& operator<<(std::ostream& os, const Tree<T>& tree) {
 			tree.recursivePrint(os, "", true);
 			return os;

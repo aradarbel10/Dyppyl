@@ -99,7 +99,7 @@ namespace dpl{
 
 			tokenizer.tokenize(src, [this](const Token& tkn) {
 				if (options.log_tokenizer)
-					options.logprintln("Tokenizer Output", tkn);
+					options.logprintln("Tokenizer Output", tkn, " at ", tkn.pos);
 
 				*this << tkn;
 			});

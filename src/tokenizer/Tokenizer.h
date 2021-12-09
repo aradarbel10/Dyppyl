@@ -48,7 +48,7 @@ namespace dpl {
 		int longest_accepted = -1, length_of_longest = 0;
 		std::string lexeme_buff, lexer_queue;
 
-		std::pair<unsigned int, unsigned int> pos_in_file{ 1, 1 };
+		std::pair<unsigned int, unsigned int> pos_in_file{ 1, 1 }, start_of_lexeme;
 		std::string_view current_line;
 
 		Grammar& grammar;
@@ -89,7 +89,9 @@ namespace dpl {
 		}
 
 		void endStream() {
-			output_func(Token{ Token::Type::EndOfFile });
+			Token eof_tkn{ Token::Type::EndOfFile };
+			eof_tkn.pos = start_of_lexeme;
+			output_func(eof_tkn);
 		}
 
 		void passHiders(char c) {
@@ -162,6 +164,7 @@ namespace dpl {
 				}
 			}
 
+			if (lexeme_buff.empty()) start_of_lexeme = { pos_in_file.first - 1, pos_in_file.second };
 			lexeme_buff.push_back(c);
 
 			if (all_dead) {
@@ -184,7 +187,7 @@ namespace dpl {
 
 			if (machine == -1) {
 
-				std::cerr << "Illegal token at character " << pos_in_file.first << " of line " << pos_in_file.second;
+				std::cerr << "Illegal token at character " << start_of_lexeme.first << " of line " << start_of_lexeme.second;
 
 			} else if (machine == 0) {
 				auto iter = std::find(grammar.keywords.begin(), grammar.keywords.end(), str);
@@ -207,7 +210,7 @@ namespace dpl {
 				std::cerr << "Error: Programmar is an idiot!\n";
 			}
 
-			next_tkn.pos = { pos_in_file.first, pos_in_file.second };
+			next_tkn.pos = start_of_lexeme;
 
 			output_func(next_tkn);
 		}

@@ -71,6 +71,7 @@ namespace dpl{
 		}
 
 		constexpr void generate() {
+			is_ll1 = true;
 			clear();
 
 			for (auto& [name, nt] : grammar) {

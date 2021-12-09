@@ -144,16 +144,15 @@ int main() {
 	};
 	grammar.symbols = { "+", "*", "(", ")" };
 
-	dpl::LR1 parser{ grammar, {
+	dpl::LL1 parser{ grammar, {
 		.log_step_by_step		= true,
 		.log_parse_tree			= true,
 		.log_tokenizer			= true,
 
-		.log_to_file			= true,
+		.log_to_file			= false,
 	}};
-	std::cout << parser.options.log_dir;
 
-	dpl::StringStream src{ "(( 5 + 4.0 ) * ( 18.2 + -2 ))" };
+	dpl::StringStream src{ "( 5 * 18.2 )" };
 	dpl::ParseTree tree = parser.parse(src);
 
 	tree.replace_with(
@@ -171,8 +170,8 @@ int main() {
 
 	dpl::tree_visit(tree, [](dpl::ParseTree& tree) {
 		if (tree.children.size() == 2) {
-			long double lhs = std::get<long double>(std::get<dpl::Token>(tree[0].value).value);
-			long double rhs = std::get<long double>(std::get<dpl::Token>(tree[1].value).value);
+			long double lhs = std::get<long double>(tree[0].get<dpl::Token>().value);
+			long double rhs = std::get<long double>(tree[1].get<dpl::Token>().value);
 
 			if (tree.match({"+"_sym}))
 				tree = dpl::ParseTree{{ dpl::Token{dpl::Token::Type::Number, lhs + rhs }}};
