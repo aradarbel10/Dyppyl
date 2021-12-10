@@ -203,10 +203,9 @@ int main() {
 			{ dpl::Token::Type::Number }
 		}}
 	};
-
 	grammar2.symbols = { "+", "*", "(", ")" };
-	dpl::LR1 parser2{ grammar2 };
 
+	dpl::LR1 parser2{ grammar2 };
 	dpl::StringStream src2{ "1 + 2 * (3 + 4) * 5" };
 	dpl::ParseTree tree2 = parser2.parse(src2);
 

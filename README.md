@@ -3,33 +3,62 @@ A compiler generator written in modern C++.
 
 <img src="promotional/logo.png" alt="logo" width="250">
 
+## Example(s)
+NOTE: Dyppyl is under constant developments, so some examples might be outdated.
+```cpp
+// define grammar & parser
+dpl::Grammar grammar{
+	{ "E", {
+		{{"E", "+"_sym, "E"}, dpl::Assoc::Left, 5 },
+		{{"E", "*"_sym, "E"}, dpl::Assoc::Left, 10},
+		{ "("_sym, "E", ")"_sym },
+		{ dpl::Token::Type::Number }
+	}}
+};
+grammar.symbols = { "+", "*", "(", ")" };
+dpl::LR1 parser{ grammar };
+
+// use parser
+dpl::StringStream src{ "1 + 2 * (3 + 4) * 5" };
+dpl::ParseTree tree = parser2.parse(src);
+
+// transform from parse tree to AST
+tree.replace_with(
+	dpl::ParseTree{ "E", {{"("_sym}, {}, {")"_sym}}},
+	[](const std::vector<dpl::ParseTree>& cs) { return cs[0]; }
+);
+
+tree.replace_with(
+	dpl::ParseTree{ "E", {{}, {}, {}} },
+	[](const std::vector<dpl::ParseTree>& cs) {
+		return dpl::ParseTree{ cs[1].value, {
+			(cs[0].match({"E"}) ? cs[0][0].value : cs[0]),
+			(cs[2].match({"E"}) ? cs[2][0].value : cs[2])
+		}};
+	},
+	dpl::TraverseOrder::BottomUp
+);
+```
+
 ## What is Dyppyl?
+
 Dyppyl is a compiler-generator library written with modern C++ features.
 Usually you'd hear about parser generators, so what's a *compiler* generator?
-At this early stage of development, Dyppyl is a plain parser generator. At the time of writing, it can create parsers of these types:
-- LL(1)
-- LR(0)
-- LR(1)
+Dyppyl is mostly just a parser generator, but also includes a suite of tools dedicated specifically for compiler construction.
 
-In the future it will hopefully provide many more useful utilities to be used in all stages of the compiler construction process, including an advanced tokenizer, various more frontend parsers, backend code-generation stage, and even a runtime environment for whatever IR you are omitting.
-
-The cool thing about Dyppyl is that unlike other parser generators, it doesn't spit out a source code in some other language.
+The cool thing about Dyppyl is that unlike other existing parser generators, it doesn't spit out a source code in some other language.
 Instead, Dyppyl will rely on C++'s compile-time metaprogramming facilities to generate the parser (and other stages) directly as an object file, lib/dll, or even executable if your heart desires so.
 This gives an added advantage: Dyppyl can be also used as a good ol' runtime library, generating parsers dynamically at runtime. I'm not sure how many actual uses this may have, but it may still be fun to experiment with.
 
 ## How's progress?
 
-At the moment I am mostly working on implementing as many unit tests as I can to make sure nothing breaks completely. There's also a lot of ongoing refactoring going on, and other miscellaneous tasks such as better debugging & error handling tools.
-
-The next actual features that will be implemented (other than refactoring and bug fixes) are even more types of parsers. Specifically SLR(1) and LALR(1). I've considered the idea of supporting GLR, LL(k), and Early parsers too, though these are currently a little too big-scoped and are left for future versions.
-
-For more detailed progress plans see this half-assed [Trello board](https://trello.com/b/u2pzCbZc/dyppyl#).
+For detailed progress plans see this very half-assed [Trello board](https://trello.com/b/u2pzCbZc/dyppyl#).
 (cards are ordered left-to-right top-to-bottom from highest priority to lowest).
 
 ## How does it work?
 
 The theoretical background that goes into this project is pretty advanced, so you don't need to worry about it.
-But if you *do* want to know all the tiniest details, check out [Stanford's CS143 Course](https://web.stanford.edu/class/archive/cs/cs143/cs143.1128/) which Dyppyl is directly based on.  
+But if you *do* want to know all the tiniest details, check out [Stanford's CS143 Course](https://web.stanford.edu/class/archive/cs/cs143/cs143.1128/) which is where a lot of my knowledge comes from.
 If you have a hard time understanding some concepts feel free to ask for my help on Discord (AradArbel10#3813) and maybe we'll figure it out together -- I'm still learning too!
 
 ## Goals
@@ -46,10 +75,12 @@ If you have a hard time understanding some concepts feel free to ask for my help
     - Rather than a parser generator, this would work more similarly to a pre-compiled parsing library that you can include in your own projects.
 
 ## How can I use Dyppyl?
-You can't. Yet.
-But stay tuned!
+Dyppyl is a fully header-only library, so if you want to use it yourself you just need to get all the headers into your project*.
 
-## Examples
+*currently there are dependencies that Dyppyl relies, but some of these likely will be eliminated in the future. you can find them in the `deps/` folder.
+
+## Some Old Examples
+These are a little outdated by now, but I keep them here anyway.
 #### LL(1) Grammar in-code with generated parse tree
 ![LL1 example](promotional/LL1.png)
 
