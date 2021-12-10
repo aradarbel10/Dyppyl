@@ -205,13 +205,7 @@ int main() {
 	};
 
 	grammar2.symbols = { "+", "*", "(", ")" };
-	dpl::LR1 parser2{ grammar2, {
-		.log_parse_tree			= true,
-
-		.log_parse_table		= true,
-		.log_grammar			= true,
-		.log_grammar_info		= true,
-	}};
+	dpl::LR1 parser2{ grammar2 };
 
 	dpl::StringStream src2{ "1 + 2 * (3 + 4) * 5" };
 	dpl::ParseTree tree2 = parser2.parse(src2);

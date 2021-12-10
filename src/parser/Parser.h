@@ -13,10 +13,10 @@ namespace dpl{
 		
 		struct Options {
 			unsigned char
-				  log_step_by_step		: 1 = true
-				, log_parse_tree		: 1 = true
+				  log_step_by_step		: 1 = false
+				, log_parse_tree		: 1 = false
 				, log_errors			: 1 = true
-				, log_tokenizer			: 1 = true
+				, log_tokenizer			: 1 = false
 				, log_parse_table		: 1 = false
 				, log_grammar			: 1 = false
 				, log_grammar_info		: 1 = false
