@@ -52,6 +52,7 @@ namespace dpl {
 
 		constexpr Terminal() = default;
 		constexpr Terminal(Type t) : type(t) { }
+		constexpr Terminal(terminal_value_type v) : terminal_value(v) { }
 		constexpr Terminal(Type t, terminal_value_type v) : type(t), terminal_value(v) { }
 
 	};

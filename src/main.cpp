@@ -193,17 +193,16 @@ int main() {
 
 
 
-
+	
 
 	dpl::Grammar grammar2{
 		{ "E", {
-			{{"E", "+"_sym, "E"}, dpl::Assoc::Left, 5 },
-			{{"E", "*"_sym, "E"}, dpl::Assoc::Left, 10},
-			{ "("_sym, "E", ")"_sym },
+			("E"nt, "+"t, "E"nt) & dpl::Assoc::Left & dpl::Prec{5},
+			("E"nt, "*"t, "E"nt) & dpl::Assoc::Left & dpl::Prec{10},
+			("("t, "E"nt, ")"t ),
 			{ dpl::Token::Type::Number }
 		}}
 	};
-	grammar2.symbols = { "+", "*", "(", ")" };
 
 	dpl::LR1 parser2{ grammar2 };
 	dpl::StringStream src2{ "1 + 2 * (3 + 4) * 5" };
@@ -221,8 +220,7 @@ int main() {
 				(cs[0].match({"E"}) ? cs[0][0].value : cs[0]),
 				(cs[2].match({"E"}) ? cs[2][0].value : cs[2])
 			}};
-		},
-		dpl::TraverseOrder::BottomUp
+		}
 	);
 
 	std::cout << "Input String: " << src2.getString() << "\n";

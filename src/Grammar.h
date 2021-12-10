@@ -12,6 +12,20 @@ namespace dpl {
 
 	enum class Assoc { None, Left, Right };
 
+	struct Nonterminal : public std::string_view {
+		using std::string_view::string_view;
+	};
+
+	namespace literals {
+		constexpr Nonterminal operator""nt(const char* str, size_t) {
+			return Nonterminal{ str };
+		}
+
+		constexpr dpl::Terminal operator""t(const char* str, size_t) {
+			return dpl::Terminal{ str };
+		}
+	}
+
 	class ProductionRule : private std::vector<std::variant<Terminal, std::string_view>> {
 	public:
 
@@ -32,6 +46,7 @@ namespace dpl {
 		using std::vector<symbol_type>::vector;
 		using std::vector<symbol_type>::size;
 		using std::vector<symbol_type>::empty;
+		using std::vector<symbol_type>::clear;
 		using std::vector<symbol_type>::operator[];
 		using std::vector<symbol_type>::begin;
 		using std::vector<symbol_type>::end;
@@ -60,6 +75,30 @@ namespace dpl {
 
 	};
 
+	using Prec = short;
+
+	constexpr auto operator&(ProductionRule&& rule, Assoc assoc) {
+		rule.assoc = assoc;
+		return rule;
+	}
+
+	constexpr auto operator&(ProductionRule&& rule, Prec prec) {
+		rule.prec = prec;
+		return rule;
+	}
+
+	template<typename T>
+	concept RuleSymbol = std::is_same_v<T, Terminal> || std::is_same_v<T, Nonterminal>;
+
+	constexpr auto operator,(const RuleSymbol auto& lhs, const RuleSymbol auto& rhs) {
+		return ProductionRule{ lhs, rhs };
+	}
+
+	constexpr auto operator,(ProductionRule&& lhs, const RuleSymbol auto& rhs) {
+		lhs.push_back(rhs);
+		return lhs;
+	}
+
 	class NonterminalRules : private std::vector<ProductionRule> {
 	public:
 
@@ -70,6 +109,7 @@ namespace dpl {
 		using std::vector<ProductionRule>::operator[];
 		using std::vector<ProductionRule>::begin;
 		using std::vector<ProductionRule>::end;
+		using std::vector<ProductionRule>::push_back;
 
 		std::string_view name;
 
@@ -90,19 +130,38 @@ namespace dpl {
 		using nonterminal_type = std::string_view;
 
 		constexpr Grammar(std::initializer_list<NonterminalRules> l) : start_symbol(l.begin()->name) {
-			for (auto iter = l.begin(); iter != l.end(); iter++) {
-				insert(iter->name, *iter);
+			for (const auto& ntrule : l) {
+				(*this)[ntrule.name].name = ntrule.name;
+				for (const auto& rule : ntrule) {
+					ProductionRule adding_rule = rule;
+					adding_rule.clear();
 
-				// default-assign precedences to terminals
-				for (const auto& rule : *iter) {
-					auto jter = rule.rbegin();
-					while (jter != rule.rend()) {
-						if (auto* terminal = std::get_if<terminal_type>(&*jter))
+					// default-assign precedences to terminals
+					auto iter = rule.rbegin();
+					while (iter != rule.rend()) {
+						if (auto* terminal = std::get_if<terminal_type>(&*iter))
 						if (!terminal_precs.contains(*terminal))
 							terminal_precs[*terminal] = rule.prec;
 
-						++jter;
+						++iter;
 					}
+
+					// preprocess grammar
+					for (const auto& sym : rule) {
+						const auto* terminal = std::get_if<terminal_type>(&sym);
+						if (terminal && terminal->type == Terminal::Type::Unknown) {
+							const auto* terminal_str = std::get_if<std::string_view>(&terminal->terminal_value);
+							if (terminal_str) {
+								symbols.insert(*terminal_str);
+								adding_rule.push_back(dpl::Terminal{ Terminal::Type::Symbol, *terminal_str });
+								continue;
+							}
+						}
+
+						adding_rule.push_back(sym);
+					}
+
+					(*this)[ntrule.name].push_back(adding_rule);
 				}
 			}
 
