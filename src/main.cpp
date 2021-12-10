@@ -133,14 +133,9 @@ int main() {
 	//using Token = dpl::Token;
 
 	dpl::Grammar grammar{
-		{ "E", {
-			{ "("_sym, "E", "Op", "E", ")"_sym },
-			{ dpl::Token::Type::Number }
-		}},
-		{ "Op", {
-			{ "+"_sym },
-			{ "*"_sym }
-		}}
+		"E"nt	|= ("("t, "E"nt, "Op"nt, "E"nt, ")"t)
+				|  (dpl::Terminal::Type::Number),
+		"Op"nt	|= "+"t | "*"t
 	};
 	grammar.symbols = { "+", "*", "(", ")" };
 
@@ -196,12 +191,10 @@ int main() {
 	
 
 	dpl::Grammar grammar2{
-		{ "E", {
-			("E"nt, "+"t, "E"nt) & dpl::Assoc::Left & dpl::Prec{5},
-			("E"nt, "*"t, "E"nt) & dpl::Assoc::Left & dpl::Prec{10},
-			("("t, "E"nt, ")"t ),
-			{ dpl::Token::Type::Number }
-		}}
+		"E"nt	|= ("E"nt, "+"t, "E"nt) & dpl::Assoc::Left & dpl::Prec{5}
+				|  ("E"nt, "*"t, "E"nt) & dpl::Assoc::Left & dpl::Prec{10}
+				|  ("("t ,"E"nt, ")"t )
+				|  (dpl::Terminal::Type::Number)
 	};
 
 	dpl::LR1 parser2{ grammar2 };

@@ -12,20 +12,6 @@ namespace dpl {
 
 	enum class Assoc { None, Left, Right };
 
-	struct Nonterminal : public std::string_view {
-		using std::string_view::string_view;
-	};
-
-	namespace literals {
-		constexpr Nonterminal operator""nt(const char* str, size_t) {
-			return Nonterminal{ str };
-		}
-
-		constexpr dpl::Terminal operator""t(const char* str, size_t) {
-			return dpl::Terminal{ str };
-		}
-	}
-
 	class ProductionRule : private std::vector<std::variant<Terminal, std::string_view>> {
 	public:
 
@@ -74,30 +60,6 @@ namespace dpl {
 		}
 
 	};
-
-	using Prec = short;
-
-	constexpr auto operator&(ProductionRule&& rule, Assoc assoc) {
-		rule.assoc = assoc;
-		return rule;
-	}
-
-	constexpr auto operator&(ProductionRule&& rule, Prec prec) {
-		rule.prec = prec;
-		return rule;
-	}
-
-	template<typename T>
-	concept RuleSymbol = std::is_same_v<T, Terminal> || std::is_same_v<T, Nonterminal>;
-
-	constexpr auto operator,(const RuleSymbol auto& lhs, const RuleSymbol auto& rhs) {
-		return ProductionRule{ lhs, rhs };
-	}
-
-	constexpr auto operator,(ProductionRule&& lhs, const RuleSymbol auto& rhs) {
-		lhs.push_back(rhs);
-		return lhs;
-	}
 
 	class NonterminalRules : private std::vector<ProductionRule> {
 	public:
@@ -365,3 +327,5 @@ namespace dpl {
 	inline bool operator==(const std::string_view lhs, const RuleRef& rhs) { return rhs == lhs; }
 	static_assert(std::equality_comparable_with<RuleRef, std::string_view>);
 }
+
+#include "EDSL.h"
