@@ -42,6 +42,35 @@ namespace dpl {
 						options.logprintln("Errors", "grammar error: Duplicate Action Entries -- Non-LL0 Grammar!");
 				}
 			}
+
+			if (options.log_parse_table) {
+				options.logprint("Parse Table", "Action Table:\n");
+				for (const auto& [state, row] : action_table) {
+					options.logprint("Parse Table", state, ": ");
+					for (const auto& [terminal, action] : row) {
+						options.logprint("Parse Table", terminal, "(");
+
+						if (std::holds_alternative<std::monostate>(action))
+							options.logprint("Parse Table", "acc");
+						else if (auto* rule = std::get_if<dpl::RuleRef>(&action))
+							options.logprint("Parse Table", "reduce ", rule->name, rule->prod);
+						else
+							options.logprint("Parse Table", "shift ", std::get<state_type>(action));
+
+						options.logprint("Parse Table", ")  ");
+					}
+					options.logprint("Parse Table", "\n");
+				}
+
+				options.logprint("Parse Table", "Goto Table:\n");
+				for (const auto& [state, row] : goto_table) {
+					options.logprint("Parse Table", state, ": ");
+					for (const auto& [symbol, newstate] : row) {
+						options.logprint("Parse Table", symbol, "(", newstate, ")  ");
+					}
+					options.logprint("Parse Table", "\n");
+				}
+			}
 		}
 		
 		void parse_init() override {
@@ -103,30 +132,61 @@ namespace dpl {
 
 	protected:
 
-		bool hasGotoEntry(const int state, const typename symbol_type& t) {
+		bool hasGotoEntry(state_type state, const typename symbol_type& t) {
 			return goto_table.contains(state) && goto_table[state].contains(t);
 		}
 
-		bool hasActionEntry(const int state, const terminal_type& t) {
+		bool hasActionEntry(state_type state, const terminal_type& t) {
 			return action_table.contains(state) && action_table[state].contains(t);
 		}
 
-		state_type& getGotoEntry(const int state, const typename symbol_type& t) {
+		state_type& getGotoEntry(state_type state, const typename symbol_type& t) {
 			return goto_table[state][t];
 		}
 
-		action_type& getActionEntry(const int state, const terminal_type& t) {
+		action_type& getActionEntry(state_type state, const terminal_type& t) {
 			return action_table[state][t];
 		}
 
+		void removeActionEntry(state_type state, const terminal_type& t) {
+			if (action_table.contains(state)) {
+				action_table[state].erase(t);
+				if (action_table[state].empty())
+					action_table.erase(state);
+			}
+		}
+
 		bool addGotoEntry(const int state, const symbol_type& t, state_type dest) {
-			state_type init_size = state_type(goto_table[state].size());
+			// resolve shift-reduce conflicts based on assoc and pred values
+			if (std::holds_alternative<terminal_type>(t)) {
+				terminal_type terminal = std::get<terminal_type>(t);
+
+				if (hasActionEntry(state, terminal))
+				if (const auto* r = std::get_if<dpl::RuleRef>(&getActionEntry(state, std::get<terminal_type>(t)))) {
+					const auto& rule = r->getRule();
+
+					if (grammar.terminal_precs[terminal] < rule.prec) {
+						return true;
+					} else if (grammar.terminal_precs[terminal] == rule.prec) {
+						if (rule.assoc == Assoc::Left) {
+							return true;
+						} else if (rule.assoc == Assoc::None) {
+							return false;
+						} else {
+							removeActionEntry(state, terminal);
+						}
+					} else {
+						removeActionEntry(state, terminal);
+					}
+				}
+			}
+
 			goto_table[state][t] = dest;
-			return init_size != goto_table[state].size();
+			return true;
 		}
 
 		bool addActionEntry(const int state, const terminal_type& t, action_type dest) {
-			state_type init_size = state_type(action_table[state].size());
+			size_t init_size = size_t(action_table[state].size());
 			action_table[state][t] = dest;
 			return init_size != action_table[state].size();
 		}

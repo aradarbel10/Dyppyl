@@ -6,16 +6,24 @@
 
 #include "tokenizer/Token.h"
 #include "ConstexprUtils.h"
+#include "hybrid/hybrid.hpp"
 
 namespace dpl {
+
+	enum class Assoc { None, Left, Right };
 
 	class ProductionRule : private std::vector<std::variant<Terminal, std::string_view>> {
 	public:
 
 		using symbol_type = value_type;
 		using std::vector<std::variant<Terminal, std::string_view>>::iterator;
+		
+		Assoc assoc = Assoc::None;
+		short prec = 0;
 
 		constexpr ProductionRule(std::initializer_list<symbol_type> l) : std::vector<symbol_type>(l) { }
+		constexpr ProductionRule(std::initializer_list<symbol_type> l, Assoc assoc_, short prec_)
+			: std::vector<symbol_type>(l), assoc(assoc_), prec(prec_) { }
 
 		inline constexpr bool isEpsilonProd() const {
 			return empty();
@@ -82,9 +90,22 @@ namespace dpl {
 		using nonterminal_type = std::string_view;
 
 		constexpr Grammar(std::initializer_list<NonterminalRules> l) : start_symbol(l.begin()->name) {
-			for (auto i = l.begin(); i != l.end(); i++) {
-				insert(i->name, *i);
+			for (auto iter = l.begin(); iter != l.end(); iter++) {
+				insert(iter->name, *iter);
+
+				// default-assign precedences to terminals
+				for (const auto& rule : *iter) {
+					auto jter = rule.rbegin();
+					while (jter != rule.rend()) {
+						if (auto* terminal = std::get_if<terminal_type>(&*jter))
+						if (!terminal_precs.contains(*terminal))
+							terminal_precs[*terminal] = rule.prec;
+
+						++jter;
+					}
+				}
 			}
+
 			initialize();
 		}
 		constexpr ~Grammar() = default;
@@ -101,6 +122,7 @@ namespace dpl {
 		using dpl::cc::map<std::string_view, NonterminalRules>::end;
 		using dpl::cc::map<std::string_view, NonterminalRules>::contains;
 
+		
 
 	public:
 
@@ -112,20 +134,21 @@ namespace dpl {
 
 		std::string start_symbol;
 		dpl::cc::set<std::string_view> keywords, symbols;
+		dpl::cc::map<terminal_type, short> terminal_precs;
 
 		friend std::ostream& operator<<(std::ostream& os, const Grammar& grammar) {
 			for (const auto& [name, nonterminal] : grammar) {
 				dpl::log::coloredStream(os, (name == grammar.start_symbol ? 0x02 : 0x0F), name);
 				os << " ::=\n";
 				os << nonterminal;
-				os << "    ;";
+				os << "    ;\n";
 			}
 			return os;
 		}
 
 
 	public:
-		
+
 		constexpr void calcFirstSets() {
 			if (!std::is_constant_evaluated()) firsts.reserve(size());
 			for (const auto& [name, nt] : *this) {

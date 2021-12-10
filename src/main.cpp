@@ -184,8 +184,56 @@ int main() {
 	});
 	
 	std::cout << "Input String: " << src.getString() << "\n";
-	std::cout << "Result: " << std::get<long double>(std::get<dpl::Token>(tree.value).value);
+	std::cout << "Result: " << std::get<long double>(tree.get<dpl::Token>().value);
+	std::cout << "\n\n\n";
+	
 
+
+
+
+
+
+
+
+	dpl::Grammar grammar2{
+		{ "E", {
+			{{"E", "+"_sym, "E"}, dpl::Assoc::Left, 5 },
+			{{"E", "*"_sym, "E"}, dpl::Assoc::Left, 10},
+			{ "("_sym, "E", ")"_sym },
+			{ dpl::Token::Type::Number }
+		}}
+	};
+
+	grammar2.symbols = { "+", "*", "(", ")" };
+	dpl::LR1 parser2{ grammar2, {
+		.log_parse_tree			= true,
+
+		.log_parse_table		= true,
+		.log_grammar			= true,
+		.log_grammar_info		= true,
+	}};
+
+	dpl::StringStream src2{ "1 + 2 * (3 + 4) * 5" };
+	dpl::ParseTree tree2 = parser2.parse(src2);
+
+	tree2.replace_with(
+		dpl::ParseTree{ "E", {{"("_sym}, {}, {")"_sym}}},
+		[](const std::vector<dpl::ParseTree>& cs) { return cs[0]; }
+	);
+
+	tree2.replace_with(
+		dpl::ParseTree{ "E", { {}, {}, {} } },
+		[](const std::vector<dpl::ParseTree>& cs) {
+			return dpl::ParseTree{ cs[1].value, {
+				(cs[0].match({"E"}) ? cs[0][0].value : cs[0]),
+				(cs[2].match({"E"}) ? cs[2][0].value : cs[2])
+			}};
+		},
+		dpl::TraverseOrder::BottomUp
+	);
+
+	std::cout << "Input String: " << src2.getString() << "\n";
+	std::cout << "\n\nAST:\n" << tree2;
 	
 
 	return 0;
