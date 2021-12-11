@@ -67,7 +67,7 @@ namespace dpl {
 		using value_type = std::variant<std::monostate, std::string, long double>;
 
 		value_type value;
-		std::pair<unsigned int, unsigned int> pos;
+		file_pos_t pos;
 
 		friend constexpr auto operator<=>(const Token& lhs, const Token& rhs) {
 			if (lhs.type == Type::Unknown || rhs.type == Type::Unknown) return std::partial_ordering::equivalent;

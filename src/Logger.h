@@ -11,6 +11,17 @@
 #include "magic_enum/magic_enum.hpp"
 
 namespace dpl {
+
+	struct file_pos_t {
+		size_t row = 1;
+		size_t col = 1;
+		size_t offset = 0;
+	};
+
+	constexpr auto operator<=>(const file_pos_t& lhs, const file_pos_t& rhs) {
+		return lhs.offset <=> rhs.offset;
+	}
+
 	namespace log {
 
 		struct Token;

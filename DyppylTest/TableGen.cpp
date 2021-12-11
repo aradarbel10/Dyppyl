@@ -36,9 +36,9 @@ constexpr auto gen_table() {
 TEST_CASE("TableGen", "[constexpr]") {
 	std::cout << " ===== TableGen [constexpr] =============================\n";
 
-	constexpr auto table = hybrid_compute(gen_table, );
+	//constexpr auto table = hybrid_compute(gen_table, );
 
-	for (const auto& [pair, val] : table) {
-		std::cout << pair.first.stringify() << ", " << pair.second << ": " << val << '\n';
-	}
+	//for (const auto& [pair, val] : table) {
+	//	std::cout << pair.first.stringify() << ", " << pair.second << ": " << val << '\n';
+	//}
 }

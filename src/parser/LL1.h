@@ -195,6 +195,18 @@ namespace dpl{
 		TopDownTreeBuilder tb;
 		TreeBuilder& tree_builder() { return tb; }
 		
+		std::set<terminal_type> currently_expected_terminals() const {
+			if (const auto* terminal = std::get_if<terminal_type>(&parse_stack.top())) {
+				return { *terminal };
+			} else {
+				const auto& nonterminal = std::get<nonterminal_type>(parse_stack.top());
+				std::set<terminal_type> result;
+				result = grammar.follows[nonterminal];
+
+				std::transform(grammar.follows[nonterminal].begin(), grammar.follows[nonterminal].end(), result.begin(), [](const auto& nt) { return nt; });
+			}
+		}
+
 		out_type next_node;
 		bool next_node_ready = false;
 

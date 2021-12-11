@@ -48,6 +48,8 @@ namespace dpl{
 			}
 
 			void flush_logs() {
+				if (log_dests.empty()) return;
+
 				std::ostream* log_dest;
 				if (log_to_file) {
 					if (!log_dir.is_absolute()) {
@@ -96,6 +98,17 @@ namespace dpl{
 
 		Parser(Grammar& g, const Options& ops = {}) : grammar(g), tokenizer(grammar), options(ops) { }
 
+
+		ParseTree parse_str(std::string_view str) {
+			dpl::StringStream src{ str };
+			return parse(src);
+		}
+
+		ParseTree parse_file(std::string_view dir) {
+			dpl::FileStream src{ dir };
+			return parse(src);
+		}
+
 		ParseTree parse(dpl::TextStream& src) {
 			parse_init();
 
@@ -140,10 +153,15 @@ namespace dpl{
 		virtual TreeBuilder& tree_builder() = 0;
 		virtual void operator<<(const Token&) = 0;
 		virtual void parse_init() = 0;
+		virtual std::set<dpl::Terminal> currently_expected_terminals() const = 0;
 
 		Grammar& grammar;
 		ParseTree out_tree;
 		Tokenizer tokenizer;
+
+	private:
+
+		std::function<std::string(dpl::file_pos_t, std::set<dpl::Terminal>)> err_func;
 
 	};
 }

@@ -48,7 +48,7 @@ namespace dpl {
 		int longest_accepted = -1, length_of_longest = 0;
 		std::string lexeme_buff, lexer_queue;
 
-		std::pair<unsigned int, unsigned int> pos_in_file{ 1, 1 }, start_of_lexeme;
+		file_pos_t pos_in_file, start_of_lexeme;
 		std::string_view current_line;
 
 		Grammar& grammar;
@@ -79,10 +79,12 @@ namespace dpl {
 	private:
 
 		void operator<<(const char& c) {
+			pos_in_file.offset++;
+
 			if (c == '\n') {
-				pos_in_file.first = 1;
-				pos_in_file.second++;
-			} else pos_in_file.first++;
+				pos_in_file.col = 1;
+				pos_in_file.row++;
+			} else pos_in_file.col++;
 
 			if (c == '\0') endStream();
 			else passHiders(c);
@@ -164,7 +166,7 @@ namespace dpl {
 				}
 			}
 
-			if (lexeme_buff.empty()) start_of_lexeme = { pos_in_file.first - 1, pos_in_file.second };
+			if (lexeme_buff.empty()) start_of_lexeme = { pos_in_file.row - 1, pos_in_file.col, pos_in_file.offset };
 			lexeme_buff.push_back(c);
 
 			if (all_dead) {
@@ -187,7 +189,7 @@ namespace dpl {
 
 			if (machine == -1) {
 
-				std::cerr << "Illegal token at character " << start_of_lexeme.first << " of line " << start_of_lexeme.second;
+				std::cerr << "Illegal token at character " << start_of_lexeme.col << " of line " << start_of_lexeme.row;
 
 			} else if (machine == 0) {
 				auto iter = std::find(grammar.keywords.begin(), grammar.keywords.end(), str);
