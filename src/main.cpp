@@ -137,7 +137,6 @@ int main() {
 				|  (dpl::Terminal::Type::Number),
 		"Op"nt	|= "+"t | "*"t
 	};
-	grammar.symbols = { "+", "*", "(", ")" };
 
 	dpl::LL1 parser{ grammar, {
 		.log_step_by_step		= true,
@@ -151,7 +150,7 @@ int main() {
 	}};
 
 	dpl::StringStream src{ "( 5 * 18.2 )" };
-	dpl::ParseTree tree = parser.parse(src);
+	auto [tree, errors] = parser.parse(src);
 
 	tree.replace_with(
 		dpl::ParseTree{ "E", {{ "("_sym }, {}, { "Op" }, {}, {")"_sym}}},
@@ -199,7 +198,7 @@ int main() {
 
 	dpl::LR1 parser2{ grammar2 };
 	dpl::StringStream src2{ "1 + 2 * (3 + 4) * 5" };
-	dpl::ParseTree tree2 = parser2.parse(src2);
+	auto [tree2, errors2] = parser2.parse(src2);
 
 	tree2.replace_with(
 		dpl::ParseTree{ "E", {{"("_sym}, {}, {")"_sym}}},

@@ -49,7 +49,6 @@ namespace dpl {
 		std::string lexeme_buff, lexer_queue;
 
 		file_pos_t pos_in_file, start_of_lexeme;
-		std::string_view current_line;
 
 		Grammar& grammar;
 		std::function<void(Token)> output_func;
@@ -69,6 +68,7 @@ namespace dpl {
 		}
 
 		void tokenize(TextStream& input, std::function<void(Token)> out_f) {
+			pos_in_file = { 0, 0 };
 			output_func = out_f;
 
 			while (!input.closed()) {
@@ -166,7 +166,7 @@ namespace dpl {
 				}
 			}
 
-			if (lexeme_buff.empty()) start_of_lexeme = { pos_in_file.row - 1, pos_in_file.col, pos_in_file.offset };
+			if (lexeme_buff.empty()) start_of_lexeme = { pos_in_file.row, pos_in_file.col - 1, pos_in_file.offset };
 			lexeme_buff.push_back(c);
 
 			if (all_dead) {

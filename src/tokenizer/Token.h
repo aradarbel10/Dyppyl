@@ -33,6 +33,11 @@ namespace dpl {
 			else return lhs.type == rhs.type && lhs.terminal_value == rhs.terminal_value;
 		}
 
+		friend std::ostream& operator<<(std::ostream& os, const Terminal& t) {
+			os << t.stringify();
+			return os;
+		}
+
 		constexpr std::string stringify() const {
 			std::string type_name{ magic_enum::enum_name(type) };
 			if (std::holds_alternative<std::monostate>(terminal_value)) return type_name;

@@ -129,6 +129,22 @@ namespace dpl {
 			} while (!terminal_eliminated);
 		}
 
+		std::set<terminal_type> currently_expected_terminals() const {
+			if (parse_stack.empty()) {
+				return {{ dpl::Terminal::Type::EndOfFile }};
+			}
+
+			std::set<terminal_type> result;
+
+			const auto& row = goto_table.at(parse_stack.top());
+			for (const auto& [symbol, state] : row) {
+				if (const auto* terminal = std::get_if<terminal_type>(&symbol)) {
+					result.insert(*terminal);
+				}
+			}
+
+			return result;
+		}
 
 	protected:
 

@@ -155,7 +155,7 @@ namespace dpl {
 		if (value.has_value()) {
 			if (const auto* nt = std::get_if<RuleRef>(&value.value())) os << nt->name << "(" << nt->prod << ")";
 			else if (const auto* tkn = std::get_if<Token>(&value.value())) {
-				dpl::log::coloredStream(os, 0x03, (*tkn).stringify());
+				dpl::log::colored_stream(os, 0x03, (*tkn).stringify());
 			} else {
 				os << "null";
 			}

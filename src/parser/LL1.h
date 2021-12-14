@@ -201,9 +201,20 @@ namespace dpl{
 			} else {
 				const auto& nonterminal = std::get<nonterminal_type>(parse_stack.top());
 				std::set<terminal_type> result;
-				result = grammar.follows[nonterminal];
 
-				std::transform(grammar.follows[nonterminal].begin(), grammar.follows[nonterminal].end(), result.begin(), [](const auto& nt) { return nt; });
+				dpl::ProductionRule stack_beg;
+
+				auto iter = parse_stack._Get_container().rbegin();
+				do {
+					stack_beg.push_back(*iter);
+					iter++;
+				} while (iter != parse_stack._Get_container().rend() && !std::holds_alternative<terminal_type>(*std::prev(iter)));
+
+				for (const auto& terminal : grammar.first_star(stack_beg)) {
+					result.insert(std::get<terminal_type>(terminal));
+				}
+
+				return result;
 			}
 		}
 

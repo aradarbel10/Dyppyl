@@ -50,9 +50,9 @@ namespace dpl {
 						os << " ";
 					}
 
-					if (const auto* nonterminal = std::get_if<std::string_view>(&sym)) dpl::log::coloredStream(os, 0x0F, *nonterminal);
+					if (const auto* nonterminal = std::get_if<std::string_view>(&sym)) dpl::log::colored_stream(os, 0x0F, *nonterminal);
 					else if (const auto* tkn = std::get_if<Terminal>(&sym))
-						dpl::log::coloredStream(os, 0x03, tkn->stringify());
+						dpl::log::colored_stream(os, 0x03, tkn->stringify());
 				}
 			}
 
@@ -159,7 +159,7 @@ namespace dpl {
 
 		friend std::ostream& operator<<(std::ostream& os, const Grammar& grammar) {
 			for (const auto& [name, nonterminal] : grammar) {
-				dpl::log::coloredStream(os, (name == grammar.start_symbol ? 0x02 : 0x0F), name);
+				dpl::log::colored_stream(os, (name == grammar.start_symbol ? 0x02 : 0x0F), name);
 				os << " ::=\n";
 				os << nonterminal;
 				os << "    ;\n";

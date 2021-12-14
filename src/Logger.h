@@ -22,6 +22,11 @@ namespace dpl {
 		return lhs.offset <=> rhs.offset;
 	}
 
+	inline std::ostream& operator<<(std::ostream& os, const file_pos_t& pos) {
+		os << "(" << pos.row << ", " << pos.col << ")";
+		return os;
+	}
+
 	namespace log {
 
 		struct Token;
@@ -29,23 +34,39 @@ namespace dpl {
 		template<typename T>
 		struct streamer {
 			const T& val;
+			const int color = 0x07;
+		};
+
+		struct color_cout {
+			int color = 0x07;
+
+			friend const color_cout& operator<<(const color_cout& os, const auto& other) {
+				SetConsoleTextAttribute(hConsole, os.color);
+				std::cout << other;
+				SetConsoleTextAttribute(hConsole, 0x07);
+
+				return os;
+			}
+
+		private:
+			inline static HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 		};
 
 		template<typename... Ts>
 		inline std::ostream& operator<<(std::ostream& os, streamer<std::variant<Ts...>> vnt) {
-			std::visit([&os](auto&& v) { os << streamer{ v }; }, vnt.val);
+			std::visit([&os,&vnt](auto&& v) { os << streamer{ v, vnt.color }; }, vnt.val);
 			return os;
 		}
 
 		template<typename T1, typename T2>
 		inline std::ostream& operator<<(std::ostream& os, streamer<std::pair<T1, T2>> pr) {
-			os << streamer{ pr.val.first } << ", " << streamer{ pr.val.second };
+			os << streamer{ pr.val.first, pr.color } << streamer{ ", ", pr.color } << streamer{ pr.val.second, pr.color };
 			return os;
 		}
 
 		template<typename T>
 		inline std::ostream& operator<<(std::ostream& os, streamer<std::optional<T>> strm) {
-			os << streamer{ strm.val.value_or("null") };
+			os << streamer{ strm.val.value_or("null"), strm.color };
 			return os;
 		}
 
@@ -53,35 +74,40 @@ namespace dpl {
 			requires requires (Container<T> cont) { cont.begin(); cont.end(); }
 		inline std::ostream& operator<<(std::ostream& os, streamer<Container<T>> cont) {
 			os << streamer{ *cont.val.begin() };
-			for (auto iter = cont.val.begin() + 1; iter != cont.val.end(); ++iter) {
-				os << ", " << streamer{*iter};
+			for (auto iter = std::next(cont.val.begin()); iter != cont.val.end(); ++iter) {
+				os << streamer{ ", ", cont.color } << streamer{ *iter, cont.color };
 			}
 			return os;
 		}
 
 		template<typename T> requires std::is_enum_v<T>
 		inline std::ostream& operator<<(std::ostream& os, streamer<T> strm) {
-			os << magic_enum::enum_name(strm.val);
-			return os;
-		}
-
-		template<typename T>
-		inline std::ostream& operator<<(std::ostream& os, streamer<T> strm) {
-			os << strm.val;
-			return os;
-		}
-
-		inline std::ostream& operator<<(std::ostream& os, streamer<std::monostate> strm) {
+			os << streamer{ magic_enum::enum_name(strm.val), strm.color };
 			return os;
 		}
 
 		// #TASK : support colored printing on non-windows systems
-		inline void coloredStream(std::ostream& os, int color, std::string_view str) {
+		template <typename T>
+			requires requires (std::ostream& os, const T& t) { os << t; }
+		inline void colored_stream(std::ostream& os, int color, const T& str) {
 			static HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 
 			SetConsoleTextAttribute(hConsole, color);
 			os << str;
 			SetConsoleTextAttribute(hConsole, 0x07);
+		}
+
+		template<typename T>
+			requires requires (std::ostream& os, const T& t) { os << t; }
+		inline std::ostream& operator<<(std::ostream& os, streamer<T> strm) {
+			if (strm.color != 0x07) colored_stream(os, strm.color, strm.val);
+			else os << strm.val;
+
+			return os;
+		}
+
+		inline std::ostream& operator<<(std::ostream& os, streamer<std::monostate> strm) {
+			return os;
 		}
 
 		#ifdef DPL_LOG

@@ -8,14 +8,33 @@ int main() {
 				| (dpl::Terminal::Type::Number),
 		"Op"nt	|= "+"t | "*"t
 	};
-	dpl::LL1 parser{ grammar };
+	dpl::LL1 parser{ grammar, {
+		.log_tokenizer = true,
+	}};
 
 	std::string input;
 	while (true) {
 		std::getline(std::cin, input);
 		if (input == "quit") break;
 
-		auto tree = parser.parse_str(input);
+		auto [tree, errors] = parser.parse(input);
+
+		if (!errors.empty()) {
+			for (const auto& error : errors) {
+				std::cout << "Syntax Error: unexpected token " << dpl::log::streamer{ error.found, 0x03 }
+					<< " at position " << dpl::log::streamer{ error.found.pos, 0x03 } << " of the input!\n"
+					"expected any of the following: ";
+
+				dpl::log::color_cout{0x03} << "\'" << *error.expected.begin() << "\'";
+				std::for_each(std::next(error.expected.begin()), error.expected.end(), [](dpl::Terminal terminal) {
+					std::cout << ", ";
+					dpl::log::color_cout{ 0x03 } << "\'" << terminal << "\'";
+				});
+				std::cout << ".\n\n";
+			}
+
+			continue;
+		}
 
 		tree.replace_with(
 			dpl::ParseTree{ "E", {{ "("_sym }, {}, { "Op" }, {}, {")"_sym}} },
