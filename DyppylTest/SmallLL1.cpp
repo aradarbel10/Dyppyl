@@ -45,7 +45,7 @@ TEST_CASE("SmallGrammar", "[LL1Tests]") {
 
 	// LL(1) Parsing
 	auto str_src = dpl::StringStream{ "(int + (int * int))" };
-	auto tree = parser.parse(str_src);
+	auto [tree, errors] = parser.parse(str_src);
 
 	using dpl::RuleRef;
 

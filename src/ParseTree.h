@@ -38,7 +38,7 @@ namespace dpl {
 			os << prefix;
 			os << (isLast ? "'---" : "|---");
 
-			os << dpl::log::streamer{ value } << "\n";
+			os << dpl::streamer{ value } << "\n";
 
 			for (int i = 0; i < children.size(); i++) {
 				children[i].recursivePrint(os, prefix + (isLast ? "    " : "|   "), i == children.size() - 1);
@@ -155,7 +155,7 @@ namespace dpl {
 		if (value.has_value()) {
 			if (const auto* nt = std::get_if<RuleRef>(&value.value())) os << nt->name << "(" << nt->prod << ")";
 			else if (const auto* tkn = std::get_if<Token>(&value.value())) {
-				dpl::log::colored_stream(os, 0x03, (*tkn).stringify());
+				dpl::colored_stream(os, 0x03, (*tkn).stringify());
 			} else {
 				os << "null";
 			}

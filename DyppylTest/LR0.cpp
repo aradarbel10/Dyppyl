@@ -33,7 +33,7 @@ TEST_CASE("SimpleMathGrammar", "[LR0Tests]") {
 	dpl::LR0 parser{ grammar };
 
 	auto src = dpl::StringStream("5 + ( 10 + 1.5; );");
-	auto tree = parser.parse(src);
+	auto [tree, errors] = parser.parse(src);
 
 
 	using dpl::RuleRef;

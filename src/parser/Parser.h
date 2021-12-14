@@ -44,7 +44,7 @@ namespace dpl{
 			bool is_logging_to_file() const { return log_to_file; }
 
 			inline void logprint(std::string_view dest_name, auto str, auto... rest) {
-				log_dests[dest_name] << dpl::log::streamer{ str };
+				log_dests[dest_name] << dpl::streamer{ str };
 				if constexpr (sizeof...(rest) > 0) {
 					logprint(dest_name, rest...);
 				}
@@ -162,7 +162,7 @@ namespace dpl{
 			errors.push_back({tkn, currently_expected_terminals()});
 
 			if (options.log_errors)
-				options.logprintln("Errors", "syntax error: unexpected token ", tkn, " at position ", dpl::log::streamer{ tkn.pos });
+				options.logprintln("Errors", "syntax error: unexpected token ", tkn, " at position ", dpl::streamer{ tkn.pos });
 		}
 
 		virtual TreeBuilder& tree_builder() = 0;

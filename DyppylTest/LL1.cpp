@@ -81,7 +81,7 @@ TEST_CASE("SimpleGrammar", "[LL1Tests]") {
 
 	// 1 - assignment
 	auto str_src1 = dpl::StringStream{ "x -> y;" };
-	auto tree1 = parser.parse(str_src1);
+	auto [tree1, errors1] = parser.parse(str_src1);
 
 	dpl::ParseTree expected_tree1{ RuleRef{grammar, "Stmt", 2}, {
 		{ RuleRef{ grammar, "Expr", 0 }, {
@@ -103,7 +103,7 @@ TEST_CASE("SimpleGrammar", "[LL1Tests]") {
 	// 2 - while
 	auto str_src2 = dpl::StringStream{ "while not zero? id\n" \
 									   "	do --id;"};
-	auto tree2 = parser.parse(str_src2);
+	auto [tree2, errors2] = parser.parse(str_src2);
 
 	dpl::ParseTree expected_tree2{ RuleRef{grammar, "Stmt", 1}, {
 		{ "while"_kwd },
@@ -136,7 +136,7 @@ TEST_CASE("SimpleGrammar", "[LL1Tests]") {
 	auto str_src3 = dpl::StringStream{"if not zero? id then" \
 									  "    if not zero? id then" \
 									  "        constant -> id;"};
-	auto tree3 = parser.parse(str_src3);
+	auto [tree3, errors3] = parser.parse(str_src3);
 
 	dpl::ParseTree expected_tree3{ RuleRef{ grammar, "Stmt", 0 }, {
 		{ "if"_kwd },
