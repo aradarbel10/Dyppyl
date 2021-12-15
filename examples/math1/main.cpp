@@ -3,34 +3,33 @@
 int main() {
 	using namespace dpl::literals;
 
-	dpl::Grammar grammar {
+	dpl::Grammar grammar { // context free grammar
 		"E"nt	|= ("("t, "E"nt, "Op"nt, "E"nt, ")"t)
 				| (dpl::Terminal::Type::Number),
 		"Op"nt	|= "+"t | "*"t
 	};
 
-	dpl::LL1 parser{ grammar, {
-		.log_tokenizer = true,
+	dpl::LL1 parser{ grammar, { // create your parser
+		.error_mode = dpl::Parser::Options::ErrorMode::RecoverOnFollow,
 	}};
 
-	std::string input;
 	while (true) {
+
+		std::string input;
 		std::getline(std::cin, input);
 		if (input == "quit") break;
 
-		auto [tree, errors] = parser.parse(input);
+		auto [tree, errors] = parser.parse(input); // parsing is super easy
 
-		if (!errors.empty()) {
+		if (!errors.empty()) { // handle errors.
 			for (const auto& error : errors) {
 				std::cout << "Syntax Error: unexpected token " << dpl::streamer{ error.found, 0x03 }
-					<< " at position " << dpl::streamer{ error.found.pos, 0x03 } << " of the input!\n"
-					"expected any of the following: ";
+					<< " at position " << dpl::streamer{ error.found.pos, 0x03 } << " of the input!\nexpected any of the following: ";
 
-				dpl::color_cout{0x03} << "\'" << *error.expected.begin() << "\'";
-				std::for_each(std::next(error.expected.begin()), error.expected.end(), [](dpl::Terminal terminal) {
-					std::cout << ", ";
-					dpl::color_cout{ 0x03 } << "\'" << terminal << "\'";
-				});
+				for (auto iter = error.expected.begin(); iter != error.expected.end(); iter++) {
+					if (iter != error.expected.begin()) std::cout << ", ";
+					dpl::color_cout{ 0x03 } << "\'" << *iter << "\'";
+				}
 				std::cout << ".\n\n";
 			}
 
@@ -64,7 +63,6 @@ int main() {
 		std::cout << "Result: " << std::get<long double>(tree.get<dpl::Token>().value);
 		std::cout << "\n\n\n";
 	}
-	
 
 	return 0;
 }

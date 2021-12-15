@@ -121,8 +121,22 @@ namespace dpl{
 		void operator<<(const Token& t_) {
 			const terminal_type t = t_;
 
+			if (options.error_mode == Options::ErrorMode::RecoverOnFollow && !fixed_last_error) {
+				if (sync_set().contains(t)) {
+					parse_stack.pop();
+					fixed_last_error = true;
+				} else {
+					return;
+				}
+			}
+
 			bool terminal_eliminated = false;
 			do {
+				if (parse_stack.empty()) {
+					err_unexpected_token(t_);
+					return;
+				}
+
 				if (std::holds_alternative<nonterminal_type>(parse_stack.top())) {
 					const auto nontr = std::get<nonterminal_type>(parse_stack.top());
 					if (table.contains({ t, nontr })) {
@@ -171,7 +185,6 @@ namespace dpl{
 						}
 					} else {
 						err_unexpected_token(t_);
-
 						return;
 					}
 				}
@@ -196,6 +209,10 @@ namespace dpl{
 		TreeBuilder& tree_builder() { return tb; }
 		
 		std::set<terminal_type> currently_expected_terminals() const {
+			if (parse_stack.empty()) {
+				return { {dpl::Terminal::Type::EndOfFile} };
+			}
+
 			if (const auto* terminal = std::get_if<terminal_type>(&parse_stack.top())) {
 				return { *terminal };
 			} else {
@@ -215,6 +232,18 @@ namespace dpl{
 				}
 
 				return result;
+			}
+		}
+
+		std::set<terminal_type> sync_set() const {
+			if (const auto* nonterminal = std::get_if<nonterminal_type>(&parse_stack.top())) {
+				std::set<terminal_type> result;
+				for (const auto& symbol : grammar.follows[*nonterminal]) {
+					result.insert(symbol);
+				}
+				return result;
+			} else {
+				return { std::get<terminal_type>(parse_stack.top()) };
 			}
 		}
 

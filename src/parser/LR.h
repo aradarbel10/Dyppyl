@@ -146,6 +146,10 @@ namespace dpl {
 			return result;
 		}
 
+		std::set<terminal_type> sync_set() const {
+			return {};
+		}
+
 	protected:
 
 		bool hasGotoEntry(state_type state, const typename symbol_type& t) {
