@@ -115,12 +115,12 @@ namespace dpl {
 			call_by_traversal_order(apply_root, apply_children, order);
 		}
 
-		template <typename Func> requires std::invocable<Func, std::vector<Tree<T>>>
-		&& std::is_same_v<std::invoke_result_t<Func, std::vector<Tree<T>>>, Tree<T>>
+		template <typename Func> requires std::invocable<Func, Tree<T>>
+		&& std::is_same_v<std::invoke_result_t<Func, Tree<T>>, Tree<T>>
 		void replace_with(const Tree<T>& pattern, const Func& transformer, TraverseOrder order = TraverseOrder::BottomUp) {
 			const auto apply_root = [&] {
-				if (auto subs = this->match(pattern)) {
-					*this = transformer(*subs);
+				if (this->match(pattern)) {
+					*this = transformer(*this);
 				}
 			};
 

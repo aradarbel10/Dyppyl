@@ -36,24 +36,15 @@ int main() {
 
 			continue;
 		}
-
+		
 		tree.replace_with(
-			dpl::ParseTree{ "E", { {} } },
-			[](const std::vector<dpl::ParseTree>& cs) {
-				return dpl::ParseTree{ cs[0].value };
-			},
-			dpl::TraverseOrder::BottomUp
+			dpl::ParseTree{ dpl::RuleRef{"E", 1} },
+			[](const dpl::ParseTree& cs) { return dpl::ParseTree{ cs[0].value }; }
 		);
 
 		tree.replace_with(
-			dpl::ParseTree{ "E", {{ "("_sym }, {}, { "Op" }, {}, {")"_sym}} },
-			[](const std::vector<dpl::ParseTree>& cs) {
-				return dpl::ParseTree{ cs[1][0].value, {
-					(cs[0].match({"E"}) ? cs[0][0].value : cs[0]),
-					(cs[2].match({"E"}) ? cs[2][0].value : cs[2])
-				}};
-			},
-			dpl::TraverseOrder::BottomUp
+			dpl::ParseTree{ dpl::RuleRef{"E", 0} },
+			[](const dpl::ParseTree& cs) { return dpl::ParseTree{ cs[2][0].value, { cs[1], cs[3] }}; }
 		);
 
 		std::cout << "\n\nAST:\n" << tree << "\n\n";

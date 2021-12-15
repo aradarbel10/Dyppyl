@@ -153,11 +153,11 @@ int main() {
 	auto [tree, errors] = parser.parse(src);
 
 	tree.replace_with(
-		dpl::ParseTree{ "E", {{ "("_sym }, {}, { "Op" }, {}, {")"_sym}}},
-		[](const std::vector<dpl::ParseTree>& cs) {
-			return dpl::ParseTree{ cs[1][0].value, {
-				(cs[0].match({"E"}) ? cs[0][0].value : cs[0]),
-				(cs[2].match({"E"}) ? cs[2][0].value : cs[2])
+		dpl::ParseTree{ dpl::RuleRef{"E", 0} },
+		[](const dpl::ParseTree& cs) {
+			return dpl::ParseTree{ cs[2][0].value, {
+				(cs[1].match({"E"}) ? cs[1][0].value : cs[1]),
+				(cs[3].match({"E"}) ? cs[3][0].value : cs[3])
 			}};
 		},
 		dpl::TraverseOrder::BottomUp
@@ -202,12 +202,12 @@ int main() {
 
 	tree2.replace_with(
 		dpl::ParseTree{ "E", {{"("_sym}, {}, {")"_sym}}},
-		[](const std::vector<dpl::ParseTree>& cs) { return cs[0]; }
+		[](const dpl::ParseTree& cs) { return cs[1]; }
 	);
 
 	tree2.replace_with(
 		dpl::ParseTree{ "E", { {}, {}, {} } },
-		[](const std::vector<dpl::ParseTree>& cs) {
+		[](const dpl::ParseTree& cs) {
 			return dpl::ParseTree{ cs[1].value, {
 				(cs[0].match({"E"}) ? cs[0][0].value : cs[0]),
 				(cs[2].match({"E"}) ? cs[2][0].value : cs[2])

@@ -310,6 +310,7 @@ namespace dpl {
 	public:
 
 		RuleRef(Grammar& g, std::string_view n, int p) : grammar(&g), name(n), prod(p) { }
+		RuleRef(std::string_view n, int p) : grammar(nullptr), name(n), prod(p) { }
 
 		Grammar* grammar;
 		std::string_view name;
