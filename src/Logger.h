@@ -2,6 +2,8 @@
 
 #include <windows.h>
 
+#undef max
+
 #include <iostream>
 #include <variant>
 #include <vector>
@@ -106,6 +108,12 @@ namespace dpl {
 
 	inline std::ostream& operator<<(std::ostream& os, streamer<std::monostate> strm) {
 		return os;
+	}
+
+	std::string to_string(const auto& t) {
+		std::stringstream ss;
+		ss << dpl::streamer{ t };
+		return ss.str();
 	}
 
 	struct FileSize {

@@ -30,6 +30,10 @@ namespace dpl {
 		static LR1Configuration getStartConfig(Grammar& g) {
 			return LR1Configuration{ {g, g.start_symbol, 0}, 0, Terminal::Type::EndOfFile };
 		}
+
+		void print_lookahead(std::ostream& os) const {
+			os << "<TD>" << lookahead << "</TD>\n";
+		}
 	};
 
 	template<>

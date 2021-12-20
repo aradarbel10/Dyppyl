@@ -7,6 +7,7 @@
 #include "Parser.h"
 
 #include <stack>
+#include <format>
 
 namespace dpl {
 	template<class AutomatonT>
@@ -26,6 +27,11 @@ namespace dpl {
 		LR(Grammar& g, Options ops = {}) : Parser(g, ops), tb(g) {
 			AutomatonT automaton{ grammar };
 
+			if (options.log_automaton) {
+				options.logprint("Parser Automaton", automaton);
+			}
+			options.flush_logs();
+
 			// generate parse tables
 			for (int i = 0; i < automaton.states.size(); i++) {
 				auto& [state, transes] = automaton.states[i];
@@ -39,7 +45,7 @@ namespace dpl {
 				for (const auto& [symbol, dest] : transes) {
 					// #TASK : get these error messages to work
 					if (!addGotoEntry(i, symbol, dest) && options.log_errors)
-						options.logprintln("Errors", "grammar error: Duplicate Action Entries -- Non-LL0 Grammar!");
+						options.logprintln("Errors", "grammar error: Duplicate Goto Entries -- Non-LL0 Grammar!");
 				}
 			}
 
@@ -80,6 +86,15 @@ namespace dpl {
 
 		void operator<<(const Token& t_) {
 			terminal_type t = t_;
+
+			//if (options.error_mode == Options::ErrorMode::RecoverOnFollow && !fixed_last_error) {
+			//	if (sync_set().contains(t)) {
+			//		parse_stack.pop();
+			//		fixed_last_error = true;
+			//	} else {
+			//		return;
+			//	}
+			//}
 
 			bool terminal_eliminated = false;
 			do {
@@ -136,14 +151,24 @@ namespace dpl {
 
 			std::set<terminal_type> result;
 
-			const auto& row = goto_table.at(parse_stack.top());
-			for (const auto& [symbol, state] : row) {
-				if (const auto* terminal = std::get_if<terminal_type>(&symbol)) {
-					result.insert(*terminal);
+			if (goto_table.contains(parse_stack.top())) {
+				const auto& row = goto_table.at(parse_stack.top());
+				for (const auto& [symbol, state] : row) {
+					if (const auto* terminal = std::get_if<terminal_type>(&symbol)) {
+						result.insert(*terminal);
+					}
+				}
+			}
+
+			if (action_table.contains(parse_stack.top())) {
+				const auto& row = action_table.at(parse_stack.top());
+				for (const auto& [terminal, action] : row) {
+					result.insert(terminal);
 				}
 			}
 
 			return result;
+			
 		}
 
 		std::set<terminal_type> sync_set() const {
@@ -213,6 +238,20 @@ namespace dpl {
 
 	protected:
 
+		//std::set<terminal_type> sync_set() const {
+
+
+		//	if (const auto* nonterminal = std::get_if<nonterminal_type>(&parse_stack.top())) {
+		//		std::set<terminal_type> result;
+		//		for (const auto& symbol : grammar.follows[*nonterminal]) {
+		//			result.insert(symbol);
+		//		}
+		//		return result;
+		//	} else {
+		//		return { std::get<terminal_type>(parse_stack.top()) };
+		//	}
+		//}
+
 		BottomUpTreeBuilder tb;
 		TreeBuilder& tree_builder() { return tb; }
 
@@ -254,6 +293,8 @@ namespace dpl {
 			result.pos = int(production.getRule().size());
 			return result;
 		}
+
+		void print_lookahead(std::ostream& os) const {}
 
 	};
 
@@ -340,7 +381,7 @@ namespace dpl {
 
 			for (const config_type& config : *this) {
 				if (config == config_type::getStartConfig(g).toEnd(g))
-					result[Terminal::Type::Unknown] = std::monostate{};
+					result[Terminal::Type::EndOfFile] = std::monostate{};
 				else if (config.atEnd(g))
 					result[Terminal::Type::Unknown] = config.production;
 			}
@@ -355,6 +396,45 @@ namespace dpl {
 		using std::vector<ConfigT>::end;
 		using std::vector<ConfigT>::push_back;
 		using std::vector<ConfigT>::empty;
+
+
+		friend std::ostream& operator<<(std::ostream& os, const State& state) {
+			os << "<TABLE BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\">\n";
+
+			for (auto iter = state.begin(); iter != state.end(); iter++) {
+				const State::config_type& config = *iter;
+
+				os << "<TR>\n";
+
+				os << "<TD ALIGN=\"left\"";
+				if (iter == state.begin()) os << " WIDTH=\"100\"";
+				os << ">";
+
+				os << config.production.name << "  &#8594; "; // right arrow
+
+				const auto& rule = config.production.getRule();
+				for (int j = 0; j < rule.size(); j++) {
+					if (j == config.pos) {
+						os << "<FONT COLOR=\"blue\">&#183;</FONT>";
+					}
+
+					os << " " << dpl::streamer{rule[j]} << " ";
+				}
+
+				if (config.pos == rule.size()) {
+					os << " <FONT COLOR=\"blue\">&#183;</FONT> ";
+				}
+
+				os << "</TD>\n";
+
+				config.print_lookahead(os);
+
+				os << "</TR>\n";
+			}
+
+			os << "</TABLE>\n";
+			return os;
+		}
 
 	};
 
@@ -439,6 +519,26 @@ namespace dpl {
 					chore_queue.pop();
 				}
 			} while (states.size() != old_size);
+		}
+
+		friend std::ostream& operator<<(std::ostream& os, const LR0Automaton& automaton) {
+			os << "digraph {\nnode [shape = box];\nstart [shape = none];\n\n";
+
+			for (int i = 0; i < automaton.states.size(); i++) {
+				const auto& [state, transes] = automaton.states[i];
+
+				os << "s" << i << "[label = <" << state << ">];\n\n";
+
+				if (i == 0) os << "start -> s0;\n";
+
+				for (const auto& [symbol, dest] : transes) {
+					os << "s" << i << " -> s" << dest << " [label = \"" << dpl::streamer{symbol} << "\"];\n";
+				}
+			}
+
+			os << "}";
+
+			return os;
 		}
 
 	};

@@ -9,7 +9,8 @@ int main() {
 		"Op"nt	|= "+"t | "*"t
 	};
 
-	dpl::LL1 parser{ grammar, { // create your parser
+	dpl::LR0 parser{ grammar, { // create your parser
+		.log_automaton = true,
 		.error_mode = dpl::Parser::Options::ErrorMode::RecoverOnFollow,
 	}};
 

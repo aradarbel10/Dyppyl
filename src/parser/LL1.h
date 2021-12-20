@@ -10,9 +10,11 @@
 #include <array>
 #include <stack>
 
+#include <hybrid/hybrid.hpp>
+
 namespace dpl{
 
-	class LLTable : private dpl::cc::map<std::pair<Terminal, std::string_view>, int> {
+	class LLTable : private hybrid::map<std::pair<Terminal, std::string_view>, int> {
 	private:
 
 		bool is_ll1 = true;
@@ -23,15 +25,15 @@ namespace dpl{
 
 		using terminal_type = Terminal;
 		using nonterminal_type = std::string_view;
-		using table_type = dpl::cc::map<std::pair<terminal_type, nonterminal_type>, int>;
+		using table_type = hybrid::map<std::pair<terminal_type, nonterminal_type>, int>;
 
 		using table_type::map;
 		using table_type::operator[];
+		using table_type::at;
 		using table_type::contains;
 		using table_type::operator=;
 		using table_type::begin;
 		using table_type::end;
-		using table_type::operator==;
 		using table_type::size;
 		using table_type::insert;
 
@@ -62,7 +64,7 @@ namespace dpl{
 			if (size() != other.size()) return false;
 
 			for (const auto& [pair, val] : *this) {
-				if (val != other.at(pair)) {
+				if (val != other[pair]) {
 					return false;
 				}
 			}
