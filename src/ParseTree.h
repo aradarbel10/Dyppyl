@@ -206,9 +206,12 @@ namespace dpl {
 		}
 
 		void assignToTree(ParseTree& tree) override {
-			if (sub_trees.size() != 1) return;
-			tree.children = std::move(sub_trees.front().children);
-			tree.value = sub_trees.front().value;
+			if (sub_trees.size() == 1) {
+				tree.children = std::move(sub_trees.front().children);
+				tree.value = sub_trees.front().value;
+			}
+
+			sub_trees.clear();
 		}
 
 	private:

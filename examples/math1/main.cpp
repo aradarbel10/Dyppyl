@@ -10,7 +10,7 @@ int main() {
 	};
 
 	dpl::LR0 parser{ grammar, { // create your parser
-		.error_mode = dpl::Parser::Options::ErrorMode::RecoverOnFollow,
+		.error_mode = dpl::Parser::Options::ErrorMode::Panic,
 	}};
 
 	while (true) {

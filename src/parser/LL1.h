@@ -123,7 +123,7 @@ namespace dpl{
 		void operator<<(const Token& t_) {
 			const terminal_type t = t_;
 
-			if (options.error_mode == Options::ErrorMode::RecoverOnFollow && !fixed_last_error) {
+			if (options.error_mode == Options::ErrorMode::Panic && !fixed_last_error) {
 				if (sync_set().contains(t)) {
 					parse_stack.pop();
 					fixed_last_error = true;

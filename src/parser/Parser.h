@@ -31,7 +31,7 @@ namespace dpl{
 
 				, log_to_file			: 1 = false;
 
-			enum class ErrorMode { Ignore, RecoverOnFollow, RepairOnFollow } error_mode = ErrorMode::Ignore;
+			enum class ErrorMode { Ignore, Panic, RepairOnFollow } error_mode = ErrorMode::Ignore;
 			std::filesystem::path log_dir = std::filesystem::current_path() / "/dyppyl_log.txt";
 
 		};
@@ -165,14 +165,13 @@ namespace dpl{
 			if (options.log_errors)
 				options.logprintln("Errors", "syntax error: unexpected token ", tkn, " at position ", dpl::streamer{ tkn.pos });
 
-			if (options.error_mode == Options::ErrorMode::RecoverOnFollow) fixed_last_error = false;
+			if (options.error_mode == Options::ErrorMode::Panic) fixed_last_error = false;
 		}
 
 		virtual TreeBuilder& tree_builder() = 0;
 		virtual void operator<<(const Token&) = 0;
 		virtual void parse_init() = 0;
 		virtual std::set<dpl::Terminal> currently_expected_terminals() const = 0;
-		virtual std::set<dpl::Terminal> sync_set() const = 0;
 
 		Grammar& grammar;
 		Tokenizer tokenizer;

@@ -87,14 +87,21 @@ namespace dpl {
 		void operator<<(const Token& t_) {
 			terminal_type t = t_;
 
-			//if (options.error_mode == Options::ErrorMode::RecoverOnFollow && !fixed_last_error) {
-			//	if (sync_set().contains(t)) {
-			//		parse_stack.pop();
-			//		fixed_last_error = true;
-			//	} else {
-			//		return;
-			//	}
-			//}
+			if (options.error_mode == Options::ErrorMode::Panic && !fixed_last_error) {
+				size_t states_to_pop = 0;
+				for (auto state = parse_stack._Get_container().rbegin(); state != parse_stack._Get_container().rend(); state++) {
+					if (hasActionEntry(*state, t) || hasGotoEntry(*state, t))
+						break;
+					else states_to_pop++;
+				}
+
+				if (states_to_pop != parse_stack.size()) {
+					for (int i = 0; i < states_to_pop; i++) parse_stack.pop();
+					fixed_last_error = true;
+				} else {
+					return;
+				}
+			}
 
 			bool terminal_eliminated = false;
 			do {
@@ -237,20 +244,6 @@ namespace dpl {
 		}
 
 	protected:
-
-		//std::set<terminal_type> sync_set() const {
-
-
-		//	if (const auto* nonterminal = std::get_if<nonterminal_type>(&parse_stack.top())) {
-		//		std::set<terminal_type> result;
-		//		for (const auto& symbol : grammar.follows[*nonterminal]) {
-		//			result.insert(symbol);
-		//		}
-		//		return result;
-		//	} else {
-		//		return { std::get<terminal_type>(parse_stack.top()) };
-		//	}
-		//}
 
 		BottomUpTreeBuilder tb;
 		TreeBuilder& tree_builder() { return tb; }
