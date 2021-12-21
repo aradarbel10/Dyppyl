@@ -302,7 +302,7 @@ namespace dpl {
 	std::vector<ConfigT> computeConfigClosure(Grammar& g, const ConfigT& config) = delete;
 
 	template<>
-	std::vector<Configuration> computeConfigClosure<Configuration>(Grammar& g, const Configuration& config) {
+	inline std::vector<Configuration> computeConfigClosure<Configuration>(Grammar& g, const Configuration& config) {
 		if (config.atEnd(g)) return {};
 
 		auto symbol = config.dot(g);

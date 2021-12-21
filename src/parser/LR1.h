@@ -37,7 +37,7 @@ namespace dpl {
 	};
 
 	template<>
-	std::vector<LR1Configuration> computeConfigClosure(Grammar& g, const LR1Configuration& config) {
+	inline std::vector<LR1Configuration> computeConfigClosure(Grammar& g, const LR1Configuration& config) {
 		if (config.atEnd(g)) return {};
 
 		auto symbol = config.dot(g);
@@ -67,7 +67,7 @@ namespace dpl {
 	struct LR1State : public State<LR1Configuration> {
 
 		LR1State() = default;
-		LR1State(const State<LR1Configuration>& other) : State<LR1Configuration>(other) { };
+		LR1State(const State<LR1Configuration>& other) : State<LR1Configuration>(other) { }
 
 
 		virtual std::map<typename LR<void>::terminal_type, typename LR<void>::action_type> getActions(Grammar& g) const override {

@@ -11,18 +11,7 @@
 using namespace std::literals::string_view_literals;
 using namespace dpl::literals;
 
-constexpr auto gen_table() {
-	dpl::Grammar grammar{
-		{ "E", {
-			{ "int"_kwd },
-			{ "("_sym, "E", "Op", "E", ")"_sym }
-		}},
-		{ "Op", {
-			{ "+"_sym },
-			{ "*"_sym }
-		}}
-	};
-
+constexpr auto gen_table(dpl::Grammar grammar) {
 	auto table = dpl::LLTable{ grammar };
 
 	hybrid::map<std::pair<dpl::LLTable::terminal_type, dpl::LLTable::nonterminal_type>, int> hybrid_table;
@@ -35,6 +24,17 @@ constexpr auto gen_table() {
 
 TEST_CASE("TableGen", "[constexpr]") {
 	std::cout << " ===== TableGen [constexpr] =============================\n";
+
+	auto table = gen_table(dpl::Grammar{
+		{ "E", {
+			{ "int"_kwd },
+			{ "("_sym, "E", "Op", "E", ")"_sym }
+		}},
+		{ "Op", {
+			{ "+"_sym },
+			{ "*"_sym }
+		}}
+	}).size();
 
 	//constexpr auto table = hybrid_compute(gen_table, );
 
