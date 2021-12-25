@@ -165,6 +165,7 @@
     <ClInclude Include="src\parser\Parser.h" />
     <ClInclude Include="src\parser\SLR.h" />
     <ClInclude Include="src\ParseTree.h" />
+    <ClInclude Include="src\Regex.h" />
     <ClInclude Include="src\TextStream.h" />
     <ClInclude Include="src\tokenizer\Automata.h" />
     <ClInclude Include="src\tokenizer\Token.h" />

@@ -157,8 +157,12 @@ namespace dpl {
 
 				if (automata[i]->isAlive()) all_dead = false;
 				if (automata[i]->isAccepted()) {
+					auto new_length = automata[i]->getAge();
+
+					if (new_length <= length_of_longest) continue;
+
 					longest_accepted = i;
-					length_of_longest = automata[i]->getAge();
+					length_of_longest = new_length;
 					if (i < misc_automata_count) {
 						all_dead = true;
 						//break;
