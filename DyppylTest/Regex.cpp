@@ -87,3 +87,94 @@ TEST_CASE("between", "[RegexTests] [between]") {
 	REQUIRE(lex(text4.begin()) == text4.begin() + 7);
 	REQUIRE(lex(text5.begin()) == text5.begin() + 7);
 }
+
+TEST_CASE("at least", "[RegexTests] [between]") {
+	constexpr std::string_view text1 = "xxyyyyyyyy";
+	constexpr std::string_view text2 = "xxxyyyyyyy";
+	constexpr std::string_view text3 = "xxxxxyyyyy";
+	constexpr std::string_view text4 = "xxxxxxxyyy";
+	constexpr std::string_view text5 = "xxxxxxxxxy";
+
+	auto lex = dpl::at_least{ 5, dpl::match{"x"} };
+
+	REQUIRE(!lex(text1.begin()));
+	REQUIRE(!lex(text2.begin()));
+	REQUIRE(lex(text3.begin()) == text3.begin() + 5);
+	REQUIRE(lex(text4.begin()) == text4.begin() + 7);
+	REQUIRE(lex(text5.begin()) == text5.begin() + 9);
+}
+
+TEST_CASE("at most", "[RegexTests] [between]") {
+	constexpr std::string_view text1 = "xxyyyyyyyy";
+	constexpr std::string_view text2 = "xxxyyyyyyy";
+	constexpr std::string_view text3 = "xxxxxyyyyy";
+	constexpr std::string_view text4 = "xxxxxxxyyy";
+	constexpr std::string_view text5 = "xxxxxxxxxy";
+
+	auto lex = dpl::at_most{ 5, dpl::match{"x"} };
+
+	REQUIRE(lex(text1.begin()) == text1.begin() + 2);
+	REQUIRE(lex(text2.begin()) == text2.begin() + 3);
+	REQUIRE(lex(text3.begin()) == text3.begin() + 5);
+	REQUIRE(lex(text4.begin()) == text4.begin() + 5);
+	REQUIRE(lex(text5.begin()) == text5.begin() + 5);
+}
+
+TEST_CASE("exactly", "[RegexTests] [between]") {
+	constexpr std::string_view text1 = "xxyyyyyyyy";
+	constexpr std::string_view text2 = "xxxyyyyyyy";
+	constexpr std::string_view text3 = "xxxxxyyyyy";
+	constexpr std::string_view text4 = "xxxxxxxyyy";
+	constexpr std::string_view text5 = "xxxxxxxxxy";
+
+	auto lex = dpl::exactly{ 5, dpl::match{"x"} };
+
+	REQUIRE(!lex(text1.begin()));
+	REQUIRE(!lex(text2.begin()));
+	REQUIRE(lex(text3.begin()) == text3.begin() + 5);
+	REQUIRE(lex(text4.begin()) == text4.begin() + 5);
+	REQUIRE(lex(text5.begin()) == text5.begin() + 5);
+}
+
+TEST_CASE("any", "[RegexTests] [character sets]") {
+	constexpr std::string_view text = "abcde12345";
+
+	auto lex = dpl::exactly{ 5, dpl::any<char> };
+
+	REQUIRE(lex(text.begin()) == text.begin() + 5);
+}
+
+TEST_CASE("any of", "[RegexTests] [character sets]") {
+	constexpr std::string_view text1 = "22314abc";
+	constexpr std::string_view text2 = "223d4abc";
+
+	auto lex = dpl::exactly{ 5, dpl::any_of{"1234"} };
+
+	REQUIRE(lex(text1.begin()) == text1.begin() + 5);
+	REQUIRE(!lex(text2.begin()));
+}
+
+TEST_CASE("range", "[RegexTests] [character sets]") {
+	constexpr std::string_view text1 = "12345678";
+	constexpr std::string_view text2 = "12945678";
+
+	auto lex = dpl::exactly{ 4, dpl::range{'1', '4'} };
+
+	REQUIRE(lex(text1.begin()) == text1.begin() + 4);
+	REQUIRE(!lex(text2.begin()));
+}
+
+TEST_CASE("hex", "[RegexTests] [character sets]") {
+	constexpr std::string_view text1 = "#5ec4ad";
+	constexpr std::string_view text2 = "#3B062F";
+	constexpr std::string_view text3 = "#3B*wwF";
+
+	auto lex = dpl::sequence{
+		dpl::match{"#"},
+		dpl::exactly{ 6, dpl::hex_digit }
+	};
+
+	REQUIRE(lex(text1.begin()) == text1.end());
+	REQUIRE(lex(text2.begin()) == text2.end());
+	REQUIRE(!lex(text3.begin()));
+}

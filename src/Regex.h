@@ -5,8 +5,15 @@
 #include <array>
 #include <optional>
 #include <any>
+#include <unordered_set>
 
 namespace dpl {
+
+	template<typename AtomT>
+	struct any_impl;
+
+
+
 	template<typename IterT, typename AtomT>
 	concept initer_of_type = std::input_iterator<IterT> && std::is_same_v<typename IterT::value_type, AtomT>;
 
@@ -32,7 +39,7 @@ namespace dpl {
 		using span_type = std::conditional_t<std::is_same_v<atom_type, char>, std::string_view, std::span<const atom_type>>;
 		// #TASK : map char -> string_view, wchar -> wstring_view, etc...
 
-		constexpr match(span_type str_) : str(str_) { }
+		constexpr match(span_type str_) : str({ str_ }) { }
 
 		template<initer_of_type<atom_type> IterT>
 		constexpr auto operator()(IterT iter) const -> std::optional<decltype(iter)> {
@@ -44,7 +51,6 @@ namespace dpl {
 		}
 
 	protected:
-		
 		span_type str;
 
 	};
@@ -140,7 +146,7 @@ namespace dpl {
 	template <dpl::regex InnerT>
 	struct between {
 
-		using atom_type = char;
+		using atom_type = InnerT::atom_type;
 
 		constexpr between(size_t L, size_t M, const InnerT& inner_) : inner(inner_), Least(L), Most(M) {}
 
@@ -165,4 +171,110 @@ namespace dpl {
 		InnerT inner;
 		size_t Least, Most;
 	};
+
+
+	template<dpl::regex InnerT>
+	struct at_least : public between<InnerT> {
+		using atom_type = InnerT::atom_type;
+
+		constexpr at_least(size_t L, const InnerT& inner_) : between<InnerT>(L, std::numeric_limits<size_t>::max(), inner_) {}
+
+	private:
+		using between<InnerT>::between;
+	};
+
+
+	template<dpl::regex InnerT>
+	struct at_most : public between<InnerT> {
+		using atom_type = InnerT::atom_type;
+
+		constexpr at_most(size_t M, const InnerT& inner_) : between<InnerT>(0, M, inner_) {}
+
+	private:
+		using between<InnerT>::between;
+	};
+
+
+	template<dpl::regex InnerT>
+	struct exactly : public between<InnerT> {
+		using atom_type = InnerT::atom_type;
+
+		constexpr exactly(size_t N, const InnerT& inner_) : between<InnerT>(N, N, inner_) {}
+
+	private:
+		using between<InnerT>::between;
+	};
+
+
+	
+
+
+	template<typename AtomT = char>
+	struct any_impl {
+		using atom_type = AtomT;
+
+		template<initer_of_type<atom_type> IterT>
+		constexpr auto operator()(IterT iter) const -> std::optional<decltype(iter)> {
+			return iter + 1;
+		}
+	};
+
+	template<typename AtomT>
+	constexpr any_impl<AtomT> any{};
+
+	static_assert(dpl::regex<dpl::any_impl<>>);
+
+
+	template<typename AtomT = char>
+	struct any_of {
+		using atom_type = match<AtomT>::atom_type;
+		using span_type = match<AtomT>::span_type;
+
+		constexpr any_of(span_type str_) : str(str_.begin(), str_.end()) { }
+
+		template<initer_of_type<atom_type> IterT>
+		constexpr auto operator()(IterT iter) const -> std::optional<decltype(iter)> {
+			auto result = std::find(str.begin(), str.end(), *iter);
+
+			if (result != str.end()) return iter + 1;
+			else return std::nullopt;
+		}
+
+	protected:
+		span_type str;
+
+	};
+
+	template<typename AtomT = char>
+		requires std::totally_ordered<AtomT>
+	struct range {
+		using atom_type = match<AtomT>::atom_type;
+
+		constexpr range(atom_type from_, atom_type to_) : from(from_), to(to_) { }
+
+		template<initer_of_type<atom_type> IterT>
+		constexpr auto operator()(IterT iter) const -> std::optional<decltype(iter)> {
+			if (from <= *iter && *iter <= to) return iter + 1;
+			else return std::nullopt;
+		}
+
+	protected:
+		atom_type from, to;
+
+	};
+
+	constexpr dpl::range lower{ 'a', 'z' };
+	constexpr dpl::range upper{ 'A', 'Z' };
+	constexpr dpl::range digit{ '0', '9' };
+
+	constexpr auto hex_digit = dpl::alternatives{
+		dpl::digit,
+		dpl::range{'a', 'f'},
+		dpl::range{'A', 'F'}
+	};
+
+	constexpr auto alpha = dpl::alternatives{ dpl::lower, dpl::upper };
+	constexpr auto alphanum = dpl::alternatives{ dpl::alpha, dpl::digit };
+	constexpr dpl::any_of whiespace{ " \t\n\0" };
+
 }
