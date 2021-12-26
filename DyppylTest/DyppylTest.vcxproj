@@ -37,6 +37,7 @@
     <ClCompile Include="LR0.cpp" />
     <ClCompile Include="NonLL1.cpp" />
     <ClCompile Include="NonLR0.cpp" />
+    <ClCompile Include="Regex.cpp" />
     <ClCompile Include="SmallLL1.cpp" />
     <ClCompile Include="Production.cpp" />
     <ClCompile Include="TableGen.cpp" />

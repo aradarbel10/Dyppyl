@@ -3,174 +3,136 @@
 #include <type_traits>
 #include <span>
 #include <array>
+#include <optional>
 
 namespace dpl {
-	template<typename AtomT = char>
-	struct regex {
-		using raw_atom_type = AtomT;
-		using atom_type = std::remove_cv_t<AtomT>;
+	template<typename IterT, typename AtomT>
+	concept initer_of_type = std::input_iterator<IterT> && std::is_same_v<typename IterT::value_type, AtomT>;
 
-		constexpr auto& operator<<(const atom_type& atom) {
-			if (alive) {
-				just_accepted = on_accept_state();
+	template<class RegexT>
+	concept regex =
+		requires { typename RegexT::atom_type; }
+		&& requires (RegexT r, typename std::span<typename RegexT::atom_type>::iterator iter) {
+			{ r(iter) } -> std::same_as<std::optional<decltype(iter)>>;
+		};
 
-				if (feed(atom)) age++;
-				else kill();
-			}
+	template<class RegexT1, class RegexT2>
+	concept compatible_regex_pair =
+		regex<RegexT1>
+		&& regex<RegexT2>
+		&& std::is_same_v<typename RegexT1::atom_type, typename RegexT2::atom_type>;
 
-			return *this;
-		}
-
-		constexpr size_t length() const { return age; }
-		constexpr bool is_alive() const { return alive; }
-		constexpr bool accepted() const { return just_accepted; }
-		constexpr void reset() { age = 0; alive = true; init(); }
-
-		constexpr virtual bool on_accept_state() const = 0; // returns whether the NFA is in an accepting state
-
-	protected:
-		constexpr virtual bool feed(const atom_type& atom) = 0; // steps the NFA one state forward or die
-		constexpr virtual void init() = 0; // reset the NFA to the initial state
-
-		constexpr void kill() {
-			alive = false;
-		}
-
-	private:
-		bool alive = true;
-		bool just_accepted = false;
-		size_t age = 0;
-
-	private:
-		template<typename>
-		friend struct match;
-
-		template<typename AtomT_, typename ...AltsTs_>
-			requires (std::derived_from<AltsTs_, dpl::regex<AtomT_>> && ...)
-		friend struct alternatives;
-
-	};
+	template<class RegexT, class ...RegexTs>
+	concept compatible_regex = (compatible_regex_pair<RegexT, RegexTs> && ...);
 
 	template<typename AtomT = char>
-	struct match : public regex<AtomT> {
-		
-		using atom_type = regex<AtomT>::atom_type;
+	struct match {
+		using atom_type = AtomT;
 		using span_type = std::conditional_t<std::is_same_v<atom_type, char>, std::string_view, std::span<const atom_type>>;
 		// #TASK : map char -> string_view, wchar -> wstring_view, etc...
 
-		constexpr match(span_type str_) : str(str_) {
-			states.resize(str.size() + 1);
-		}
+		constexpr match(span_type str_) : str(str_) { }
 
-		constexpr bool on_accept_state() const override { return states.back(); }
+		template<initer_of_type<atom_type> IterT>
+		constexpr auto operator()(IterT iter) const -> std::optional<decltype(iter)> {
+			for (int i = 0; i < str.size(); i++) {
+				if (*iter != str[i]) return std::nullopt;
+				else iter++;
+			}
+			return std::optional{ iter };
+		}
 
 	protected:
-		constexpr bool feed(const atom_type& atom) override {
-			std::vector<bool> next;
-			next.resize(states.size());
-
-			bool all_dead = true;
-
-			next.back() = false;
-			for (int i = 0; i < str.size(); i++) {
-				next[i + 1] = (states[i] && str[i] == atom);
-				if (next[i + 1]) all_dead = false;
-			}
-
-			std::swap(states, next);
-			return !all_dead;
-		}
 		
-		constexpr void init() override { states.front() = true; }
-
-		std::vector<bool> states;
 		span_type str;
 
 	};
 
-	template<typename AtomT, typename ...AltsTs>
-		requires (std::derived_from<AltsTs, dpl::regex<AtomT>> && ...)
-	struct alternatives : public regex<AtomT> {
+	static_assert(dpl::regex<dpl::match<>>);
 
-		using atom_type = regex<AtomT>::atom_type;
+	template<class ...AltsTs>
+		requires dpl::compatible_regex<AltsTs...>
+	struct alternatives {
+
+		using atom_type = std::tuple_element_t<0, std::tuple<AltsTs...>>::atom_type;
 
 		constexpr alternatives(const AltsTs&... alts_) : alts({ alts_... }) { }
 
-		constexpr bool on_accept_state() const override {
-			// if any of the alternatives accepted
-			return std::apply([&](auto&&... alt) {
-				return (alt.on_accept_state() || ...);
+		template<initer_of_type<atom_type> IterT>
+		constexpr auto operator()(IterT iter) const -> std::optional<decltype(iter)> {
+			return std::apply([&](auto&&... alts_) {
+				return impl(iter, alts_...);
 			}, alts);
 		}
+
+		
 
 	protected:
-		constexpr bool feed(const atom_type& atom) override {
-			// feed to each alt. is alive if any of the alts are still alive (max munch)
-			return std::apply([&](auto&&... alt) {
-				((alt << atom), ...);
-				return (alt.is_alive() || ...);
-			}, alts);
-		}
-
-		constexpr void init() override {
-			std::apply([](auto&&... alt) {
-				// must use inner lambda to unpack member application
-				(std::invoke([](auto&& alt_) { alt_.reset(); }, alt), ...);
-			}, alts);
-		}
 
 		std::tuple<AltsTs...> alts;
 
+		template<typename IterT>
+		constexpr static auto impl(IterT iter, auto&& first, auto&&... rest) -> std::optional<decltype(iter)> {
+			auto result = first(iter);
+
+			if (result) return result;
+			else {
+				if constexpr (sizeof...(rest) > 0) return impl(iter, rest...);
+				else return std::nullopt;
+			}
+		}
+
 	};
 
-	template<typename ...AltsTs>
-	alternatives(const AltsTs&... alts_) -> alternatives<typename std::tuple_element_t<0, std::tuple<AltsTs...>>::raw_atom_type, AltsTs...>;
 
+	template<class ...SubsTs>
+		requires dpl::compatible_regex<SubsTs...>
+	struct sequence {
 
-	template<typename AtomT, typename ...SubsTs>
-		requires (std::derived_from<SubsTs, dpl::regex<AtomT>> && ...)
-	struct sequence : public regex<AtomT> {
+		using atom_type = std::tuple_element_t<0, std::tuple<SubsTs...>>::atom_type;
 
-		using atom_type = regex<AtomT>::atom_type;
+		constexpr sequence(const SubsTs&... subs_) : subs({ subs_... }) {}
 
-		constexpr sequence(const SubsTs&... subs_) : subs({ subs_... }) {
-			refs = std::apply([](auto&&... refs_) {
-				return std::array{ static_cast<dpl::regex<AtomT>*>(&refs_)... };
+		template<initer_of_type<atom_type> IterT>
+		constexpr auto operator()(IterT iter) const -> std::optional<decltype(iter)> {
+			return std::apply([&](auto&&... subs_) {
+				return impl(iter, subs_...);
 			}, subs);
 		}
 
-		constexpr bool on_accept_state() const override {
-			// if the very last sub accepted
-			return refs.back()->on_accept_state();
-		}
-
 	protected:
-		constexpr bool feed(const atom_type& atom) override {
-			bool any_alive = false;
-
-			for (int i = 0; i < sizeof...(SubsTs); i++) {
-				(*refs[i]) << atom;
-
-				if (i < sizeof...(SubsTs) - 1 && refs[i]->accepted()) {
-					refs[i + 1]->reset();
-				}
-
-				if (refs[i]->is_alive()) any_alive = true;
-			}
-
-			return any_alive;
-		}
-
-		constexpr void init() override {
-			refs.front()->reset();
-		}
 
 		std::tuple<SubsTs...> subs;
 
-		std::array<dpl::regex<AtomT>*, sizeof...(SubsTs)> refs; // reference to the tuple's elements for dynamic indexed access
+		template<typename IterT>
+		constexpr static auto impl(IterT iter, auto&& first, auto&&... rest) -> std::optional<decltype(iter)> {
+			auto result = first(iter);
 
+			if (result) {
+				if constexpr (sizeof...(rest) > 0) return impl(*result, rest...);
+				else return result;
+			} else return std::nullopt;
+		}
 	};
 
-	template<typename ...SubsTs>
-	sequence(const SubsTs&... alts_) -> sequence<typename std::tuple_element_t<0, std::tuple<SubsTs...>>::raw_atom_type, SubsTs...>;
+
+	template <dpl::regex SubT>
+	struct maybe {
+
+		using atom_type = SubT::atom_type;
+
+		constexpr maybe(const SubT& sub_) : sub(sub_) {}
+
+		template<initer_of_type<atom_type> IterT>
+		constexpr auto operator()(IterT iter) const -> std::optional<decltype(iter)> {
+			auto result = sub(iter);
+
+			if (result) return result;
+			else return iter;
+		}
+
+	protected:
+		SubT sub;
+
+	};
 }

@@ -3,6 +3,7 @@
 #include <windows.h>
 
 #undef max
+#undef min
 
 #include <iostream>
 #include <variant>
