@@ -136,6 +136,30 @@ TEST_CASE("exactly", "[RegexTests] [between]") {
 	REQUIRE(lex(text5.begin()) == text5.begin() + 5);
 }
 
+TEST_CASE("some", "[RegexTests] [between]") {
+	constexpr std::string_view text1 = "        ";
+	constexpr std::string_view text2 = "+       ";
+	constexpr std::string_view text3 = "++++++  ";
+
+	auto lex = dpl::some{ dpl::match{"+"} };
+
+	REQUIRE(!lex(text1.begin()));
+	REQUIRE(lex(text2.begin()) == text2.begin() + 1);
+	REQUIRE(lex(text3.begin()) == text3.begin() + 6);
+}
+
+TEST_CASE("kleene", "[RegexTests] [between]") {
+	constexpr std::string_view text1 = "        ";
+	constexpr std::string_view text2 = "*       ";
+	constexpr std::string_view text3 = "******  ";
+
+	auto lex = dpl::kleene{ dpl::match{"*"} };
+
+	REQUIRE(lex(text1.begin()) == text1.begin() + 0);
+	REQUIRE(lex(text2.begin()) == text2.begin() + 1);
+	REQUIRE(lex(text3.begin()) == text3.begin() + 6);
+}
+
 TEST_CASE("any", "[RegexTests] [character sets]") {
 	constexpr std::string_view text = "abcde12345";
 

@@ -176,31 +176,39 @@ namespace dpl {
 	template<dpl::regex InnerT>
 	struct at_least : public between<InnerT> {
 		using atom_type = InnerT::atom_type;
-
 		constexpr at_least(size_t L, const InnerT& inner_) : between<InnerT>(L, std::numeric_limits<size_t>::max(), inner_) {}
-
 	private:
 		using between<InnerT>::between;
 	};
-
 
 	template<dpl::regex InnerT>
 	struct at_most : public between<InnerT> {
 		using atom_type = InnerT::atom_type;
-
 		constexpr at_most(size_t M, const InnerT& inner_) : between<InnerT>(0, M, inner_) {}
-
 	private:
 		using between<InnerT>::between;
 	};
 
-
 	template<dpl::regex InnerT>
 	struct exactly : public between<InnerT> {
 		using atom_type = InnerT::atom_type;
-
 		constexpr exactly(size_t N, const InnerT& inner_) : between<InnerT>(N, N, inner_) {}
+	private:
+		using between<InnerT>::between;
+	};
 
+	template<dpl::regex InnerT>
+	struct some : public between<InnerT> {
+		using atom_type = InnerT::atom_type;
+		constexpr some(const InnerT& inner_) : between<InnerT>(1, std::numeric_limits<size_t>::max(), inner_) {}
+	private:
+		using between<InnerT>::between;
+	};
+
+	template<dpl::regex InnerT>
+	struct kleene : public between<InnerT> {
+		using atom_type = InnerT::atom_type;
+		constexpr kleene(const InnerT& inner_) : between<InnerT>(0, std::numeric_limits<size_t>::max(), inner_) {}
 	private:
 		using between<InnerT>::between;
 	};
