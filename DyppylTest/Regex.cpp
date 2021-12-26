@@ -71,3 +71,19 @@ TEST_CASE("maybe", "[RegexTests] [maybe]") {
 	REQUIRE(lex(text1.begin()) == text1.end());
 	REQUIRE(lex(text2.begin()) == text2.end() - 1);
 }
+
+TEST_CASE("between", "[RegexTests] [between]") {
+	constexpr std::string_view text1 = "xxyyyyyyyy";
+	constexpr std::string_view text2 = "xxxyyyyyyy";
+	constexpr std::string_view text3 = "xxxxxyyyyy";
+	constexpr std::string_view text4 = "xxxxxxxyyy";
+	constexpr std::string_view text5 = "xxxxxxxxxy";
+	
+	auto lex = dpl::between{ 3, 7, dpl::match{"x"} };
+
+	REQUIRE(!lex(text1.begin()));
+	REQUIRE(lex(text2.begin()) == text2.begin() + 3);
+	REQUIRE(lex(text3.begin()) == text3.begin() + 5);
+	REQUIRE(lex(text4.begin()) == text4.begin() + 7);
+	REQUIRE(lex(text5.begin()) == text5.begin() + 7);
+}

@@ -4,6 +4,7 @@
 #include <span>
 #include <array>
 #include <optional>
+#include <any>
 
 namespace dpl {
 	template<typename IterT, typename AtomT>
@@ -133,6 +134,35 @@ namespace dpl {
 
 	protected:
 		SubT sub;
+	};
 
+
+	template <dpl::regex InnerT>
+	struct between {
+
+		using atom_type = char;
+
+		constexpr between(size_t L, size_t M, const InnerT& inner_) : inner(inner_), Least(L), Most(M) {}
+
+		template<initer_of_type<atom_type> IterT>
+		constexpr auto operator()(IterT iter) const -> std::optional<decltype(iter)> {
+			auto result = iter;
+
+			for (int i = 0; i < Most; i++) {
+				auto next_result = inner(result);
+
+				if (next_result) result = *next_result;
+				else {
+					if (i >= Least) return result;
+					else return std::nullopt;
+				}
+			}
+
+			return result;
+		}
+
+	protected:
+		InnerT inner;
+		size_t Least, Most;
 	};
 }
