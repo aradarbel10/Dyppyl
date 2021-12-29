@@ -149,11 +149,13 @@ namespace dpl {
 		call_by_traversal_order(apply_root, apply_children, order);
 	}
 
-	using ParseTree = dpl::Tree<std::variant<std::monostate, std::string_view, Token, RuleRef>>;
+	template<typename AtomT = char>
+	using ParseTree = dpl::Tree<std::variant<std::monostate, std::string_view, Token<>, RuleRef<AtomT>>>;
 
-	inline std::ostream& operator<<(std::ostream& os, const std::optional<std::variant<std::string_view, Token, RuleRef, std::monostate>> value) {
+	template<typename AtomT>
+	inline std::ostream& operator<<(std::ostream& os, const std::optional<typename ParseTree<AtomT>::node_type> value) {
 		if (value.has_value()) {
-			if (const auto* nt = std::get_if<RuleRef>(&value.value())) os << nt->name << "(" << nt->prod << ")";
+			if (const auto* nt = std::get_if<RuleRef<AtomT>>(&value.value())) os << nt->name << "(" << nt->prod << ")";
 			else if (const auto* tkn = std::get_if<Token>(&value.value())) {
 				dpl::colored_stream(os, 0x03, (*tkn).stringify());
 			} else {
@@ -163,30 +165,32 @@ namespace dpl {
 		return os;
 	}
 	
+	template<typename AtomT = char>
 	class TreeBuilder {
 	public:
 
-		TreeBuilder(Grammar& g_) : grammar(g_) { };
-		virtual void pushNode(ParseTree::node_type) = 0;
-		virtual void assignToTree(ParseTree&) = 0;
+		TreeBuilder(Grammar<AtomT>& g_) : grammar(g_) { };
+		virtual void pushNode(ParseTree<AtomT>::node_type) = 0;
+		virtual void assignToTree(ParseTree<AtomT>&) = 0;
 
 	protected:
 
-		Grammar& grammar;
+		Grammar<AtomT>& grammar;
 
 	};
 
-	class BottomUpTreeBuilder : public TreeBuilder {
+	template<typename AtomT = char>
+	class BottomUpTreeBuilder : public TreeBuilder<AtomT> {
 	public:
 
-		BottomUpTreeBuilder(Grammar& g_) : TreeBuilder(g_) { };
+		BottomUpTreeBuilder(Grammar<AtomT>& g_) : TreeBuilder(g_) { };
 
-		void addSubTree(ParseTree::node_type tree) {
+		void addSubTree(ParseTree<AtomT>::node_type tree) {
 			sub_trees.emplace_back(tree);
 		}
 
-		void packTree(ParseTree::node_type tree, size_t n) {
-			ParseTree new_root = ParseTree{ tree };
+		void packTree(ParseTree<AtomT>::node_type tree, size_t n) {
+			auto new_root = ParseTree<AtomT>{ tree };
 
 			for (int i = 0; i < n; i++) {
 				new_root.children.emplace_back(std::move(sub_trees.back()));
@@ -197,15 +201,15 @@ namespace dpl {
 			sub_trees.emplace_back(std::move(new_root));
 		}
 
-		void pushNode(ParseTree::node_type node) override {
-			if (const auto* prod = std::get_if<RuleRef>(&node)) {
+		void pushNode(ParseTree<AtomT>::node_type node) override {
+			if (const auto* prod = std::get_if<RuleRef<AtomT>>(&node)) {
 				packTree(node, prod->getRule().size());
 			} else if (std::holds_alternative<Token>(node)) {
 				addSubTree(node);
 			}
 		}
 
-		void assignToTree(ParseTree& tree) override {
+		void assignToTree(ParseTree<AtomT>& tree) override {
 			if (sub_trees.size() == 1) {
 				tree.children = std::move(sub_trees.front().children);
 				tree.value = sub_trees.front().value;
@@ -216,25 +220,25 @@ namespace dpl {
 
 	private:
 
-		std::vector<ParseTree> sub_trees;
+		std::vector<ParseTree<AtomT>> sub_trees;
 
 	};
 
-
-	class TopDownTreeBuilder : public TreeBuilder {
+	template<typename AtomT = char>
+	class TopDownTreeBuilder : public TreeBuilder<AtomT> {
 	public:
 
-		TopDownTreeBuilder(Grammar& g) : TreeBuilder(g) { }
+		TopDownTreeBuilder(Grammar<AtomT>& g) : TreeBuilder(g) { }
 
-		void pushNode(ParseTree::node_type node) override {
+		void pushNode(ParseTree<AtomT>::node_type node) override {
 			pushNode(node, inner_tree);
 		}
 
-		bool pushNode(ParseTree::node_type node, ParseTree& tree) {
+		bool pushNode(ParseTree<AtomT>::node_type node, ParseTree<AtomT>& tree) {
 			if (std::holds_alternative<std::monostate>(tree.value)) {
 				tree.value = node;
 
-				if (auto* const prod = std::get_if<RuleRef>(&tree.value)) {
+				if (auto* const prod = std::get_if<RuleRef<AtomT>>(&tree.value)) {
 					const auto& rule = prod->getRule();
 
 					if (rule.isEpsilonProd()) {
@@ -243,7 +247,7 @@ namespace dpl {
 					} else {
 						tree.children.reserve(rule.size());
 						for (int i = 0; i < tree.children.capacity(); i++) {
-							tree.children.push_back(ParseTree{});
+							tree.children.push_back(ParseTree<AtomT>{});
 						}
 					}
 				}
@@ -258,14 +262,14 @@ namespace dpl {
 			return false;
 		}
 
-		void assignToTree(ParseTree& tree) override {
+		void assignToTree(ParseTree<AtomT>& tree) override {
 			tree = std::move(inner_tree);
-			inner_tree = ParseTree{};
+			inner_tree = ParseTree<AtomT>{};
 		}
 
 	private:
 
-		ParseTree inner_tree;
+		ParseTree<AtomT> inner_tree;
 
 	};
 

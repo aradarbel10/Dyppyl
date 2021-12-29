@@ -7,6 +7,7 @@
 #include "tokenizer/Token.h"
 #include "ConstexprUtils.h"
 #include "hybrid/hybrid.hpp"
+#include "Lexical.h"
 
 namespace dpl {
 
@@ -84,6 +85,7 @@ namespace dpl {
 
 	};
 
+	template<typename AtomT = char>
 	class Grammar : dpl::cc::map<std::string_view, NonterminalRules> {
 	public:
 
@@ -114,7 +116,6 @@ namespace dpl {
 						if (terminal && terminal->type == Terminal::Type::Unknown) {
 							const auto* terminal_str = std::get_if<std::string_view>(&terminal->terminal_value);
 							if (terminal_str) {
-								symbols.insert(*terminal_str);
 								adding_rule.push_back(dpl::Terminal{ Terminal::Type::Symbol, *terminal_str });
 								continue;
 							}
@@ -154,8 +155,9 @@ namespace dpl {
 		follows_type follows;
 
 		std::string start_symbol;
-		dpl::cc::set<std::string_view> keywords, symbols;
 		dpl::cc::map<terminal_type, short> terminal_precs;
+
+		dpl::Lexicon<AtomT> lexicon;
 
 		friend std::ostream& operator<<(std::ostream& os, const Grammar& grammar) {
 			for (const auto& [name, nonterminal] : grammar) {
@@ -305,14 +307,14 @@ namespace dpl {
 
 	};
 
-
+	template<typename AtomT = char>
 	struct RuleRef {
 	public:
 
-		RuleRef(Grammar& g, std::string_view n, int p) : grammar(&g), name(n), prod(p) { }
+		RuleRef(Grammar<AtomT>& g, std::string_view n, int p) : grammar(&g), name(n), prod(p) { }
 		RuleRef(std::string_view n, int p) : grammar(nullptr), name(n), prod(p) { }
 
-		Grammar* grammar;
+		Grammar<AtomT>* grammar;
 		std::string_view name;
 		int prod;
 
@@ -324,9 +326,13 @@ namespace dpl {
 		operator std::string_view() const { return name; }
 	};
 
-	inline bool operator==(const RuleRef& lhs, const std::string_view rhs) { return lhs.name == rhs; }
-	inline bool operator==(const std::string_view lhs, const RuleRef& rhs) { return rhs == lhs; }
-	static_assert(std::equality_comparable_with<RuleRef, std::string_view>);
+	template<typename AtomT>
+	inline bool operator==(const RuleRef<AtomT>& lhs, const std::string_view rhs) { return lhs.name == rhs; }
+
+	template<typename AtomT>
+	inline bool operator==(const std::string_view lhs, const RuleRef<AtomT>& rhs) { return rhs == lhs; }
+
+	static_assert(std::equality_comparable_with<RuleRef<>, std::string_view>);
 }
 
 #include "EDSL.h"

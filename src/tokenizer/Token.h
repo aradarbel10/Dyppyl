@@ -9,28 +9,29 @@
 #include <map>
 #include <string_view>
 #include <variant>
+#include <any>
 
 #include <iostream>
 #include "magic_enum/magic_enum.hpp"
 #include "../Logger.h"
+#include "../Regex.h"
 
 namespace dpl {
 
 	struct Terminal {
-		using terminal_value_type = std::variant<std::monostate, std::string_view>;
-		enum class Type { Identifier, Number, String, Symbol, Keyword, Unknown, EndOfFile };
+		using terminal_id_type = size_t;
 
-		Type type = Type::Unknown;
-		terminal_value_type terminal_value = std::monostate{};
+		terminal_id_type id = -1;
+		bool is_wildcard = false;
 
 		constexpr friend auto operator<=>(const Terminal& lhs, const Terminal& rhs) {
 			if (lhs == rhs) return std::strong_ordering::equal;
-			else return std::tie(lhs.type, lhs.terminal_value) <=> std::tie(rhs.type, rhs.terminal_value);
+			else return std::tie(lhs.id) <=> std::tie(rhs.id);
 		}
 
 		constexpr friend bool operator==(const Terminal& lhs, const Terminal& rhs) {
-			if (lhs.type == Type::Unknown || rhs.type == Type::Unknown) return true;
-			else return lhs.type == rhs.type && lhs.terminal_value == rhs.terminal_value;
+			if (lhs.is_wildcard || rhs.is_wildcard) return true;
+			else return lhs.id == rhs.id;
 		}
 
 		friend std::ostream& operator<<(std::ostream& os, const Terminal& t) {
@@ -62,30 +63,26 @@ namespace dpl {
 
 	};
 
-
-
+	template<typename T = std::variant<std::monostate, std::string, long double>>
 	struct Token : public Terminal {
 
 		using Type = Terminal::Type;
 		using Terminal::type;
 
-		using value_type = std::variant<std::monostate, std::string, long double>;
+		using value_type = T;
 
 		value_type value;
 		file_pos_t pos;
 
 		friend constexpr auto operator<=>(const Token& lhs, const Token& rhs) {
-			if (lhs.type == Type::Unknown || rhs.type == Type::Unknown) return std::partial_ordering::equivalent;
+			if (lhs.is_wildcard || rhs.is_wildcard) return std::partial_ordering::equivalent;
 			return std::tie(lhs.type, lhs.value, lhs.pos) <=> std::tie(rhs.type, rhs.value, rhs.pos);
 		}
 
 		friend constexpr bool operator==(const Token& lhs, const Token& rhs) {
-			if (lhs.type == Type::Unknown || rhs.type == Type::Unknown) return true;
+			if (lhs.is_wildcard || rhs.is_wildcard) return true;
 			if (lhs.type != rhs.type) return false;
 			if (lhs.terminal_value != rhs.terminal_value) return false;
-			if (std::holds_alternative<std::monostate>(lhs.value) || std::holds_alternative<std::monostate>(rhs.value)) {
-				return true;
-			}
 			return lhs.value == rhs.value;
 		}
 
@@ -95,41 +92,18 @@ namespace dpl {
 		}
 
 		constexpr std::string stringify() const {
-			std::string type_name(magic_enum::enum_name(type));
-
-			// #TASK : convert this to a switch
-			if (type == Type::Symbol) {
-				return "[" + std::string{std::get<std::string_view>(terminal_value) } + ", " + type_name + "]"; // "[+, Symbol]"
-			} else if (type == Type::Keyword) {
-				return "[" + std::string{ std::get<std::string_view>(terminal_value) } + ", " + type_name + "]"; // "[bool, Keyword]"
-			} else if (type == Type::Identifier) {
-				return "[" + std::get<std::string>(value) + ", " + type_name + "]"; // "[myVar, Identifier]"
-			} else {
-				// #TASK : don't print strings that are too long / span over multiple lines
-				if (const auto* str = std::get_if<std::string>(&value))
-					return "[\"" + *str + "\", " + type_name + "]"; // "["heya", String]"
-				else if (const auto* dbl = std::get_if<long double>(&value))
-					return "[" + std::to_string(*dbl) + ", " + type_name + "]"; // "[3.14, Number]"
-				else return "[" + type_name + "]"; // "[Unknown]" || "[EndOfFile]"
+			if (is_wildcard) return std::string{ "[wildcard]" };
+			else {
+				std::ostringstream str;
+				str << '[' << dpl::streamer{ type } << ", " << dpl::streamer{ value } << ']';
+				return std::string{ str.str() };
 			}
 		}
 
 		Token() = default;
 		Token(Terminal t) : Terminal(t) { value = std::monostate(); }
 		Token(Type t) : Terminal(t) { value = std::monostate(); }
-		Token(Type t, std::string v) : Terminal(t) {
-			if (type == Type::Identifier || type == Type::String) value = v;
-			else throw std::invalid_argument{ "can't put string in token of type " + std::string{magic_enum::enum_name(type)} };
-		}
-		Token(Type t, const char* v) : Terminal(t) {
-			if (type == Type::Identifier || type == Type::String) value = v;
-			else if (type == Type::Keyword || type == Type::Symbol) terminal_value = v;
-			else throw std::invalid_argument{ "can't put string in token of type " + std::string{magic_enum::enum_name(type)} };
-		}
-		Token(Type t, long double ld) : Terminal(t) {
-			if (type == Type::Number) value = ld;
-			else throw std::invalid_argument{ "can't put long double in token of type " + std::string{magic_enum::enum_name(type)} };
-		}
+		Token(Type t, value_type v) : Terminal(t), value(v) {}
 	};
 
 	namespace literals {
@@ -144,12 +118,14 @@ namespace dpl {
 }
 
 namespace std {
-	template<> class hash<dpl::Token> {
+	template<typename T>
+		requires requires { std::hash<T>{}; }
+	class hash<dpl::Token<T>> {
 	public:
 		//credit to boost::hash_combine
-		std::size_t operator()(dpl::Token const& t) const noexcept {
-			size_t intermediate = std::hash<dpl::Token::Type>{}(t.type);
-			intermediate ^= std::hash<typename dpl::Token::value_type>{}(t.value)
+		std::size_t operator()(dpl::Token<T> const& t) const noexcept {
+			size_t intermediate = std::hash<dpl::Token<T>::Type>{}(t.type);
+			intermediate ^= std::hash<typename dpl::Token<T>::value_type>{}(t.value)
 				+ 0x9e3779b9 + (intermediate << 6) + (intermediate >> 2);
 			return intermediate;
 		}

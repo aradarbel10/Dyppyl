@@ -45,7 +45,7 @@ namespace dpl {
 	template <typename T>
 	concept RuleOrSingle = std::is_same_v<T, dpl::ProductionRule>
 		|| std::is_same_v<T, dpl::Terminal>
-		|| std::is_same_v<T, dpl::Terminal::Type>;
+		|| std::is_same_v<T, dpl::Nonterminal>;
 
 	constexpr auto operator|=(const Nonterminal& name, dpl::NonterminalRules&& nt) {
 		nt.name = name;

@@ -68,5 +68,8 @@
     <ClInclude Include="src\Regex.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\Lexical.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -7,16 +7,16 @@
 
 #define DPL_LOG
 
-#include "Logger.h"
+//#include "dyppyl.h"
 
-#include "tokenizer/Token.h"
-#include "tokenizer/Tokenizer.h"
 #include "Grammar.h"
-#include "parser/LL1.h"
 #include "ParseTree.h"
 #include "TextStream.h"
-#include "parser/LR.h"
-#include "parser/LR1.h"
+
+#include "Regex.h"
+#include "tokenizer/Token.h"
+#include "Lexical.h"
+//#include "tokenizer/Tokenizer.h"
 
 using namespace dpl::literals;
 
@@ -132,91 +132,148 @@ int main() {
 
 	//using Token = dpl::Token;
 
-	dpl::Grammar grammar{
-		"E"nt	|= ("("t, "E"nt, "Op"nt, "E"nt, ")"t)
-				|  (dpl::Terminal::Type::Number),
-		"Op"nt	|= "+"t | "*"t
+	constexpr std::string_view text = "hello world! more text!!";
+
+	auto lex_word = dpl::some{ dpl::alpha };
+	auto lex_whitespace = dpl::some{ dpl::whitespace };
+	auto lex_excla = dpl::match{ "!" };
+
+	dpl::Lexicon lexicon{
+		{ lex_word },
+		{ lex_whitespace },
+		{ lex_excla }
 	};
 
-	dpl::LL1 parser{ grammar, {
-		.log_step_by_step		= true,
-		.log_parse_tree			= true,
-		.log_tokenizer			= true,
+	std::vector<dpl::Token<>> lexemes;
 
-		.log_grammar			= true,
-		.log_grammar_info		= true,
+	auto iter = text.begin();
+	while (iter != text.end()) {
+		for (const auto& lex : lexicon) {
+			auto result = lex.regex(iter);
+			if (result) {
+				lexemes.push_back(lex.eval({ iter, *result }));
 
-		.log_to_file			= false,
-	}};
-
-	dpl::StringStream src{ "( 5 * 18.2 )" };
-	auto [tree, errors] = parser.parse(src);
-
-	tree.replace_with(
-		dpl::ParseTree{ dpl::RuleRef{"E", 0} },
-		[](const dpl::ParseTree& cs) {
-			return dpl::ParseTree{ cs[2][0].value, {
-				(cs[1].match({"E"}) ? cs[1][0].value : cs[1]),
-				(cs[3].match({"E"}) ? cs[3][0].value : cs[3])
-			}};
-		},
-		dpl::TraverseOrder::BottomUp
-	);
-
-	std::cout << "\n\nAST:\n" << tree << "\n\n";
-
-	dpl::tree_visit(tree, [](dpl::ParseTree& tree) {
-		if (tree.children.size() == 2) {
-			long double lhs = std::get<long double>(tree[0].get<dpl::Token>().value);
-			long double rhs = std::get<long double>(tree[1].get<dpl::Token>().value);
-
-			if (tree.match({"+"_sym}))
-				tree = dpl::ParseTree{{ dpl::Token{dpl::Token::Type::Number, lhs + rhs }}};
-			else if (tree.match({"*"_sym }))
-				tree = dpl::ParseTree{{ dpl::Token{dpl::Token::Type::Number, lhs * rhs }}};
+				iter = *result;
+				break;
+			}
 		}
-	});
-	
-	std::cout << "Input String: " << src.getString() << "\n";
-	std::cout << "Result: " << std::get<long double>(tree.get<dpl::Token>().value);
-	std::cout << "\n\n\n";
-	
+	}
+
+
+
+
+
+	//dpl::Grammar grammar {
+	//	"Stmts"nt	|= ("Stmt"nt, "Stmts"nt)
+	//				| dpl::ProductionRule{},
+
+	//	"Stmt"nt	|= ("{"t, "Stmts"nt, "}"t)
+	//				| ("if"t, "Expr"nt, "then"t, "Stmt"nt)
+	//				| ("while"t, "Expr"nt, "do"t, "Stmt"nt)
+	//				| ("assign"t, dpl::Token::Type::Identifier, "="t, "Expr"nt),
+
+	//	"Expr"nt	|= dpl::ProductionRule{ "Term"nt }
+	//				| ("zero?"t, "Expr"nt)
+	//				| ("not"t, "Expr"nt)
+	//				| ("++"t, dpl::Token::Type::Identifier)
+	//				| ("--"t, dpl::Token::Type::Identifier)
+	//				| ("Expr"nt, "BinOp"nt, "Expr"nt) & dpl::Assoc::Left
+	//				| ("("t, "Expr"nt, ")"t),
+
+	//	"Term"nt	|= (dpl::Token::Type::Identifier)
+	//				| (dpl::Token::Type::Number),
+
+	//	"BinOp"nt	|= "+"t | "-"t | "*"t | "/"t | "%"t
+	//};
+
+	//dpl::LR1 parser{ grammar, {
+	//	.log_step_by_step		= true,
+	//	.log_parse_tree			= true,
+	//	.log_tokenizer			= true,
+
+	//	.log_grammar			= true,
+	//	.log_grammar_info		= true,
+
+	//	.log_to_file			= false,
+	//}};
+
+	//dpl::StringStream src{
+	//	"if not zero? (id1 % id2) then"
+	//	"    assign id = constant"
+	//	//"while --something do {"
+	//	//"    if id then one = two"
+	//	//"    if zero? id then tree = four"
+	//	//"}"
+	//};
+	//auto [tree, errors] = parser.parse(src);
+
+	//if (!errors.empty()) std::cout << tree;
+
+	//tree.replace_with(
+	//	dpl::ParseTree{ dpl::RuleRef{"E", 0} },
+	//	[](const dpl::ParseTree& cs) {
+	//		return dpl::ParseTree{ cs[2][0].value, {
+	//			(cs[1].match({"E"}) ? cs[1][0].value : cs[1]),
+	//			(cs[3].match({"E"}) ? cs[3][0].value : cs[3])
+	//		}};
+	//	},
+	//	dpl::TraverseOrder::BottomUp
+	//);
+
+	//std::cout << "\n\nAST:\n" << tree << "\n\n";
+
+	//dpl::tree_visit(tree, [](dpl::ParseTree& tree) {
+	//	if (tree.children.size() == 2) {
+	//		long double lhs = std::get<long double>(tree[0].get<dpl::Token>().value);
+	//		long double rhs = std::get<long double>(tree[1].get<dpl::Token>().value);
+
+	//		if (tree.match({"+"_sym}))
+	//			tree = dpl::ParseTree{{ dpl::Token{dpl::Token::Type::Number, lhs + rhs }}};
+	//		else if (tree.match({"*"_sym }))
+	//			tree = dpl::ParseTree{{ dpl::Token{dpl::Token::Type::Number, lhs * rhs }}};
+	//	}
+	//});
+	//
+	//std::cout << "Input String: " << src.getString() << "\n";
+	//std::cout << "Result: " << std::get<long double>(tree.get<dpl::Token>().value);
+	//std::cout << "\n\n\n";
+	//
 
 
 
 
 
 
-	
+	//
 
-	dpl::Grammar grammar2{
-		"E"nt	|= ("E"nt, "+"t, "E"nt) & dpl::Assoc::Left & dpl::Prec{5}
-				|  ("E"nt, "*"t, "E"nt) & dpl::Assoc::Left & dpl::Prec{10}
-				|  ("("t ,"E"nt, ")"t )
-				|  (dpl::Terminal::Type::Number)
-	};
+	//dpl::Grammar grammar2{
+	//	"E"nt	|= ("E"nt, "+"t, "E"nt) & dpl::Assoc::Left & dpl::Prec{5}
+	//			|  ("E"nt, "*"t, "E"nt) & dpl::Assoc::Left & dpl::Prec{10}
+	//			|  ("("t ,"E"nt, ")"t )
+	//			|  (dpl::Terminal::Type::Number)
+	//};
 
-	dpl::LR1 parser2{ grammar2 };
-	dpl::StringStream src2{ "1 + 2 * (3 + 4) * 5" };
-	auto [tree2, errors2] = parser2.parse(src2);
+	//dpl::LR1 parser2{ grammar2 };
+	//dpl::StringStream src2{ "1 + 2 * (3 + 4) * 5" };
+	//auto [tree2, errors2] = parser2.parse(src2);
 
-	tree2.replace_with(
-		dpl::ParseTree{ "E", {{"("_sym}, {}, {")"_sym}}},
-		[](const dpl::ParseTree& cs) { return cs[1]; }
-	);
+	//tree2.replace_with(
+	//	dpl::ParseTree{ "E", {{"("_sym}, {}, {")"_sym}}},
+	//	[](const dpl::ParseTree& cs) { return cs[1]; }
+	//);
 
-	tree2.replace_with(
-		dpl::ParseTree{ "E", { {}, {}, {} } },
-		[](const dpl::ParseTree& cs) {
-			return dpl::ParseTree{ cs[1].value, {
-				(cs[0].match({"E"}) ? cs[0][0].value : cs[0]),
-				(cs[2].match({"E"}) ? cs[2][0].value : cs[2])
-			}};
-		}
-	);
+	//tree2.replace_with(
+	//	dpl::ParseTree{ "E", { {}, {}, {} } },
+	//	[](const dpl::ParseTree& cs) {
+	//		return dpl::ParseTree{ cs[1].value, {
+	//			(cs[0].match({"E"}) ? cs[0][0].value : cs[0]),
+	//			(cs[2].match({"E"}) ? cs[2][0].value : cs[2])
+	//		}};
+	//	}
+	//);
 
-	std::cout << "Input String: " << src2.getString() << "\n";
-	std::cout << "\n\nAST:\n" << tree2;
+	//std::cout << "Input String: " << src2.getString() << "\n";
+	//std::cout << "\n\nAST:\n" << tree2;
 	
 
 	return 0;

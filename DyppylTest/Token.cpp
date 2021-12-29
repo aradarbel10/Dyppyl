@@ -39,10 +39,10 @@ TEST_CASE("Terminal", "[TokenTests]") {
 
 TEST_CASE("Token", "[TokenTests]") {
 	// comparisons
-	dpl::Token unk{ dpl::Token::Type::Unknown };
-	dpl::Token str{ dpl::Token::Type::String, "heyo" };
-	dpl::Token num1{ dpl::Token::Type::Number, 3.1415 };
-	dpl::Token num2{ dpl::Token::Type::Number, 2.7182 };
+	dpl::Token unk{ dpl::Terminal::Type::Unknown };
+	dpl::Token str{ dpl::Terminal::Type::String, "heyo" };
+	dpl::Token num1{ dpl::Terminal::Type::Number, 3.1415 };
+	dpl::Token num2{ dpl::Terminal::Type::Number, 2.7182 };
 
 	REQUIRE(unk == unk);
 	REQUIRE(unk == str);
@@ -56,10 +56,10 @@ TEST_CASE("Token", "[TokenTests]") {
 	REQUIRE(num2 == num2);
 
 	// token stringification
-	dpl::Token iden{ dpl::Token::Type::Identifier, "var" };
-	dpl::Token eof{ dpl::Token::Type::EndOfFile };
-	dpl::Token kwd{ dpl::Token::Type::Keyword, "int" };
-	dpl::Token sym{ dpl::Token::Type::Symbol, "*" };
+	dpl::Token iden{ dpl::Terminal::Type::Identifier, "var" };
+	dpl::Token eof{ dpl::Terminal::Type::EndOfFile };
+	dpl::Token kwd{ dpl::Terminal::Type::Keyword, "int" };
+	dpl::Token sym{ dpl::Terminal::Type::Symbol, "*" };
 
 	REQUIRE(unk.stringify() == "[Unknown]");
 	REQUIRE(str.stringify() == "[\"heyo\", String]");

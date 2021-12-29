@@ -34,16 +34,6 @@ namespace dpl {
 		int inside_hider = -1;
 		std::string hiders_queue;
 
-		size_t symbols_count;
-
-		dpl::IdentifierDFA identifier_automaton;
-		dpl::NumberDFA number_automaton;
-		dpl::StringDFA string_automaton;
-		std::vector<LinearDFA> symbols_automata;
-
-		std::vector<GenericDFA*> automata { &identifier_automaton, &number_automaton, &string_automaton };
-		
-		const size_t misc_automata_count = automata.size();
 
 		int longest_accepted = -1, length_of_longest = 0;
 		std::string lexeme_buff, lexer_queue;
@@ -55,17 +45,7 @@ namespace dpl {
 
 	public:
 
-		Tokenizer(Grammar& g) : grammar(g) {
-			symbols_count = grammar.symbols.size();
-
-			symbols_automata.reserve(grammar.symbols.size());
-			automata.reserve(automata.size() + grammar.symbols.size());
-
-			for (const auto& key : grammar.symbols) {
-				symbols_automata.push_back(key.data());
-				automata.push_back(&*std::prev(symbols_automata.end()));
-			}
-		}
+		Tokenizer(Grammar& g) : grammar(g) { }
 
 		void tokenize(TextStream& input, std::function<void(Token)> out_f) {
 			pos_in_file = { 0, 0 };

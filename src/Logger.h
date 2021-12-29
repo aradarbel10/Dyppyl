@@ -30,7 +30,7 @@ namespace dpl {
 		return os;
 	}
 
-	struct Token;
+	template<typename> struct Token;
 
 	template<typename T>
 	struct streamer {
