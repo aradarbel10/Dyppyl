@@ -4,6 +4,7 @@
 #include <string_view>
 #include <variant>
 #include <unordered_map>
+#include <charconv>
 
 #define DPL_LOG
 
@@ -16,7 +17,7 @@
 #include "Regex.h"
 #include "tokenizer/Token.h"
 #include "Lexical.h"
-//#include "tokenizer/Tokenizer.h"
+#include "tokenizer/Tokenizer.h"
 
 using namespace dpl::literals;
 
@@ -130,37 +131,30 @@ int main() {
 	//#undef X
 	//#undef Y
 
-	//using Token = dpl::Token;
 
-	constexpr std::string_view text = "hello world! more text!!";
-
-	auto lex_word = dpl::some{ dpl::alpha };
-	auto lex_whitespace = dpl::some{ dpl::whitespace };
-	auto lex_excla = dpl::match{ "!" };
+	constexpr std::string_view text = "hello world!\n    more text!!";
 
 	dpl::Lexicon lexicon{
-		{ lex_word },
-		{ lex_whitespace },
-		{ lex_excla }
+		{ dpl::some{ dpl::alpha } },
+		{ dpl::some{ dpl::whitespace }, [](std::string_view) -> std::string_view { return " "; } },
+		{ dpl::match{ "!" } },
+		{ dpl::some{ dpl::digit }, [](std::string_view str) -> double {
+			int result;
+			std::from_chars(str.data(), str.data() + str.length(), result);
+			return result;
+		}}
 	};
 
-	std::vector<dpl::Token<>> lexemes;
+	std::vector<dpl::Token<>> output;
+	dpl::Tokenizer tokenizer{ lexicon };
+	tokenizer.tokenize(text.begin(), text.end(), [&](auto tkn) {
+		output.push_back(tkn);
+	});
 
-	auto iter = text.begin();
-	while (iter != text.end()) {
-		for (const auto& lex : lexicon) {
-			auto result = lex.regex(iter);
-			if (result) {
-				lexemes.push_back(lex.eval({ iter, *result }));
 
-				iter = *result;
-				break;
-			}
-		}
+	for (auto tkn : output) {
+		std::cout << tkn << '\n';
 	}
-
-
-
 
 
 	//dpl::Grammar grammar {

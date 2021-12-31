@@ -8,15 +8,6 @@
 #include "Regex.h"
 
 namespace dpl {
-	using terminal_id = size_t;
-
-	struct Token_ {
-		constexpr Token_(auto&& v) : value(v) {}
-
-		terminal_id id = -1;
-		std::any value;
-	};
-
 	template<typename AtomT = char, typename TokenT = dpl::Token<>>
 	class Lexeme {
 		using atom_type = AtomT;
@@ -25,20 +16,28 @@ namespace dpl {
 		using token_type = TokenT;
 
 	public:
-		std::function<token_type(span_type)> eval;
+		std::function<token_type(size_t, span_type)> eval;
 		dpl::regex_wrapper<atom_type> regex;
 
 		template<typename Func>
-			//requires std::invocable<Func, dpl::span_dict<AtomT>>
-			//&& std::is_same_v<dpl::Token, std::invoke_result_t<Func, span_type>>
-		constexpr Lexeme(dpl::regex auto r, Func f) : regex(r), eval(f) {}
-		constexpr Lexeme(dpl::regex auto r) : regex(r), eval([](span_type str) -> token_type { return {} }) {}
+			requires std::invocable<Func, span_type>
+			&& std::constructible_from<token_type, size_t, std::invoke_result_t<Func, span_type>>
+		constexpr Lexeme(dpl::regex auto r, Func f) : regex(r), eval([=](size_t id, span_type str) -> token_type {
+			return token_type{ id, f(str) };
+		}) {}
+
+		constexpr Lexeme(dpl::regex auto r) : regex(r), eval([](size_t id, span_type str) -> token_type {
+			if constexpr (std::constructible_from<token_type, size_t, span_type>) {
+				return token_type{ id, str };
+			} else return token_type{ id };
+		}) {}
 	};
 
-	template<typename AtomT = char>
-	class Lexicon : public std::vector<Lexeme<AtomT>> {
+	template<typename AtomT = char, typename TokenT = dpl::Token<>>
+	class Lexicon : public std::vector<Lexeme<AtomT, TokenT>> {
 	public:
-		constexpr Lexicon(std::initializer_list<Lexeme<AtomT>> il) : std::vector<Lexeme<AtomT>>(il) {}
+		constexpr Lexicon(std::initializer_list<Lexeme<AtomT, TokenT>> il)
+			: std::vector<Lexeme<AtomT, TokenT>>(il) {}
 
 	};
 }

@@ -12,10 +12,6 @@ namespace dpl {
 		constexpr Nonterminal operator""nt(const char* str, size_t) {
 			return Nonterminal{ str };
 		}
-
-		constexpr dpl::Terminal operator""t(const char* str, size_t) {
-			return dpl::Terminal{ str };
-		}
 	}
 
 	using Prec = short;

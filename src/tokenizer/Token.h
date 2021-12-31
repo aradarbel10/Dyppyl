@@ -39,35 +39,27 @@ namespace dpl {
 			return os;
 		}
 
-		constexpr std::string stringify() const {
-			std::string type_name{ magic_enum::enum_name(type) };
-			if (std::holds_alternative<std::monostate>(terminal_value)) return type_name;
-
-			switch (type) {
-			case Type::Symbol:
-				return std::string{ std::get<std::string_view>(terminal_value) };
-				break;
-			case Type::Keyword:
-				return std::string{ std::get<std::string_view>(terminal_value) };
-				break;
-			default:
-				return type_name;
-				break;
+		std::string stringify() const {
+			if (is_wildcard) return std::string{ "[wildcard]" };
+			else if (id == -1) return std::string{ "[EOF]" };
+			else {
+				std::ostringstream str;
+				str << '[' << dpl::streamer{ id } << ']';
+				return std::string{ str.str() };
 			}
 		}
 
-		constexpr Terminal() = default;
-		constexpr Terminal(Type t) : type(t) { }
-		constexpr Terminal(terminal_value_type v) : terminal_value(v) { }
-		constexpr Terminal(Type t, terminal_value_type v) : type(t), terminal_value(v) { }
+		static constexpr Terminal eof() {
+			return Terminal{ std::numeric_limits<terminal_id_type>::max() };
+		}
+
+		constexpr Terminal() : is_wildcard(true) {}
+		constexpr Terminal(terminal_id_type id_) : id(id_) { }
 
 	};
 
-	template<typename T = std::variant<std::monostate, std::string, long double>>
+	template<typename T = std::variant<std::monostate, std::string_view, std::string, long double>>
 	struct Token : public Terminal {
-
-		using Type = Terminal::Type;
-		using Terminal::type;
 
 		using value_type = T;
 
@@ -93,28 +85,19 @@ namespace dpl {
 
 		constexpr std::string stringify() const {
 			if (is_wildcard) return std::string{ "[wildcard]" };
+			else if (id == -1) return std::string{ "[EOF]" };
 			else {
 				std::ostringstream str;
-				str << '[' << dpl::streamer{ type } << ", " << dpl::streamer{ value } << ']';
+				str << '[' << dpl::streamer{ id } << ", " << dpl::streamer{ value } << ']';
 				return std::string{ str.str() };
 			}
 		}
 
 		Token() = default;
-		Token(Terminal t) : Terminal(t) { value = std::monostate(); }
-		Token(Type t) : Terminal(t) { value = std::monostate(); }
-		Token(Type t, value_type v) : Terminal(t), value(v) {}
+		Token(Terminal t) : Terminal(t) {}
+		Token(terminal_id_type id_) : Terminal(id_) {}
+		Token(terminal_id_type id_, value_type v) : Terminal(id_), value(v) {}
 	};
-
-	namespace literals {
-		constexpr dpl::Terminal operator"" _kwd(const char* str, size_t) {
-			return { dpl::Terminal::Type::Keyword, str };
-		}
-
-		constexpr dpl::Terminal operator"" _sym(const char* str, size_t) {
-			return { dpl::Terminal::Type::Symbol, str };
-		}
-	}
 }
 
 namespace std {
@@ -124,7 +107,7 @@ namespace std {
 	public:
 		//credit to boost::hash_combine
 		std::size_t operator()(dpl::Token<T> const& t) const noexcept {
-			size_t intermediate = std::hash<dpl::Token<T>::Type>{}(t.type);
+			size_t intermediate = std::hash<dpl::Terminal>{}(static_cast<dpl::Terminal>(t));
 			intermediate ^= std::hash<typename dpl::Token<T>::value_type>{}(t.value)
 				+ 0x9e3779b9 + (intermediate << 6) + (intermediate >> 2);
 			return intermediate;
@@ -133,12 +116,8 @@ namespace std {
 
 	template<> class hash<dpl::Terminal> {
 	public:
-		//credit to boost::hash_combine
 		std::size_t operator()(dpl::Terminal const& t) const noexcept {
-			size_t intermediate = std::hash<dpl::Terminal::Type>{}(t.type);
-			intermediate ^= std::hash<typename dpl::Terminal::terminal_value_type>{}(t.terminal_value)
-				+ 0x9e3779b9 + (intermediate << 6) + (intermediate >> 2);
-			return intermediate;
+			return std::hash<size_t>{}(t.id) ^ std::hash<bool>{}(t.is_wildcard);
 		}
 	};
 }

@@ -3,7 +3,7 @@
 #include "Automata.h"
 #include "Token.h"
 #include "../TextStream.h"
-#include "../Grammar.h"
+#include "../Lexical.h"
 
 #include <utility>
 #include <variant>
@@ -25,180 +25,54 @@
 #endif //DPL_LOG
 
 namespace dpl {
+	template<typename AtomT = char, typename TokenT = dpl::Token<>>
 	class Tokenizer {
+	public:
+
+		using atom_type = AtomT;
+		using token_type = TokenT;
+
 	private:
 
-		// #TASK : take hiders and whitespaces as input from user
-		std::array<std::array<dpl::LinearDFA, 2>, 2> hiders{{ {"//", "\n"}, {"/*", "*/"} }};
-		const std::unordered_set<char> whitespaces{ ' ', '\n', '\t', '\0' };
-		int inside_hider = -1;
-		std::string hiders_queue;
-
-
 		int longest_accepted = -1, length_of_longest = 0;
-		std::string lexeme_buff, lexer_queue;
+		size_t offset_in_file = 0;
 
-		file_pos_t pos_in_file, start_of_lexeme;
-
-		Grammar& grammar;
-		std::function<void(Token)> output_func;
+		const dpl::Lexicon<atom_type, token_type>& lexicon;
 
 	public:
 
-		Tokenizer(Grammar& g) : grammar(g) { }
+		Tokenizer(const Lexicon<atom_type, token_type>& g) : lexicon(g) { }
 
-		void tokenize(TextStream& input, std::function<void(Token)> out_f) {
-			pos_in_file = { 0, 0 };
-			output_func = out_f;
+		template<dpl::initer_of_type<atom_type> IterT>
+		void tokenize(IterT first, IterT last, std::function<void(token_type)> output_func) {
+			offset_in_file = 0;
 
-			while (!input.closed()) {
-				*this << input.fetchNext();
-			}
-		}
+			auto iter = first;
+			while (iter != last) {
+				size_t longest_index = -1;
+				decltype(iter) longest_iter = iter;
 
-	private:
-
-		void operator<<(const char& c) {
-			pos_in_file.offset++;
-
-			if (c == '\n') {
-				pos_in_file.col = 1;
-				pos_in_file.row++;
-			} else pos_in_file.col++;
-
-			if (c == '\0') endStream();
-			else passHiders(c);
-		}
-
-		void endStream() {
-			Token eof_tkn{ Token::Type::EndOfFile };
-			eof_tkn.pos = start_of_lexeme;
-			output_func(eof_tkn);
-		}
-
-		void passHiders(char c) {
-			if (inside_hider == -1) {
-				int possible_hiders = 0;
-				for (int i = 0; i < hiders.size(); i++) {
-					if (hiders_queue.empty()) hiders[i][0].setAlive();
-					hiders[i][0].step(c);
-
-					if (hiders[i][0].isAlive()) possible_hiders++;
-
-					if (hiders[i][0].isAccepted()) {
-						inside_hider = i;
-						hiders_queue.clear();
-
-						bufferedNextLetter(' ');
-						return;
+				for (int i = 0; i < lexicon.size(); i++) {
+					auto result = lexicon[i].regex(iter);
+					if (result && std::distance(iter, *result) > std::distance(iter, longest_iter)) {
+						longest_iter = *result;
+						longest_index = i;
 					}
 				}
 
-				if (possible_hiders == 0) {
-					while (!hiders_queue.empty()) {
-						bufferedNextLetter(hiders_queue[0]);
-						hiders_queue.erase(0);
-					}
-
-					bufferedNextLetter(c);
-				} else {
-					hiders_queue.push_back(c);
-				}
-
-			} else {
-				if(!hiders[inside_hider][1].isAlive()) hiders[inside_hider][1].setAlive();
-				hiders[inside_hider][1].step(c);
-
-				if (hiders[inside_hider][1].isAccepted()) {
-					inside_hider = -1;
-					return;
-				}
-			}
-		}
-
-		void bufferedNextLetter(char c) {
-			lexer_queue.push_back(c);
-
-			do {
-				char next_c = lexer_queue[0];
-				lexer_queue.erase(0, 1);
-				nextLetter(next_c);
-
-			} while (!lexer_queue.empty());
-		}
-
-		void nextLetter(char c) {
-			bool all_dead = true;
-
-			for (int i = 0; i < automata.size(); i++) {
-				if (lexeme_buff.empty()) automata[i]->setAlive();
-
-				automata[i]->step(c);
-
-				if (automata[i]->isAlive()) all_dead = false;
-				if (automata[i]->isAccepted()) {
-					auto new_length = automata[i]->getAge();
-
-					if (new_length <= length_of_longest) continue;
-
-					longest_accepted = i;
-					length_of_longest = new_length;
-					if (i < misc_automata_count) {
-						all_dead = true;
-						//break;
-					}
+				// throw error if the tokenizer is stuck in the middle of the input
+				if (longest_index == -1)
+					throw std::exception{ "unable to tokenize file at pos blah blah ..." };
+				else if (longest_iter == iter)
+					throw std::exception{ "lexeme of length zero not allowed" };
+				else {
+					output_func(lexicon[longest_index].eval(longest_index, { iter, longest_iter }));
+					iter = longest_iter;
 				}
 			}
 
-			if (lexeme_buff.empty()) start_of_lexeme = { pos_in_file.row, pos_in_file.col - 1, pos_in_file.offset };
-			lexeme_buff.push_back(c);
-
-			if (all_dead) {
-				if (longest_accepted != -1) {
-					evaluate(longest_accepted, lexeme_buff.substr(0, length_of_longest));
-
-					if (length_of_longest != lexeme_buff.size())
-						lexer_queue = lexeme_buff.substr(length_of_longest, std::string::npos) + lexer_queue;
-					else automata[longest_accepted]->kill();
-				}
-
-				lexeme_buff.clear();
-				longest_accepted = -1;
-				length_of_longest = 0;
-			}
-		}
-
-		void evaluate(int machine, std::string_view str) {
-			Token next_tkn;
-
-			if (machine == -1) {
-
-				std::cerr << "Illegal token at character " << start_of_lexeme.col << " of line " << start_of_lexeme.row;
-
-			} else if (machine == 0) {
-				auto iter = std::find(grammar.keywords.begin(), grammar.keywords.end(), str);
-				if (iter != grammar.keywords.end()) {
-					next_tkn = Terminal{ Token::Type::Keyword, std::string_view{ *iter } };
-				} else {
-					next_tkn = Token{ Token::Type::Identifier, std::string{ str } };
-				}
-			} else if (machine == 1) {
-				long double dbl;
-				std::from_chars(str.data(), str.data() + str.size(), dbl);
-				next_tkn = Token{ Token::Type::Number, dbl };
-			} else if (machine == 2) {
-				next_tkn = Token{ Token::Type::String, std::move(dpl::StringDFA::recent_string) };
-			} else if (machine <= symbols_count - 1 + misc_automata_count) {
-				std::string_view name = static_cast<LinearDFA*>(automata[machine])->getStates();
-				auto iter = std::find(grammar.symbols.begin(), grammar.symbols.end(), name);
-				next_tkn = Terminal{ Token::Type::Symbol, name };
-			} else {
-				std::cerr << "Error: Programmar is an idiot!\n";
-			}
-
-			next_tkn.pos = start_of_lexeme;
-
-			output_func(next_tkn);
+			// some parsers rely on receiving an EOF token at the end of the parse stream
+			output_func(token_type::eof());
 		}
 
 	};
