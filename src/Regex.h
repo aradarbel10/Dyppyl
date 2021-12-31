@@ -22,7 +22,7 @@ namespace dpl {
 	concept regex =
 		requires { typename RegexT::atom_type; }
 		&& requires (RegexT r, typename std::span<typename RegexT::atom_type>::iterator iter) {
-			{ r(iter) } -> std::same_as<std::optional<decltype(iter)>>;
+			{ r(iter, iter) } -> std::same_as<std::optional<decltype(iter)>>;
 		};
 
 	template<typename AtomT = char> struct regex_wrapper;
@@ -66,9 +66,9 @@ namespace dpl {
 		constexpr match(span_type str_) : str({ str_ }) { }
 
 		template<initer_of_type<atom_type> IterT>
-		constexpr auto operator()(IterT iter) const -> std::optional<decltype(iter)> {
+		constexpr auto operator()(IterT iter, IterT end) const -> std::optional<decltype(iter)> {
 			for (int i = 0; i < str.size(); i++) {
-				if (*iter != str[i]) return std::nullopt;
+				if (iter == end || *iter != str[i]) return std::nullopt;
 				else iter++;
 			}
 			return std::optional{ iter };
@@ -90,9 +90,9 @@ namespace dpl {
 		alternatives(const AltsTs&... alts_) : alts({ dpl::regex_wrapper<atom_type>(alts_)... }) { }
 
 		template<initer_of_type<atom_type> IterT>
-		auto operator()(IterT iter) const -> std::optional<decltype(iter)> {
+		auto operator()(IterT iter, IterT end) const -> std::optional<decltype(iter)> {
 			for (const auto& alt : alts) {
-				auto result = alt(iter);
+				auto result = alt(iter, end);
 				if (result) return result;
 			}
 			return std::nullopt;
@@ -115,10 +115,10 @@ namespace dpl {
 		sequence(const SubsTs&... subs_) : subs({ subs_... }) { }
 
 		template<initer_of_type<atom_type> IterT>
-		auto operator()(IterT iter) const -> std::optional<decltype(iter)> {
+		auto operator()(IterT iter, IterT end) const -> std::optional<decltype(iter)> {
 			auto head = iter;
 			for (const auto& sub : subs) {
-				auto result = sub(head);
+				auto result = sub(head, end);
 
 				if (result) head = *result;
 				else return std::nullopt;
@@ -167,8 +167,8 @@ namespace dpl {
 			: ruleof3_ptr<dpl::regex_wrapper<AtomT>>(sub_) {}
 
 		template<initer_of_type<atom_type> IterT>
-		constexpr auto operator()(IterT iter) const -> std::optional<decltype(iter)> {
-			auto result = (*this->inner)(iter);
+		constexpr auto operator()(IterT iter, IterT end) const -> std::optional<decltype(iter)> {
+			auto result = (*this->inner)(iter, end);
 
 			if (result) return result;
 			else return iter;
@@ -187,11 +187,11 @@ namespace dpl {
 			: ruleof3_ptr<dpl::regex_wrapper<AtomT>>(inner_), Least(L), Most(M) {}
 
 		template<initer_of_type<atom_type> IterT>
-		constexpr auto operator()(IterT iter) const -> std::optional<decltype(iter)> {
+		constexpr auto operator()(IterT iter, IterT end) const -> std::optional<decltype(iter)> {
 			auto result = iter;
 
 			for (int i = 0; i < Most; i++) {
-				auto next_result = (*this->inner)(result);
+				auto next_result = (*this->inner)(result, end);
 
 				if (next_result) result = *next_result;
 				else {
@@ -262,8 +262,9 @@ namespace dpl {
 		using atom_type = AtomT;
 
 		template<initer_of_type<atom_type> IterT>
-		constexpr auto operator()(IterT iter) const -> std::optional<decltype(iter)> {
-			return iter + 1;
+		constexpr auto operator()(IterT iter, IterT end) const -> std::optional<decltype(iter)> {
+			if (iter == end) return std::nullopt;
+			else return iter + 1;
 		}
 	};
 
@@ -281,7 +282,8 @@ namespace dpl {
 		constexpr any_of(span_type str_) : str(str_.begin(), str_.end()) { }
 
 		template<initer_of_type<atom_type> IterT>
-		constexpr auto operator()(IterT iter) const -> std::optional<decltype(iter)> {
+		constexpr auto operator()(IterT iter, IterT end) const -> std::optional<decltype(iter)> {
+			if (iter == end) return std::nullopt;
 			auto result = std::find(str.begin(), str.end(), *iter);
 
 			if (result != str.end()) return iter + 1;
@@ -301,8 +303,9 @@ namespace dpl {
 		constexpr range(atom_type from_, atom_type to_) : from(from_), to(to_) { }
 
 		template<initer_of_type<atom_type> IterT>
-		constexpr auto operator()(IterT iter) const -> std::optional<decltype(iter)> {
-			if (from <= *iter && *iter <= to) return iter + 1;
+		constexpr auto operator()(IterT iter, IterT end) const -> std::optional<decltype(iter)> {
+			if (iter == end) return std::nullopt;
+			else if (from <= *iter && *iter <= to) return iter + 1;
 			else return std::nullopt;
 		}
 
@@ -351,8 +354,8 @@ namespace dpl {
 		regex_wrapper(const dpl::regex auto& r_) : r(r_) {}
 
 		template<initer_of_type<atom_type> IterT>
-		auto operator()(IterT iter) const -> std::optional<decltype(iter)> {
-			return std::visit([&](auto&& r_) { return r_(iter); }, r);
+		auto operator()(IterT iter, IterT end) const -> std::optional<decltype(iter)> {
+			return std::visit([&](auto&& r_) { return r_(iter, end); }, r);
 		}
 
 	};

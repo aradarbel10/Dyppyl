@@ -10,14 +10,13 @@
 
 //#include "dyppyl.h"
 
-#include "Grammar.h"
-#include "ParseTree.h"
-#include "TextStream.h"
-
 #include "Regex.h"
 #include "tokenizer/Token.h"
 #include "Lexical.h"
 #include "tokenizer/Tokenizer.h"
+
+#include "Grammar.h"
+#include "TextStream.h"
 
 using namespace dpl::literals;
 
@@ -132,30 +131,28 @@ int main() {
 	//#undef Y
 
 
-	constexpr std::string_view text = "hello world!\n    more text!!";
+	constexpr std::string_view text = "123 + 456 * 789";
 
 	dpl::Lexicon lexicon{
-		{ dpl::some{ dpl::alpha } },
-		{ dpl::some{ dpl::whitespace }, [](std::string_view) -> std::string_view { return " "; } },
-		{ dpl::match{ "!" } },
+		{ dpl::match{ "*" } },
+		{ dpl::match{ "+" } },
 		{ dpl::some{ dpl::digit }, [](std::string_view str) -> double {
 			int result;
 			std::from_chars(str.data(), str.data() + str.length(), result);
 			return result;
-		}}
+		}},
+		{ dpl::some{ dpl::whitespace }, [](std::string_view) -> std::string_view { return " "; } }
 	};
 
-	std::vector<dpl::Token<>> output;
 	dpl::Tokenizer tokenizer{ lexicon };
-	tokenizer.tokenize(text.begin(), text.end(), [&](auto tkn) {
-		output.push_back(tkn);
-	});
-
+	auto output = tokenizer.tokenize(text.begin(), text.end());
 
 	for (auto tkn : output) {
 		std::cout << tkn << '\n';
 	}
 
+
+	dpl::ProductionRule rule = ("E"nt, dpl::Terminal{0}, "E"nt);
 
 	//dpl::Grammar grammar {
 	//	"Stmts"nt	|= ("Stmt"nt, "Stmts"nt)

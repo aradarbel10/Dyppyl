@@ -13,33 +13,44 @@ namespace dpl {
 
 	enum class Assoc { None, Left, Right };
 
-	class ProductionRule : private std::vector<std::variant<Terminal, std::string_view>> {
+	template<typename AtomT = char, typename NonterminalT = std::string_view>
+	class ProductionRule {
 	public:
 
-		using symbol_type = value_type;
-		using std::vector<std::variant<Terminal, std::string_view>>::iterator;
+		using atom_type = AtomT;
+		using terminal_type = Terminal;
+		using nonterminal_type = NonterminalT;
+
+		using symbol_type = std::variant<terminal_type, nonterminal_type>;
+
+	private:
+
+		std::vector<symbol_type> sentence;
+
+	public:
 		
 		Assoc assoc = Assoc::None;
 		short prec = 0;
 
-		constexpr ProductionRule(std::initializer_list<symbol_type> l) : std::vector<symbol_type>(l) { }
+		constexpr ProductionRule(std::initializer_list<symbol_type> l) : sentence(l) { }
 		constexpr ProductionRule(std::initializer_list<symbol_type> l, Assoc assoc_, short prec_)
-			: std::vector<symbol_type>(l), assoc(assoc_), prec(prec_) { }
+			: sentence(l), assoc(assoc_), prec(prec_) { }
 
-		inline constexpr bool isEpsilonProd() const {
-			return empty();
-		}
+		[[nodiscard]] constexpr bool isEpsilonProd() const { return sentence.empty(); }
 
-		using std::vector<symbol_type>::vector;
-		using std::vector<symbol_type>::size;
-		using std::vector<symbol_type>::empty;
-		using std::vector<symbol_type>::clear;
-		using std::vector<symbol_type>::operator[];
-		using std::vector<symbol_type>::begin;
-		using std::vector<symbol_type>::end;
-		using std::vector<symbol_type>::rbegin;
-		using std::vector<symbol_type>::rend;
-		using std::vector<symbol_type>::push_back;
+		[[nodiscard]] constexpr size_t size() const { return sentence.size(); }
+		[[nodiscard]] constexpr bool empty() const { return sentence.empty(); }
+
+		constexpr void clear() { sentence.clear(); }
+		constexpr symbol_type& operator[](size_t index) { return sentence[index]; }
+		[[nodiscard]] constexpr const symbol_type& operator[](size_t index) const { return sentence[index]; }
+
+		[[nodiscard]] constexpr auto begin() { sentence.begin(); }
+		[[nodiscard]] constexpr auto end() { sentence.end(); }
+		[[nodiscard]] constexpr auto rbegin() { sentence.rbegin(); }
+		[[nodiscard]] constexpr auto rend() { sentence.rend(); }
+
+		constexpr void push_back(auto&& elem) { sentence.push_back(elem); }
 
 		friend std::ostream& operator<<(std::ostream& os, const ProductionRule& rule) {
 			if (rule.empty()) os << "epsilon";
@@ -62,11 +73,12 @@ namespace dpl {
 
 	};
 
-	class NonterminalRules : private std::vector<ProductionRule> {
+	/*
+	class NonterminalRules : private std::vector<ProductionRule<>> {
 	public:
 
 		constexpr NonterminalRules() = default;
-		constexpr NonterminalRules(std::string_view n, std::initializer_list<ProductionRule> l) : std::vector<ProductionRule>(l), name(n) { }
+		constexpr NonterminalRules(std::string_view n, std::initializer_list<ProductionRule<>> l) : std::vector<ProductionRule>(l), name(n) { }
 
 		using std::vector<ProductionRule>::size;
 		using std::vector<ProductionRule>::operator[];
@@ -333,6 +345,8 @@ namespace dpl {
 	inline bool operator==(const std::string_view lhs, const RuleRef<AtomT>& rhs) { return rhs == lhs; }
 
 	static_assert(std::equality_comparable_with<RuleRef<>, std::string_view>);
+
+	*/
 }
 
 #include "EDSL.h"

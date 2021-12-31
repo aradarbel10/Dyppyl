@@ -16,28 +16,35 @@ namespace dpl {
 
 	using Prec = short;
 
-	constexpr auto operator&(ProductionRule&& rule, Assoc assoc) {
+	template<typename AtomT = char, typename NonterminalT = std::string_view>
+	constexpr auto operator&(ProductionRule<AtomT, NonterminalT>&& rule, Assoc assoc) {
 		rule.assoc = assoc;
 		return rule;
 	}
 
-	constexpr auto operator&(ProductionRule&& rule, Prec prec) {
+	template<typename AtomT = char, typename NonterminalT = std::string_view>
+	constexpr auto operator&(ProductionRule<AtomT, NonterminalT>&& rule, Prec prec) {
 		rule.prec = prec;
 		return rule;
 	}
 
 	template<typename T>
-	concept RuleSymbol = std::is_same_v<T, Terminal> || std::is_same_v<T, Nonterminal>;
+	concept RuleSymbol =
+		std::is_same_v<T, Terminal>
+		|| std::is_same_v<T, Nonterminal>
+		|| dpl::regex<T>;
 
 	constexpr auto operator,(const RuleSymbol auto& lhs, const RuleSymbol auto& rhs) {
-		return ProductionRule{ lhs, rhs };
+		return ProductionRule{{ lhs, rhs }};
 	}
 
-	constexpr auto operator,(ProductionRule&& lhs, const RuleSymbol auto& rhs) {
+	template<typename AtomT = char>
+	constexpr auto operator,(ProductionRule<AtomT, std::string_view>&& lhs, const RuleSymbol auto& rhs) {
 		lhs.push_back(rhs);
 		return lhs;
 	}
 
+	/*
 	template <typename T>
 	concept RuleOrSingle = std::is_same_v<T, dpl::ProductionRule>
 		|| std::is_same_v<T, dpl::Terminal>
@@ -60,4 +67,5 @@ namespace dpl {
 		nt.push_back({ prod });
 		return nt;
 	}
+	*/
 }

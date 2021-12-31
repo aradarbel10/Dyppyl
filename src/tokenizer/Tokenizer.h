@@ -35,7 +35,7 @@ namespace dpl {
 	private:
 
 		int longest_accepted = -1, length_of_longest = 0;
-		size_t offset_in_file = 0;
+		file_pos_t offset_in_file = 0;
 
 		const dpl::Lexicon<atom_type, token_type>& lexicon;
 
@@ -53,10 +53,12 @@ namespace dpl {
 				decltype(iter) longest_iter = iter;
 
 				for (int i = 0; i < lexicon.size(); i++) {
-					auto result = lexicon[i].regex(iter);
-					if (result && std::distance(iter, *result) > std::distance(iter, longest_iter)) {
-						longest_iter = *result;
-						longest_index = i;
+					auto result = lexicon[i].regex(iter, last);
+					if (result) {
+						if (std::distance(iter, *result) > std::distance(iter, longest_iter)) {
+							longest_iter = *result;
+							longest_index = i;
+						}
 					}
 				}
 
@@ -73,6 +75,17 @@ namespace dpl {
 
 			// some parsers rely on receiving an EOF token at the end of the parse stream
 			output_func(token_type::eof());
+		}
+
+		template<dpl::initer_of_type<atom_type> IterT>
+		auto tokenize(IterT first, IterT last) {
+			std::vector<token_type> output;
+
+			tokenize(first, last, [&](auto tkn) {
+				output.push_back(tkn);
+			});
+
+			return output;
 		}
 
 	};
