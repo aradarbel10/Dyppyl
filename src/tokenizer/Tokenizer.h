@@ -48,7 +48,12 @@ namespace dpl {
 			offset_in_file = 0;
 
 			auto iter = first;
-			while (iter != last) {
+			while (true /* forever */) {
+				// discard characters between two tokens
+				if (lexicon.discard_regex) iter = (*lexicon.discard_regex)(iter, last).value_or(iter);
+				if (iter == last) break;
+
+				// maximum munch - try all possible lexemes and choose the longest one
 				std::optional<typename token_type::name_type> longest_name{};
 				decltype(iter) longest_iter = iter;
 

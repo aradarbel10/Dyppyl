@@ -137,17 +137,18 @@ namespace dpl {
 		ruleof3_ptr(const T& other)
 			: inner(new T{ other }) {}
 
-		auto& operator=(const T& other) {
-			ruleof3_ptr<T> other_{ other };
-			std::swap(other.inner, this->inner);
-			return *this;
-		}
+		//auto& operator=(const T& other) {
+		//	ruleof3_ptr<T> other_{ other };
+		//	std::swap(other.inner, this->inner);
+		//	return *this;
+		//}
 
 		ruleof3_ptr(const ruleof3_ptr<T>& other)
 			: ruleof3_ptr(*other.inner) {}
 
 		auto& operator=(const ruleof3_ptr<T>& other) {
-			*this = *other.inner;
+			delete inner;
+			inner = new T(*other.inner);
 			return *this;
 		}
 
@@ -343,7 +344,7 @@ namespace dpl {
 			dpl::at_most<AtomT>,
 			dpl::between<AtomT>,
 			dpl::any_impl<AtomT>,
-			dpl::range<AtomT>,
+			dpl::range<std::conditional_t<std::totally_ordered<AtomT>, AtomT, std::monostate>>,
 			dpl::any_of<AtomT>
 		>;
 		variant_type r;
@@ -352,6 +353,11 @@ namespace dpl {
 		using atom_type = AtomT;
 
 		regex_wrapper(const dpl::regex auto& r_) : r(r_) {}
+
+		auto& operator=(const regex_wrapper<atom_type>& other) {
+			r = other.r;
+			return (*this);
+		}
 
 		template<initer_of_type<atom_type> IterT>
 		auto operator()(IterT iter, IterT end) const -> std::optional<decltype(iter)> {

@@ -10,16 +10,22 @@
 #include "Regex.h"
 
 namespace dpl {
+	struct discard_type {};
+	discard_type discard;
+
+
 	template<typename AtomT = char, typename TokenT = dpl::Token<>>
 	class Lexeme {
+	public:
 		using atom_type = AtomT;
 		using span_type = dpl::span_dict<atom_type>;
 
 		using token_type = TokenT;
+		using regex_type = dpl::regex_wrapper<atom_type>;
 
 	public:
 		std::function<token_type(typename token_type::name_type, span_type)> eval;
-		dpl::regex_wrapper<atom_type> regex;
+		regex_type regex;
 
 		template<typename Func>
 			requires std::invocable<Func, span_type>
@@ -33,18 +39,18 @@ namespace dpl {
 				return token_type{ name, str };
 			} else return token_type{ typename token_type::terminal_type{ name } };
 		}) {}
-
-		constexpr Lexeme(dpl::regex auto r, typename token_type::name_type name)
-		: regex(r), eval([=](typename token_type::name_type, span_type) -> token_type {
-			return token_type{ typename token_type::terminal_type{ name } };
-		}) {}
 	};
 
-	//template<typename AtomT = char, typename TokenT = dpl::Token<>>
-	//struct Lexicon : public std::map<typename TokenT::name_type, dpl::Lexeme<AtomT, TokenT>> {
-	//	using ::map;
-	//};
-
 	template<typename AtomT = char, typename TokenT = dpl::Token<>>
-	using Lexicon = std::map<typename TokenT::name_type, dpl::Lexeme<AtomT, TokenT>>;
+	struct Lexicon : public std::map<typename TokenT::name_type, dpl::Lexeme<AtomT, TokenT>> {
+	public:
+		using atom_type = AtomT;
+		using token_type = TokenT;
+		using name_type = token_type::name_type;
+		using lexeme_type = dpl::Lexeme<atom_type, token_type>;
+		using regex_type = lexeme_type::regex_type;
+
+	public:
+		std::optional<regex_type> discard_regex;
+	};
 }

@@ -30,6 +30,7 @@ namespace dpl {
 	template<typename TokenT = dpl::Token<>>
 	struct LexLit {
 		TerminalLit name;
+		bool discard = false;
 		dpl::Lexeme<char, TokenT> lex;
 	};
 
@@ -102,6 +103,11 @@ namespace dpl {
 	template<typename TokenT>
 	constexpr auto operator|=(const TerminalLit& name, const dpl::Lexeme<char, TokenT>& lex) {
 		return LexLit<TokenT>{.name = name, .lex = lex};
+	}
+
+	template<typename TokenT>
+	constexpr auto operator|=(discard_type disc, const dpl::Lexeme<char, TokenT>& lex) {
+		return LexLit<TokenT>{.discard = true, .lex = lex};
 	}
 
 	constexpr auto operator|(const ProdLit& lhs, const ProdLit& rhs) {

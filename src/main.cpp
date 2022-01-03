@@ -131,10 +131,11 @@ int main() {
 	//#undef Y
 
 
-
 	dpl::Grammar grammar{(
+		dpl::discard	|= dpl::Lexeme{ dpl::kleene{ dpl::whitespace } },
+
 		"id"t			|= dpl::Lexeme{ dpl::some{dpl::alpha} },
-		"op"t			|= dpl::Lexeme{ dpl::any_of{"+*"} },
+		"op"t			|= dpl::Lexeme{ dpl::any_of{"+-*/"} },
 
 		"E"nt			|= ("E"nt, "op"t, "E"nt)
 						|  ("("t ,"E"nt, ")"t )
@@ -143,9 +144,10 @@ int main() {
 
 	dpl::Tokenizer tokenizer{ grammar.get_lexicon() };
 
-	constexpr std::string_view text = "((abc+def)*ghi)";
+	constexpr std::string_view text = "\n((abc\t  + def) *   ghi) \0";
 	auto output = tokenizer.tokenize(text.begin(), text.end());
 
+	std::cout << "tokenizer output:\n";
 	for (auto tkn : output) {
 		std::cout << tkn << '\n';
 	}

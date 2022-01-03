@@ -160,7 +160,7 @@ namespace dpl {
 		nonterminal_type start_symbol;
 		hybrid::map<terminal_type, short> terminal_precs;
 
-		std::map<typename terminal_type::name_type, dpl::Lexeme<atom_type, token_type>> lexicon;
+		dpl::Lexicon<atom_type, token_type> lexicon;
 
 	public:
 
@@ -214,8 +214,13 @@ namespace dpl {
 		constexpr Grammar(dpl::GrammarLit<token_type> lit, std::enable_if_t<std::is_same_v<atom_type, char> && std::is_same_v<typename terminal_type::name_type, std::string_view>> *dummy = nullptr) {
 			// add all explicitly-defined lexemes
 			for (const auto& lexeme : lit.lexemes) {
-				if (lexicon.contains(lexeme.name)) throw std::exception{"terminal redefinition"};
+				if (lexeme.discard) {
+					if (lexicon.discard_regex) throw std::exception{"discard redefinition"};
+					lexicon.discard_regex = lexeme.lex.regex;
+					continue;
+				}
 
+				if (lexicon.contains(lexeme.name)) throw std::exception{"terminal redefinition"};
 				lexicon.insert({ lexeme.name, lexeme.lex });
 			}
 
