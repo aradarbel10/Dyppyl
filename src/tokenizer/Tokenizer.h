@@ -49,32 +49,32 @@ namespace dpl {
 
 			auto iter = first;
 			while (iter != last) {
-				size_t longest_index = -1;
+				std::optional<typename token_type::name_type> longest_name{};
 				decltype(iter) longest_iter = iter;
 
-				for (int i = 0; i < lexicon.size(); i++) {
-					auto result = lexicon[i].regex(iter, last);
+				for (const auto& [name, lexeme] : lexicon) {
+					auto result = lexeme.regex(iter, last);
 					if (result) {
 						if (std::distance(iter, *result) > std::distance(iter, longest_iter)) {
 							longest_iter = *result;
-							longest_index = i;
+							longest_name = name;
 						}
 					}
 				}
 
 				// throw error if the tokenizer is stuck in the middle of the input
-				if (longest_index == -1)
+				if (!longest_name)
 					throw std::exception{ "unable to tokenize file at pos blah blah ..." };
 				else if (longest_iter == iter)
 					throw std::exception{ "lexeme of length zero not allowed" };
 				else {
-					output_func(lexicon[longest_index].eval(longest_index, { iter, longest_iter }));
+					output_func(lexicon.at(*longest_name).eval(*longest_name, { iter, longest_iter }));
 					iter = longest_iter;
 				}
 			}
 
 			// some parsers rely on receiving an EOF token at the end of the parse stream
-			output_func(token_type::eof());
+			output_func(token_type{ token_type::Type::eof });
 		}
 
 		template<dpl::initer_of_type<atom_type> IterT>

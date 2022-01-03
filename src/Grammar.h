@@ -10,15 +10,19 @@
 #include "Lexical.h"
 
 namespace dpl {
-
 	enum class Assoc { None, Left, Right };
+}
 
-	template<typename AtomT = char, typename NonterminalT = std::string_view>
+#include "EDSL.h"
+
+namespace dpl {
+
+	template<typename AtomT = char, typename NonterminalT = std::string_view, typename TerminalT = dpl::Terminal<std::string_view>>
 	class ProductionRule {
 	public:
 
 		using atom_type = AtomT;
-		using terminal_type = Terminal;
+		using terminal_type = TerminalT;
 		using nonterminal_type = NonterminalT;
 
 		using symbol_type = std::variant<terminal_type, nonterminal_type>;
@@ -36,6 +40,9 @@ namespace dpl {
 		constexpr ProductionRule(std::initializer_list<symbol_type> l, Assoc assoc_, short prec_)
 			: sentence(l), assoc(assoc_), prec(prec_) { }
 
+		template<std::forward_iterator IterT>
+		constexpr ProductionRule(IterT first, IterT last) : sentence(first, last) {}
+
 		[[nodiscard]] constexpr bool isEpsilonProd() const { return sentence.empty(); }
 
 		[[nodiscard]] constexpr size_t size() const { return sentence.size(); }
@@ -45,26 +52,26 @@ namespace dpl {
 		constexpr symbol_type& operator[](size_t index) { return sentence[index]; }
 		[[nodiscard]] constexpr const symbol_type& operator[](size_t index) const { return sentence[index]; }
 
-		[[nodiscard]] constexpr auto begin() { sentence.begin(); }
-		[[nodiscard]] constexpr auto end() { sentence.end(); }
-		[[nodiscard]] constexpr auto rbegin() { sentence.rbegin(); }
-		[[nodiscard]] constexpr auto rend() { sentence.rend(); }
+		[[nodiscard]] constexpr auto begin() { return sentence.begin(); }
+		[[nodiscard]] constexpr auto end() { return sentence.end(); }
+		[[nodiscard]] constexpr auto rbegin() { return sentence.rbegin(); }
+		[[nodiscard]] constexpr auto rend() { return sentence.rend(); }
+
+		[[nodiscard]] constexpr auto begin() const { return sentence.begin(); }
+		[[nodiscard]] constexpr auto end() const { return sentence.end(); }
+		[[nodiscard]] constexpr auto rbegin() const { return sentence.rbegin(); }
+		[[nodiscard]] constexpr auto rend() const { return sentence.rend(); }
 
 		constexpr void push_back(auto&& elem) { sentence.push_back(elem); }
 
-		friend std::ostream& operator<<(std::ostream& os, const ProductionRule& rule) {
+		friend std::ostream& operator<<(std::ostream& os, const ProductionRule<atom_type, nonterminal_type>& rule) {
 			if (rule.empty()) os << "epsilon";
 			else {
 				for (auto i = rule.begin(); i != rule.end(); i++) {
 					const auto& sym = *i;
 
-					if (i != rule.begin()) {
-						os << " ";
-					}
-
-					if (const auto* nonterminal = std::get_if<std::string_view>(&sym)) dpl::colored_stream(os, 0x0F, *nonterminal);
-					else if (const auto* tkn = std::get_if<Terminal>(&sym))
-						dpl::colored_stream(os, 0x03, tkn->stringify());
+					if (i != rule.begin()) os << " ";
+					std::cout << dpl::streamer{ sym };
 				}
 			}
 
@@ -73,20 +80,49 @@ namespace dpl {
 
 	};
 
-	/*
-	class NonterminalRules : private std::vector<ProductionRule<>> {
+	template<typename AtomT = char, typename NonterminalT = std::string_view, typename TerminalT = dpl::Terminal<std::string_view>>
+	class NonterminalRules {
 	public:
 
+		using atom_type = AtomT;
+		using terminal_type = TerminalT;
+		using nonterminal_type = NonterminalT;
+
+		using symbol_type = std::variant<terminal_type, nonterminal_type>;
+		using production_type = ProductionRule<atom_type, nonterminal_type>;
+
+	private:
+
+		std::vector<production_type> rules;
+
+	public:
+
+		nonterminal_type name;
+
 		constexpr NonterminalRules() = default;
-		constexpr NonterminalRules(std::string_view n, std::initializer_list<ProductionRule<>> l) : std::vector<ProductionRule>(l), name(n) { }
+		constexpr NonterminalRules(nonterminal_type n) : name(n) { }
+		constexpr NonterminalRules(nonterminal_type n, std::initializer_list<production_type> l)
+			: std::vector<production_type>(l), name(n) { }
 
-		using std::vector<ProductionRule>::size;
-		using std::vector<ProductionRule>::operator[];
-		using std::vector<ProductionRule>::begin;
-		using std::vector<ProductionRule>::end;
-		using std::vector<ProductionRule>::push_back;
+		[[nodiscard]] constexpr size_t size() const { return rules.size(); }
 
-		std::string_view name;
+		constexpr production_type& operator[](size_t index) { return rules[index]; }
+		[[nodiscard]] constexpr const production_type& operator[](size_t index) const { return rules[index]; }
+
+		[[nodiscard]] constexpr auto begin() { return rules.begin(); }
+		[[nodiscard]] constexpr auto end() { return rules.end(); }
+		[[nodiscard]] constexpr auto rbegin() { return rules.rbegin(); }
+		[[nodiscard]] constexpr auto rend() { return rules.rend(); }
+
+		[[nodiscard]] constexpr const auto begin() const { return rules.begin(); }
+		[[nodiscard]] constexpr const auto end() const { return rules.end(); }
+		[[nodiscard]] constexpr const auto rbegin() const { return rules.rbegin(); }
+		[[nodiscard]] constexpr const auto rend() const { return rules.rend(); }
+
+		[[nodiscard]] constexpr auto& front() { return rules.front(); }
+		[[nodiscard]] constexpr auto& back() { return rules.back(); }
+
+		constexpr void push_back(auto&& elem) { rules.push_back(elem); }
 
 		friend std::ostream& operator<<(std::ostream& os, const NonterminalRules& nt) {
 			for (const auto& rule : nt) {
@@ -97,18 +133,49 @@ namespace dpl {
 
 	};
 
-	template<typename AtomT = char>
-	class Grammar : dpl::cc::map<std::string_view, NonterminalRules> {
+	template<typename AtomT = char, typename TokenT = dpl::Token<>, typename NonterminalT = std::string_view, typename TerminalNameT = std::string_view>
+	class Grammar {
 	public:
 
 		using epsilon_type = std::monostate;
-		using terminal_type = Terminal;
-		using nonterminal_type = std::string_view;
 
-		constexpr Grammar(std::initializer_list<NonterminalRules> l) : start_symbol(l.begin()->name) {
-			for (const auto& ntrule : l) {
+		using atom_type = AtomT;
+		using terminal_type = Terminal<TerminalNameT>;
+		using token_type = TokenT;
+		using nonterminal_type = NonterminalT;
+
+		using prod_type = ProductionRule<atom_type, nonterminal_type>;
+		using ntrule_type = NonterminalRules<atom_type, nonterminal_type>;
+
+		using firsts_type = std::map<nonterminal_type, hybrid::set<std::variant<epsilon_type, terminal_type>>>;
+		using follows_type = std::map<nonterminal_type, hybrid::set<terminal_type>>;
+
+	private:
+
+		std::map<nonterminal_type, ntrule_type> ntrules;
+
+		firsts_type firsts;
+		follows_type follows;
+
+		nonterminal_type start_symbol;
+		hybrid::map<terminal_type, short> terminal_precs;
+
+		std::map<typename terminal_type::name_type, dpl::Lexeme<atom_type, token_type>> lexicon;
+
+	public:
+
+		constexpr void initialize() {
+			calcFirstSets();
+			calcFollowSets();
+		}
+
+		constexpr ~Grammar() = default;
+		constexpr Grammar() = default;
+
+		constexpr Grammar(std::initializer_list<ntrule_type> l) : start_symbol(l.begin()->name) {
+			for (auto& ntrule : l) {
 				(*this)[ntrule.name].name = ntrule.name;
-				for (const auto& rule : ntrule) {
+				for (auto& rule : ntrule) {
 					ProductionRule adding_rule = rule;
 					adding_rule.clear();
 
@@ -124,14 +191,15 @@ namespace dpl {
 
 					// preprocess grammar
 					for (const auto& sym : rule) {
-						const auto* terminal = std::get_if<terminal_type>(&sym);
-						if (terminal && terminal->type == Terminal::Type::Unknown) {
-							const auto* terminal_str = std::get_if<std::string_view>(&terminal->terminal_value);
-							if (terminal_str) {
-								adding_rule.push_back(dpl::Terminal{ Terminal::Type::Symbol, *terminal_str });
-								continue;
-							}
-						}
+						// #TASK : still need this block?
+						//const auto* terminal = std::get_if<terminal_type>(&sym);
+						//if (terminal && terminal->is_wildcard) {
+						//	const auto* terminal_str = std::get_if<std::string_view>(&terminal->terminal_value);
+						//	if (terminal_str) {
+						//		adding_rule.push_back(dpl::Terminal{ Terminal::Type::Symbol, *terminal_str });
+						//		continue;
+						//	}
+						//}
 
 						adding_rule.push_back(sym);
 					}
@@ -142,34 +210,62 @@ namespace dpl {
 
 			initialize();
 		}
-		constexpr ~Grammar() = default;
 
-		constexpr void initialize() {
-			calcFirstSets();
-			calcFollowSets();
+		constexpr Grammar(dpl::GrammarLit<token_type> lit, std::enable_if_t<std::is_same_v<atom_type, char> && std::is_same_v<typename terminal_type::name_type, std::string_view>> *dummy = nullptr) {
+			// add all explicitly-defined lexemes
+			for (const auto& lexeme : lit.lexemes) {
+				if (lexicon.contains(lexeme.name)) throw std::exception{"terminal redefinition"};
+
+				lexicon.insert({ lexeme.name, lexeme.lex });
+			}
+
+			// add all grammar rules
+			for (const auto& ntrule : lit.rules) {
+				if (this->contains(ntrule.name)) throw std::exception{"nonterminal redefinition"};
+
+				if (ntrules.empty()) start_symbol = ntrule.name;
+				ntrules.insert({ ntrule.name, ntrule_type{ ntrule.name } });
+				for (const auto& prod : ntrule.prods) {
+					ntrules[ntrule.name].push_back(prod_type{});
+					for (const auto& sym : prod.sentence) {
+
+						// add nonterminals as themselves, terminals from the lexicon
+						if (const auto* nonterminal = std::get_if<dpl::NonterminalLit>(&sym)) {
+							ntrules[ntrule.name].back().push_back(*nonterminal);
+						} else if (const auto* terminal = std::get_if<dpl::TerminalLit>(&sym)) {
+
+							if (lexicon.contains(*terminal)) {
+								ntrules[ntrule.name].back().push_back(terminal_type{ *terminal });
+							} else {
+								// if terminal not in lexicon, add its raw string value
+								ntrules[ntrule.name].back().push_back(terminal_type{ *terminal });
+								lexicon.insert({ *terminal, dpl::Lexeme{ dpl::match{ *terminal } } });
+							}
+
+						} // exhaustive
+					}
+				}
+			}
+
+			// calculate firsts and follows
+			initialize();
 		}
-
-		using dpl::cc::map<std::string_view, NonterminalRules>::size;
-		using dpl::cc::map<std::string_view, NonterminalRules>::operator[];
-		using dpl::cc::map<std::string_view, NonterminalRules>::at;
-		using dpl::cc::map<std::string_view, NonterminalRules>::begin;
-		using dpl::cc::map<std::string_view, NonterminalRules>::end;
-		using dpl::cc::map<std::string_view, NonterminalRules>::contains;
-
 		
 
-	public:
+		[[nodiscard]] constexpr size_t size() const { return ntrules.size(); }
+		
+		constexpr ntrule_type& operator[](const nonterminal_type& index) { return ntrules[index]; }
+		[[nodiscard]] constexpr const ntrule_type& operator[](const nonterminal_type& index) const { return ntrules[index]; }
+		[[nodiscard]] constexpr const ntrule_type& at(const nonterminal_type& index) const { return ntrules.at(index); }
+		
+		[[nodiscard]] constexpr auto begin() { return ntrules.begin(); }
+		[[nodiscard]] constexpr auto end() { return ntrules.end(); }
+		[[nodiscard]] constexpr auto rbegin() { return ntrules.rbegin(); }
+		[[nodiscard]] constexpr auto rend() { return ntrules.rend(); }
 
-		using firsts_type = dpl::cc::map<nonterminal_type, dpl::cc::set<std::variant<epsilon_type, terminal_type>>>;
-		using follows_type = dpl::cc::map<nonterminal_type, dpl::cc::set<terminal_type>>;
+		[[nodiscard]] constexpr bool contains(const nonterminal_type& index) const { return ntrules.contains(index); }
 
-		firsts_type firsts;
-		follows_type follows;
-
-		std::string start_symbol;
-		dpl::cc::map<terminal_type, short> terminal_precs;
-
-		dpl::Lexicon<AtomT> lexicon;
+		constexpr const auto& get_lexicon() const { return lexicon; }
 
 		friend std::ostream& operator<<(std::ostream& os, const Grammar& grammar) {
 			for (const auto& [name, nonterminal] : grammar) {
@@ -182,14 +278,12 @@ namespace dpl {
 		}
 
 
-	public:
+	private:
 
 		constexpr void calcFirstSets() {
-			if (!std::is_constant_evaluated()) firsts.reserve(size());
 			for (const auto& [name, nt] : *this) {
-				firsts.insert(name, {});
+				firsts.insert({ name, {} });
 
-				if (!std::is_constant_evaluated()) firsts[name].reserve(nt.size());
 				// #TASK : change loop to "auto& rule : nt" (why doesn't it work in constexpr??)
 				for (int i = 0; i < nt.size(); i++) {
 					if (nt[i].isEpsilonProd()) {
@@ -221,16 +315,16 @@ namespace dpl {
 		}
 
 		constexpr void calcFollowSets() {
-			for (auto& [name, nt] : *this) {
+			for (const auto& [name, nt] : ntrules) {
 				// #TASK : change loop to "auto& rule : nt" (why doesn't it work in constexpr??)
 				for (int j = 0; j < nt.size(); j++) {
-					auto& rule = nt[j];
+					const auto& rule = nt[j];
 					if (rule.empty()) continue;
 
 					for (int i = 0; i < rule.size() - 1; i++) {
 						if (const auto* n = std::get_if<nonterminal_type>(&rule[i])) {
 							if (const auto* t = std::get_if<terminal_type>(&rule[i + 1])) {
-								follows.insert(*n, {});
+								follows.insert({ *n, {} });
 								follows[*n].insert(*t);
 							}
 						}
@@ -238,8 +332,8 @@ namespace dpl {
 				}
 			}
 
-			follows.insert(start_symbol, {});
-			follows[start_symbol].insert(Terminal::Type::EndOfFile);
+			follows.insert({ start_symbol, {} });
+			follows[start_symbol].insert(terminal_type{ terminal_type::Type::eof });
 
 			// #TASK : rewrite this huge ass nested loop
 			bool changed;
@@ -285,7 +379,7 @@ namespace dpl {
 	public:
 
 		// #TASK: require constant iterators
-		constexpr dpl::cc::set<std::variant<epsilon_type, terminal_type>> first_star(const ProductionRule& rule) const {
+		constexpr hybrid::set<std::variant<epsilon_type, terminal_type>> first_star(const prod_type& rule) const {
 			// first* of an epsilon-production is epsilon
 			if (rule.isEpsilonProd()) {
 				return { epsilon_type{} };
@@ -345,8 +439,6 @@ namespace dpl {
 	inline bool operator==(const std::string_view lhs, const RuleRef<AtomT>& rhs) { return rhs == lhs; }
 
 	static_assert(std::equality_comparable_with<RuleRef<>, std::string_view>);
-
-	*/
 }
 
 #include "EDSL.h"

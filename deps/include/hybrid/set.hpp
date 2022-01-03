@@ -23,7 +23,7 @@ namespace hybrid {
 				}
 			}
 
-			constexpr int binary_search(const ValT& val) {
+			constexpr int binary_search(const ValT& val) const {
 				return binary_search(val, 0, size());
 			}
 

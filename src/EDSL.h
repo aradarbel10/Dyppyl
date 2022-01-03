@@ -1,71 +1,180 @@
 #pragma once
 
 #include <string_view>
+#include <vector>
+#include <variant>
 
 namespace dpl {
 
-	struct Nonterminal : public std::string_view {
-		using std::string_view::string_view;
-	};
-
-	namespace literals {
-		constexpr Nonterminal operator""nt(const char* str, size_t) {
-			return Nonterminal{ str };
-		}
-	}
+	struct NonterminalLit : public std::string_view {};
+	struct TerminalLit : public std::string_view {};
 
 	using Prec = short;
 
-	template<typename AtomT = char, typename NonterminalT = std::string_view>
-	constexpr auto operator&(ProductionRule<AtomT, NonterminalT>&& rule, Assoc assoc) {
+	struct void_token_t {
+		using terminal_type = struct {};
+		using name_type = struct {};
+	};
+
+	struct ProdLit {
+		std::vector<std::variant<NonterminalLit, TerminalLit>> sentence;
+		dpl::Assoc assoc = dpl::Assoc::None;
+		dpl::Prec prec = 0;
+	};
+
+	struct NtRulesLit {
+		NonterminalLit name;
+		std::vector<ProdLit> prods;
+	};
+
+	template<typename TokenT = dpl::Token<>>
+	struct LexLit {
+		TerminalLit name;
+		dpl::Lexeme<char, TokenT> lex;
+	};
+
+	template<typename TokenT = dpl::Token<>>
+	struct GrammarLit {
+		std::vector<NtRulesLit> rules;
+		std::vector<LexLit<TokenT>> lexemes;
+	};
+
+	namespace literals {
+		constexpr NonterminalLit operator""nt(const char* str, size_t) {
+			return NonterminalLit{ str };
+		}
+
+		constexpr TerminalLit operator""t(const char* str, size_t) {
+			return TerminalLit{ str };
+		}
+	}
+
+	constexpr auto operator&(ProdLit&& rule, Assoc assoc) {
 		rule.assoc = assoc;
 		return rule;
 	}
 
-	template<typename AtomT = char, typename NonterminalT = std::string_view>
-	constexpr auto operator&(ProductionRule<AtomT, NonterminalT>&& rule, Prec prec) {
+	constexpr auto operator&(ProdLit&& rule, Prec prec) {
 		rule.prec = prec;
 		return rule;
 	}
 
 	template<typename T>
-	concept RuleSymbol =
-		std::is_same_v<T, Terminal>
-		|| std::is_same_v<T, Nonterminal>
-		|| dpl::regex<T>;
+	concept ProdLitSymbol =
+		std::is_same_v<T, TerminalLit>
+		|| std::is_same_v<T, NonterminalLit>;
 
-	constexpr auto operator,(const RuleSymbol auto& lhs, const RuleSymbol auto& rhs) {
-		return ProductionRule{{ lhs, rhs }};
+	constexpr auto operator&(const ProdLitSymbol auto& sym, Assoc assoc) {
+		return ProdLit{ .sentence = {sym}, .assoc = assoc };
 	}
 
-	template<typename AtomT = char>
-	constexpr auto operator,(ProductionRule<AtomT, std::string_view>&& lhs, const RuleSymbol auto& rhs) {
-		lhs.push_back(rhs);
+	constexpr auto operator&(const ProdLitSymbol auto& sym, Prec prec) {
+		return ProdLit{ .sentence = {sym}, .prec = prec };
+	}
+
+	constexpr auto operator,(const ProdLitSymbol auto& lhs, const ProdLitSymbol auto& rhs) {
+		return ProdLit{{ lhs, rhs }};
+	}
+
+	constexpr auto operator,(ProdLit&& lhs, const ProdLitSymbol auto& rhs) {
+		lhs.sentence.push_back(rhs);
 		return lhs;
 	}
 
-	/*
 	template <typename T>
-	concept RuleOrSingle = std::is_same_v<T, dpl::ProductionRule>
-		|| std::is_same_v<T, dpl::Terminal>
-		|| std::is_same_v<T, dpl::Nonterminal>;
+	concept RuleOrSingle = std::is_same_v<T, dpl::ProdLit>
+		|| std::is_same_v<T, TerminalLit>
+		|| std::is_same_v<T, NonterminalLit>;
 
-	constexpr auto operator|=(const Nonterminal& name, dpl::NonterminalRules&& nt) {
+	constexpr auto operator|=(const NonterminalLit& name, NtRulesLit&& nt) {
 		nt.name = name;
 		return nt;
 	}
 
-	constexpr auto operator|=(const Nonterminal& name, const RuleOrSingle auto& rule) {
-		return NonterminalRules{ name, { rule } };
+	constexpr auto operator|=(const NonterminalLit& name, ProdLit&& prod) {
+		return NtRulesLit{ .name = name, .prods = {prod} };
 	}
 
-	constexpr auto operator|(const RuleOrSingle auto& lhs, const RuleOrSingle auto& rhs) {
-		return NonterminalRules{ "", {{lhs}, {rhs}} };
+	constexpr auto operator|=(const NonterminalLit& name, ProdLitSymbol auto&& sym) {
+		return NtRulesLit{ .name = name, .prods = { ProdLit{ .sentence = {sym} } } };
 	}
 
-	constexpr auto operator|(dpl::NonterminalRules&& nt, const RuleOrSingle auto& prod) {
-		nt.push_back({ prod });
-		return nt;
+	template<typename TokenT>
+	constexpr auto operator|=(const TerminalLit& name, const dpl::Lexeme<char, TokenT>& lex) {
+		return LexLit<TokenT>{.name = name, .lex = lex};
 	}
-	*/
+
+	constexpr auto operator|(const ProdLit& lhs, const ProdLit& rhs) {
+		NtRulesLit result;
+		result.prods.push_back(lhs);
+		result.prods.push_back(rhs);
+		return result;
+	}
+
+	constexpr auto operator|(const ProdLit& lhs, const ProdLitSymbol auto& rhs) {
+		NtRulesLit result;
+		result.prods.push_back(lhs);
+		result.prods.push_back(ProdLit{ .sentence = {rhs} });
+		return result;
+	}
+
+	constexpr auto operator|(const ProdLitSymbol auto& lhs, const ProdLit& rhs) {
+		NtRulesLit result;
+		result.prods.push_back(ProdLit{ .sentence = {lhs} });
+		result.prods.push_back(rhs);
+		return result;
+	}
+
+	constexpr auto operator|(const ProdLitSymbol auto& lhs, const ProdLitSymbol auto& rhs) {
+		NtRulesLit result;
+		result.prods.push_back(ProdLit{ .sentence = {lhs} });
+		result.prods.push_back(ProdLit{ .sentence = {rhs} });
+		return result;
+	}
+
+	constexpr auto operator|(NtRulesLit&& lhs, const ProdLit& rhs) {
+		lhs.prods.push_back(rhs);
+		return lhs;
+	}
+
+	constexpr auto operator|(NtRulesLit&& lhs, const ProdLitSymbol auto& rhs) {
+		lhs.prods.push_back(ProdLit{ .sentence{ rhs } });
+		return lhs;
+	}
+
+	constexpr auto operator,(const NtRulesLit& lhs, const NtRulesLit& rhs) {
+		return GrammarLit<void_token_t>{ .rules = { lhs, rhs } };
+	}
+
+	template<typename TokenT>
+	constexpr auto operator,(const NtRulesLit& lhs, const LexLit<TokenT>& rhs) {
+		return GrammarLit<TokenT>{ .rules = { lhs }, .lexemes = { rhs } };
+	}
+
+	template<typename TokenT>
+	constexpr auto operator,(const LexLit<TokenT>& lhs, const NtRulesLit& rhs) {
+		return GrammarLit<TokenT>{ .rules = { rhs }, .lexemes = { lhs } };
+	}
+
+	template<typename TokenT>
+	constexpr auto operator,(const LexLit<TokenT>& lhs, const LexLit<TokenT>& rhs) {
+		return GrammarLit<TokenT>{ .lexemes = { lhs, rhs } };
+	}
+
+	template<typename T, typename TokenT>
+	concept GrammarLitOfType =
+		std::same_as<T, GrammarLit<void_token_t>>
+		|| std::same_as<T, GrammarLit<TokenT>>;
+
+	template<typename TokenT>
+	constexpr auto operator,(GrammarLitOfType<TokenT> auto&& lhs, const LexLit<TokenT>& rhs) {
+		lhs.lexemes.push_back(rhs);
+		return lhs;
+	}
+
+	template<typename TokenT = dpl::Token<>>
+	constexpr auto operator,(GrammarLitOfType<TokenT> auto&& lhs, const NtRulesLit& rhs) {
+		lhs.rules.push_back(rhs);
+		return lhs;
+	}
 }

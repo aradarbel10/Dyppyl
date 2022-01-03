@@ -131,28 +131,24 @@ int main() {
 	//#undef Y
 
 
-	constexpr std::string_view text = "123 + 456 * 789";
 
-	dpl::Lexicon lexicon{
-		{ dpl::match{ "*" } },
-		{ dpl::match{ "+" } },
-		{ dpl::some{ dpl::digit }, [](std::string_view str) -> double {
-			int result;
-			std::from_chars(str.data(), str.data() + str.length(), result);
-			return result;
-		}},
-		{ dpl::some{ dpl::whitespace }, [](std::string_view) -> std::string_view { return " "; } }
-	};
+	dpl::Grammar grammar{(
+		"id"t			|= dpl::Lexeme{ dpl::some{dpl::alpha} },
+		"op"t			|= dpl::Lexeme{ dpl::any_of{"+*"} },
 
-	dpl::Tokenizer tokenizer{ lexicon };
+		"E"nt			|= ("E"nt, "op"t, "E"nt)
+						|  ("("t ,"E"nt, ")"t )
+						|  ("id"t)
+	)};
+
+	dpl::Tokenizer tokenizer{ grammar.get_lexicon() };
+
+	constexpr std::string_view text = "((abc+def)*ghi)";
 	auto output = tokenizer.tokenize(text.begin(), text.end());
 
 	for (auto tkn : output) {
 		std::cout << tkn << '\n';
 	}
-
-
-	dpl::ProductionRule rule = ("E"nt, dpl::Terminal{0}, "E"nt);
 
 	//dpl::Grammar grammar {
 	//	"Stmts"nt	|= ("Stmt"nt, "Stmts"nt)

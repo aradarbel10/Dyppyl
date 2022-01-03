@@ -16,7 +16,7 @@
 namespace dpl {
 	using file_pos_t = size_t;
 
-	template<typename> struct Token;
+	template<typename, typename> struct Token;
 
 	template<typename T>
 	struct streamer {
