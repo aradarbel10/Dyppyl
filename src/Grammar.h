@@ -17,11 +17,10 @@ namespace dpl {
 
 namespace dpl {
 
-	template<typename AtomT = char, typename NonterminalT = std::string_view, typename TerminalT = dpl::Terminal<std::string_view>>
+	template<typename NonterminalT = std::string_view, typename TerminalT = dpl::Terminal<std::string_view>>
 	class ProductionRule {
 	public:
 
-		using atom_type = AtomT;
 		using terminal_type = TerminalT;
 		using nonterminal_type = NonterminalT;
 
@@ -64,7 +63,7 @@ namespace dpl {
 
 		constexpr void push_back(auto&& elem) { sentence.push_back(elem); }
 
-		friend std::ostream& operator<<(std::ostream& os, const ProductionRule<atom_type, nonterminal_type>& rule) {
+		friend std::ostream& operator<<(std::ostream& os, const ProductionRule<nonterminal_type>& rule) {
 			if (rule.empty()) os << "epsilon";
 			else {
 				for (auto i = rule.begin(); i != rule.end(); i++) {
@@ -80,16 +79,15 @@ namespace dpl {
 
 	};
 
-	template<typename AtomT = char, typename NonterminalT = std::string_view, typename TerminalT = dpl::Terminal<std::string_view>>
+	template<typename NonterminalT = std::string_view, typename TerminalT = dpl::Terminal<std::string_view>>
 	class NonterminalRules {
 	public:
 
-		using atom_type = AtomT;
 		using terminal_type = TerminalT;
 		using nonterminal_type = NonterminalT;
 
 		using symbol_type = std::variant<terminal_type, nonterminal_type>;
-		using production_type = ProductionRule<atom_type, nonterminal_type>;
+		using production_type = ProductionRule<nonterminal_type>;
 
 	private:
 
@@ -133,26 +131,25 @@ namespace dpl {
 
 	};
 
-	template<typename AtomT = char, typename TokenT = dpl::Token<>, typename NonterminalT = std::string_view, typename TerminalNameT = std::string_view>
+	template<typename TokenT = dpl::Token<>, typename NonterminalT = std::string_view, typename TerminalNameT = std::string_view>
 	class Grammar {
 	public:
 
 		using epsilon_type = std::monostate;
 
-		using atom_type = AtomT;
 		using terminal_type = Terminal<TerminalNameT>;
 		using token_type = TokenT;
 		using nonterminal_type = NonterminalT;
 
-		using prod_type = ProductionRule<atom_type, nonterminal_type>;
-		using ntrule_type = NonterminalRules<atom_type, nonterminal_type>;
+		using prod_type = ProductionRule<nonterminal_type>;
+		using ntrule_type = NonterminalRules<nonterminal_type>;
 
 		using firsts_type = std::map<nonterminal_type, hybrid::set<std::variant<epsilon_type, terminal_type>>>;
 		using follows_type = std::map<nonterminal_type, hybrid::set<terminal_type>>;
 
 	private:
 
-		std::map<nonterminal_type, ntrule_type> ntrules;
+		std::map<nonterminal_type, ntrule_type> ntrules{};
 
 		firsts_type firsts;
 		follows_type follows;
@@ -160,9 +157,11 @@ namespace dpl {
 		nonterminal_type start_symbol;
 		hybrid::map<terminal_type, short> terminal_precs;
 
-		dpl::Lexicon<atom_type, token_type> lexicon;
-
 	public:
+
+		template<typename TokenT_>
+		friend constexpr std::pair<dpl::Grammar<TokenT_, std::string_view, std::string_view>,
+			dpl::Lexicon<char, TokenT_>> decompose_grammar_lit(dpl::GrammarLit<TokenT_> lit);
 
 		constexpr void initialize() {
 			calcFirstSets();
@@ -211,51 +210,6 @@ namespace dpl {
 			initialize();
 		}
 
-		constexpr Grammar(dpl::GrammarLit<token_type> lit, std::enable_if_t<std::is_same_v<atom_type, char> && std::is_same_v<typename terminal_type::name_type, std::string_view>> *dummy = nullptr) {
-			// add all explicitly-defined lexemes
-			for (const auto& lexeme : lit.lexemes) {
-				if (lexeme.discard) {
-					if (lexicon.discard_regex) throw std::exception{"discard redefinition"};
-					lexicon.discard_regex = lexeme.lex.regex;
-					continue;
-				}
-
-				if (lexicon.contains(lexeme.name)) throw std::exception{"terminal redefinition"};
-				lexicon.insert({ lexeme.name, lexeme.lex });
-			}
-
-			// add all grammar rules
-			for (const auto& ntrule : lit.rules) {
-				if (this->contains(ntrule.name)) throw std::exception{"nonterminal redefinition"};
-
-				if (ntrules.empty()) start_symbol = ntrule.name;
-				ntrules.insert({ ntrule.name, ntrule_type{ ntrule.name } });
-				for (const auto& prod : ntrule.prods) {
-					ntrules[ntrule.name].push_back(prod_type{});
-					for (const auto& sym : prod.sentence) {
-
-						// add nonterminals as themselves, terminals from the lexicon
-						if (const auto* nonterminal = std::get_if<dpl::NonterminalLit>(&sym)) {
-							ntrules[ntrule.name].back().push_back(*nonterminal);
-						} else if (const auto* terminal = std::get_if<dpl::TerminalLit>(&sym)) {
-
-							if (lexicon.contains(*terminal)) {
-								ntrules[ntrule.name].back().push_back(terminal_type{ *terminal });
-							} else {
-								// if terminal not in lexicon, add its raw string value
-								ntrules[ntrule.name].back().push_back(terminal_type{ *terminal });
-								lexicon.insert({ *terminal, dpl::Lexeme{ dpl::match{ *terminal } } });
-							}
-
-						} // exhaustive
-					}
-				}
-			}
-
-			// calculate firsts and follows
-			initialize();
-		}
-		
 
 		[[nodiscard]] constexpr size_t size() const { return ntrules.size(); }
 		
@@ -269,8 +223,6 @@ namespace dpl {
 		[[nodiscard]] constexpr auto rend() { return ntrules.rend(); }
 
 		[[nodiscard]] constexpr bool contains(const nonterminal_type& index) const { return ntrules.contains(index); }
-
-		constexpr const auto& get_lexicon() const { return lexicon; }
 
 		friend std::ostream& operator<<(std::ostream& os, const Grammar& grammar) {
 			for (const auto& [name, nonterminal] : grammar) {
@@ -446,4 +398,91 @@ namespace dpl {
 	static_assert(std::equality_comparable_with<RuleRef<>, std::string_view>);
 }
 
-#include "EDSL.h"
+
+// grammar literal destructuring
+namespace dpl {
+	template<typename TokenT>
+	constexpr std::pair<dpl::Grammar<TokenT, std::string_view, std::string_view>,
+		dpl::Lexicon<char, TokenT>> decompose_grammar_lit(dpl::GrammarLit<TokenT> lit) {
+
+		using grammar_type = dpl::Grammar<TokenT, std::string_view, std::string_view>;
+		using lexicon_type = dpl::Lexicon<char, TokenT>;
+
+		grammar_type grammar;
+		lexicon_type lexicon;
+
+		// add all explicitly-defined lexemes
+		for (const auto& lexeme : lit.lexemes) {
+			if (lexeme.discard) {
+				if (lexicon.discard_regex) throw std::exception{ "discard redefinition" };
+				lexicon.discard_regex = lexeme.lex.regex;
+				continue;
+			}
+
+			if (lexicon.contains(lexeme.name)) throw std::exception{ "terminal redefinition" };
+			lexicon.insert({ lexeme.name, lexeme.lex });
+		}
+
+		// add all grammar rules
+		for (const auto& ntrule : lit.rules) {
+			if (grammar.contains(ntrule.name)) throw std::exception{ "nonterminal redefinition" };
+
+			if (grammar.ntrules.empty()) grammar.start_symbol = ntrule.name;
+			grammar.ntrules.insert({ ntrule.name, typename grammar_type::ntrule_type{ ntrule.name } });
+			for (const auto& prod : ntrule.prods) {
+				grammar.ntrules[ntrule.name].push_back(typename grammar_type::prod_type{});
+				for (const auto& sym : prod.sentence) {
+
+					// add nonterminals as themselves, terminals from the lexicon
+					if (const auto* nonterminal = std::get_if<dpl::NonterminalLit>(&sym)) {
+						grammar.ntrules[ntrule.name].back().push_back(*nonterminal);
+					} else if (const auto* terminal = std::get_if<dpl::TerminalLit>(&sym)) {
+
+						if (lexicon.contains(*terminal)) {
+							grammar.ntrules[ntrule.name].back().push_back(typename grammar_type::terminal_type{ *terminal });
+						} else {
+							// if terminal not in lexicon, add its raw string value
+							grammar.ntrules[ntrule.name].back().push_back(typename grammar_type::terminal_type{ *terminal });
+							lexicon.insert({ *terminal, dpl::Lexeme{ dpl::match{ *terminal } } });
+						}
+
+					} // exhaustive
+				}
+			}
+		}
+
+		// calculate firsts and follows
+		grammar.initialize();
+
+		return std::pair{ grammar, lexicon };
+	}
+}
+
+namespace std {
+	template<typename TokenT>
+	struct tuple_size<dpl::GrammarLit<TokenT>> : integral_constant<size_t, 2> {};
+
+	template<typename TokenT>
+	struct tuple_element<0, dpl::GrammarLit<TokenT>> {
+		using type = dpl::Grammar<TokenT, std::string_view, std::string_view>;
+	};
+
+	template<typename TokenT>
+	struct tuple_element<1, dpl::GrammarLit<TokenT>> {
+		using type = dpl::Lexicon<char, TokenT>;
+	};
+
+	template<size_t Index, typename TokenT>
+	std::tuple_element_t<Index, dpl::GrammarLit<TokenT>> get(const dpl::GrammarLit<TokenT>& g) {
+		auto decomposed = dpl::decompose_grammar_lit(g);
+
+		if constexpr (Index == 0) {
+			auto copy_grammar = decomposed.first;
+
+			return decomposed.first;
+		}
+		if constexpr (Index == 1) {
+			return decomposed.second;
+		}
+	}
+}

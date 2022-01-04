@@ -3,8 +3,14 @@
 #include <string_view>
 #include <vector>
 #include <variant>
+#include <utility>
 
 namespace dpl {
+
+	// forward declaration
+	template<typename TokenT, typename NonterminalT, typename TerminalNameT>
+	class Grammar;
+
 
 	struct NonterminalLit : public std::string_view {};
 	struct TerminalLit : public std::string_view {};

@@ -14,6 +14,7 @@
 
 namespace dpl{
 
+	template<typename AtomT = char, typename NonterminalT = std::string_view, typename TerminalT = dpl::Terminal<>>
 	class LLTable : private hybrid::map<std::pair<Terminal, std::string_view>, int> {
 	private:
 
@@ -21,10 +22,10 @@ namespace dpl{
 
 	public:
 
-		dpl::Grammar& grammar;
+		dpl::Grammar<& grammar;
 
-		using terminal_type = Terminal;
-		using nonterminal_type = std::string_view;
+		using terminal_type = TerminalT;
+		using nonterminal_type = NonterminalT;
 		using table_type = hybrid::map<std::pair<terminal_type, nonterminal_type>, int>;
 
 		using table_type::map;

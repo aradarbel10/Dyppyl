@@ -18,6 +18,8 @@
 #include "Grammar.h"
 #include "TextStream.h"
 
+//#include "parser/LL1.h"
+
 using namespace dpl::literals;
 
 #define SYMBOLS_MACRO \
@@ -131,7 +133,7 @@ int main() {
 	//#undef Y
 
 
-	dpl::Grammar grammar{(
+	auto [grammar, lexicon] = (
 		dpl::discard	|= dpl::Lexeme{ dpl::kleene{ dpl::whitespace } },
 
 		"id"t			|= dpl::Lexeme{ dpl::some{dpl::alpha} },
@@ -140,9 +142,9 @@ int main() {
 		"E"nt			|= ("E"nt, "op"t, "E"nt)
 						|  ("("t ,"E"nt, ")"t )
 						|  ("id"t)
-	)};
+	);
 
-	dpl::Tokenizer tokenizer{ grammar.get_lexicon() };
+	dpl::Tokenizer tokenizer{ lexicon };
 
 	constexpr std::string_view text = "\n((abc\t  + def) *   ghi) \0";
 	auto output = tokenizer.tokenize(text.begin(), text.end());
