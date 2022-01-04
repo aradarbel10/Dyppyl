@@ -4,19 +4,20 @@ A compiler generator written in modern C++.
 <img src="promotional/logo.png" alt="logo" width="250">
 
 ## Example(s)
-NOTE: Dyppyl is under constant developments, so some examples might be outdated.
+NOTE: Dyppyl is under constant developments, so some examples might not match the current state of the code.
 ```cpp
 // define grammar & parser
-dpl::Grammar grammar{
-	{ "E", {
-		{{"E", "+"_sym, "E"}, dpl::Assoc::Left, 5 },
-		{{"E", "*"_sym, "E"}, dpl::Assoc::Left, 10},
-		{ "("_sym, "E", ")"_sym },
-		{ dpl::Token::Type::Number }
-	}}
-};
-grammar.symbols = { "+", "*", "(", ")" };
-dpl::LR1 parser{ grammar };
+auto [grammar, lexicon] = (
+	dpl::discard |= dpl::kleene{dpl::whitespace},
+
+	"num"t	|= dpl::Lexeme{ dpl::some{dpl::digit}, [](std::string_view str) -> double { return dpl::stod(str); } },
+
+	"E"nt	|= ("E"nt, "+"t, "E"nt) & dpl::Assoc::Left, dpl::Prec{5}
+			|  ("E"nt, "*"t, "E"nt) & dpl::Assoc::Left, dpl::Prec{10}
+			|  ("("t, "E"nt, ")"t)
+			|  ("num"t)
+);
+dpl::LR1 parser{ grammar, lexicon };
 
 // use parser
 dpl::StringStream src{ "1 + 2 * (3 + 4) * 5" };
