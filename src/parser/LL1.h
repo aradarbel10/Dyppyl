@@ -14,19 +14,20 @@
 
 namespace dpl{
 
-	template<typename AtomT = char, typename NonterminalT = std::string_view, typename TerminalT = dpl::Terminal<>>
-	class LLTable : private hybrid::map<std::pair<Terminal, std::string_view>, int> {
-	private:
+	template<typename GrammarT = dpl::Grammar<>>
+	class LLTable : private hybrid::map<std::pair<typename GrammarT::terminal_type, typename GrammarT::nonterminal_type>, int> {
+	public:
+		using grammar_type = GrammarT;
 
+		using terminal_type = GrammarT::temrinal_type;
+		using nonterminal_type = GrammarT::nontemrinal_type;
+		using table_type = hybrid::map<std::pair<terminal_type, nonterminal_type>, int>;
+
+	private:
+		grammar_type& grammar;
 		bool is_ll1 = true;
 
 	public:
-
-		dpl::Grammar<& grammar;
-
-		using terminal_type = TerminalT;
-		using nonterminal_type = NonterminalT;
-		using table_type = hybrid::map<std::pair<terminal_type, nonterminal_type>, int>;
 
 		using table_type::map;
 		using table_type::operator[];
@@ -37,8 +38,9 @@ namespace dpl{
 		using table_type::end;
 		using table_type::size;
 		using table_type::insert;
+		using table_type::clear;
 
-		constexpr LLTable(dpl::Grammar& g) : grammar(g) {
+		constexpr LLTable(grammar_type& g) : grammar(g) {
 			grammar.initialize();
 			try {
 				generate();
@@ -47,11 +49,11 @@ namespace dpl{
 			}
 		}
 
-		constexpr LLTable(dpl::Grammar& g, table_type& t) : grammar(g), table_type(t) {
+		constexpr LLTable(grammar_type& g, table_type& t) : grammar(g), table_type(t) {
 			grammar.initialize();
 		}
 
-		constexpr LLTable(dpl::Grammar& g, dpl::cc::map<terminal_type, dpl::cc::map<nonterminal_type, int>> other) : grammar(g) {
+		constexpr LLTable(grammar_type& g, dpl::cc::map<terminal_type, dpl::cc::map<nonterminal_type, int>> other) : grammar(g) {
 			for (const auto& [terminal, row] : other) {
 				for (const auto& [nonterminal, val] : row) {
 					// #TASK : what if there are duplicates?
@@ -109,25 +111,40 @@ namespace dpl{
 
 	};
 
-
-	class LL1 : public Parser {
+	template<typename GrammarT = dpl::Grammar<>>
+	class LL1 : public Parser<GrammarT> {
 	public:
+		using grammar_type = GrammarT;
 
 		using accept_action = std::monostate;
-		using terminal_type = Terminal;
-		using nonterminal_type = std::string_view;
+		using terminal_type = grammar_type::terminal_type;
+		using token_type = grammar_type::token_type;
+		using nonterminal_type = grammar_type::nonterminal_type;
 
-		using out_type = std::variant<Token, RuleRef>;
+		using out_type = std::variant<token_type, RuleRef<grammar_type>>;
 		using symbol_type = std::variant<terminal_type, nonterminal_type>;
 		using table_type = dpl::cc::map<terminal_type, dpl::cc::map<nonterminal_type, int>>;
 
-		void operator<<(const Token& t_) {
+	private:
+		TopDownTreeBuilder<grammar_type> tb;
+		TreeBuilder<grammar_type>& tree_builder() { return tb; }
+
+		out_type next_node;
+		bool next_node_ready = false;
+
+		LLTable<grammar_type> table;
+
+		std::stack<symbol_type> parse_stack;
+
+	private:
+
+		void operator<<(const token_type& t_) {
 			const terminal_type t = t_;
 
-			if (options.error_mode == Options::ErrorMode::Panic && !fixed_last_error) {
+			if (this->options.error_mode == Parser<grammar_type>::Options::ErrorMode::Panic && !this->fixed_last_error) {
 				if (sync_set().contains(t)) {
 					parse_stack.pop();
-					fixed_last_error = true;
+					this->fixed_last_error = true;
 				} else {
 					return;
 				}
@@ -144,12 +161,12 @@ namespace dpl{
 					const auto nontr = std::get<nonterminal_type>(parse_stack.top());
 					if (table.contains({ t, nontr })) {
 
-						auto& rule = grammar[nontr][table[{t, nontr}]];
+						auto& rule = this->grammar[nontr][table[{t, nontr}]];
 
-						if (options.log_step_by_step)
-							options.logprintln("Parser Trace", "Production out: (", nontr, ", ", table[{t, nontr}], ")");
+						if (this->options.log_step_by_step)
+							this->options.logprintln("Parser Trace", "Production out: (", nontr, ", ", table[{t, nontr}], ")");
 
-						this->tree_builder().pushNode(RuleRef{ grammar, nontr, table[{t, nontr}] });
+						this->tree_builder().pushNode(RuleRef{ this->grammar, nontr, table[{t, nontr}] });
 
 						parse_stack.pop();
 
@@ -170,8 +187,8 @@ namespace dpl{
 				if (const auto* tr = std::get_if<terminal_type>(&parse_stack.top())) {
 					if (*tr == t) {
 
-						if (options.log_step_by_step)
-							options.logprintln("Parser Trace", "Token out: ", t.stringify());
+						if (this->options.log_step_by_step)
+							this->options.logprintln("Parser Trace", "Token out: ", t.stringify());
 
 						this->tree_builder().pushNode(t_);
 						parse_stack.pop();
@@ -179,10 +196,10 @@ namespace dpl{
 						terminal_eliminated = true;
 
 						if (parse_stack.empty()) {
-							if (options.log_step_by_step)
-								options.logprintln("Parser Trace", "end of parsing");
+							if (this->options.log_step_by_step)
+								this->options.logprintln("Parser Trace", "end of parsing");
 
-							this->tree_builder().assignToTree(out_tree);
+							this->tree_builder().assignToTree(this->out_tree);
 
 							return;
 						}
@@ -196,20 +213,15 @@ namespace dpl{
 
 		const auto& getParseTable() { return table; }
 
-		LL1(Grammar& g, const Options& ops = {}) : Parser(g, ops), tb(g), table(g) { }
-		LL1(const LLTable& t, const Options& ops = {}) : table(t), Parser(t.grammar, ops), tb(t.grammar) { }
+		LL1(grammar_type& g, const Parser<grammar_type>::Options& ops = {}) : Parser(g, ops), tb(g), table(g) { }
+		LL1(const LLTable<grammar_type>& t, const Parser<grammar_type>::Options& ops = {}) : table(t), Parser(t.grammar, ops), tb(t.grammar) { }
 
 		void parse_init() override {
 			std::stack<symbol_type>{}.swap(parse_stack); // clear stack
 
 			parse_stack.push(Terminal::Type::EndOfFile);
-			parse_stack.push(grammar.start_symbol);
+			parse_stack.push(this->grammar.start_symbol);
 		}
-
-	private:
-
-		TopDownTreeBuilder tb;
-		TreeBuilder& tree_builder() { return tb; }
 		
 		std::set<terminal_type> currently_expected_terminals() const {
 			if (parse_stack.empty()) {
@@ -230,7 +242,7 @@ namespace dpl{
 					iter++;
 				} while (iter != parse_stack._Get_container().rend() && !std::holds_alternative<terminal_type>(*std::prev(iter)));
 
-				for (const auto& terminal : grammar.first_star(stack_beg)) {
+				for (const auto& terminal : this->grammar.first_star(stack_beg)) {
 					result.insert(std::get<terminal_type>(terminal));
 				}
 
@@ -241,7 +253,7 @@ namespace dpl{
 		std::set<terminal_type> sync_set() const {
 			if (const auto* nonterminal = std::get_if<nonterminal_type>(&parse_stack.top())) {
 				std::set<terminal_type> result;
-				for (const auto& symbol : grammar.follows[*nonterminal]) {
+				for (const auto& symbol : this->grammar.follows[*nonterminal]) {
 					result.insert(symbol);
 				}
 				return result;
@@ -249,12 +261,5 @@ namespace dpl{
 				return { std::get<terminal_type>(parse_stack.top()) };
 			}
 		}
-
-		out_type next_node;
-		bool next_node_ready = false;
-
-		LLTable table;
-
-		std::stack<symbol_type> parse_stack;
 	};
 }

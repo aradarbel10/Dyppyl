@@ -137,12 +137,6 @@ namespace dpl {
 		ruleof3_ptr(const T& other)
 			: inner(new T{ other }) {}
 
-		//auto& operator=(const T& other) {
-		//	ruleof3_ptr<T> other_{ other };
-		//	std::swap(other.inner, this->inner);
-		//	return *this;
-		//}
-
 		ruleof3_ptr(const ruleof3_ptr<T>& other)
 			: ruleof3_ptr(*other.inner) {}
 

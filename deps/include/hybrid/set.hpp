@@ -42,6 +42,7 @@ namespace hybrid {
 			using hybrid::array<ValT, N>::empty;
 			using hybrid::array<ValT, N>::begin;
 			using hybrid::array<ValT, N>::end;
+			using hybrid::array<ValT, N>::clear;
 
 			constexpr bool insert(const ValT& val) {
 				int index = binary_search(val);

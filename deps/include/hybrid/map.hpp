@@ -23,6 +23,7 @@ namespace hybrid {
 			using parent_type::empty;
 			using parent_type::end;
 			using parent_type::size;
+			using parent_type::clear;
 
 			constexpr bool insert(const KeyT& key, const ValT& val) { return parent_type::insert({key, val}); }
 

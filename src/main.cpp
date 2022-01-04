@@ -18,7 +18,7 @@
 #include "Grammar.h"
 #include "TextStream.h"
 
-//#include "parser/LL1.h"
+#include "parser/LL1.h"
 
 using namespace dpl::literals;
 

@@ -18,8 +18,8 @@ namespace dpl {
 	using Prec = short;
 
 	struct void_token_t {
-		using terminal_type = struct {};
-		using name_type = struct {};
+		struct terminal_type {};
+		struct name_type {};
 	};
 
 	struct ProdLit {

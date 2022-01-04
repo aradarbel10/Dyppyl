@@ -370,30 +370,37 @@ namespace dpl {
 
 	};
 
-	template<typename AtomT = char>
+	template<typename GrammarT = dpl::Grammar<>>
 	struct RuleRef {
 	public:
+		using grammar_type = GrammarT;
+		using nonterminal_type = grammar_type::nonterminal_type;
 
-		RuleRef(Grammar<AtomT>& g, std::string_view n, int p) : grammar(&g), name(n), prod(p) { }
-		RuleRef(std::string_view n, int p) : grammar(nullptr), name(n), prod(p) { }
+	private:
+		grammar_type* grammar;
+		nonterminal_type name;
+		size_t prod;
 
-		Grammar<AtomT>* grammar;
-		std::string_view name;
-		int prod;
+	public:
 
-		const auto& getRule() const {
-			return (*grammar)[name][prod];
-		}
+		RuleRef(grammar_type& g, nonterminal_type n, int p) : grammar(&g), name(n), prod(p) { }
+		RuleRef(nonterminal_type n, int p) : grammar(nullptr), name(n), prod(p) { }
+
+		const grammar_type* get_grammar() const { return grammar; }
+		const nonterminal_type get_name() const { return name; }
+		const size_t get_prod() const { return prod; }
+
+		const auto& getRule() const { return (*grammar)[name][prod]; }
 
 		friend bool operator==(const RuleRef& lhs, const RuleRef& rhs) { return (lhs.name == rhs.name) && (lhs.prod == rhs.prod); }
-		operator std::string_view() const { return name; }
+		operator nonterminal_type() const { return name; }
 	};
 
-	template<typename AtomT>
-	inline bool operator==(const RuleRef<AtomT>& lhs, const std::string_view rhs) { return lhs.name == rhs; }
+	template<typename GrammarT>
+	inline bool operator==(const RuleRef<GrammarT>& lhs, const typename GrammarT::nonterminal_type rhs) { return lhs.name == rhs; }
 
-	template<typename AtomT>
-	inline bool operator==(const std::string_view lhs, const RuleRef<AtomT>& rhs) { return rhs == lhs; }
+	template<typename GrammarT>
+	inline bool operator==(const typename GrammarT::nonterminal_type lhs, const RuleRef<GrammarT>& rhs) { return rhs == lhs; }
 
 	static_assert(std::equality_comparable_with<RuleRef<>, std::string_view>);
 }
