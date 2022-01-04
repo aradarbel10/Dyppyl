@@ -12,7 +12,6 @@
 #include <any>
 
 #include <iostream>
-#include "magic_enum/magic_enum.hpp"
 #include "../Logger.h"
 #include "../Regex.h"
 

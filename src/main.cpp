@@ -134,27 +134,13 @@ int main() {
 
 
 	auto [grammar, lexicon] = (
-		dpl::discard	|= dpl::Lexeme{ dpl::kleene{ dpl::whitespace } },
-
-		"id"t			|= dpl::Lexeme{ dpl::some{dpl::alpha} },
-		"num"t			|= dpl::Lexeme{ dpl::some{dpl::digit} },
-
-		"Stmt"nt		|= ("if"t, "Expr"nt, "then"t, "Stmt"nt)
-						|  ("while"t ,"Expr"nt, "do"t, "Stmt"nt)
-						|  ("Expr"nt, ";"t),
-
-		"Expr"nt		|= ("Term"nt, "->"t, "id"t)
-						|  ("zero?"t, "Term"nt)
-						|  ("not"t, "Expr"nt)
-						|  ("++"t, "id"t)
-						|  ("--"t, "id"t),
-
-		"Term"nt		|= ("id"t) | ("num"t)
+		dpl::discard |= dpl::Lexeme{ dpl::kleene{dpl::whitespace} },
+		"Es"nt	|= ("e"t, "Es"nt) | dpl::epsilon
 	);
 
 	dpl::Tokenizer tokenizer{ lexicon };
 
-	constexpr std::string_view text = "while not zero? var do --var;";
+	constexpr std::string_view text = "e e e e";
 	auto output = tokenizer.tokenize(text.begin(), text.end());
 
 	std::cout << "tokenizer output:\n";

@@ -11,8 +11,6 @@
 #include <chrono>
 #include <cmath>
 
-#include "magic_enum/magic_enum.hpp"
-
 namespace dpl {
 	using file_pos_t = size_t;
 
@@ -74,12 +72,6 @@ namespace dpl {
 		for (auto iter = std::next(cont.val.begin()); iter != cont.val.end(); ++iter) {
 			os << streamer{ ", ", cont.color } << streamer{ *iter, cont.color };
 		}
-		return os;
-	}
-
-	template<typename T> requires std::is_enum_v<T>
-	inline std::ostream& operator<<(std::ostream& os, streamer<T> strm) {
-		os << streamer{ magic_enum::enum_name(strm.val), strm.color };
 		return os;
 	}
 

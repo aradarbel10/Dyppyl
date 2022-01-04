@@ -28,6 +28,8 @@ namespace dpl {
 		dpl::Prec prec = 0;
 	};
 
+	ProdLit epsilon{ .sentence = {} };
+
 	struct NtRulesLit {
 		NonterminalLit name;
 		std::vector<ProdLit> prods;
