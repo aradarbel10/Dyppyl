@@ -155,7 +155,7 @@ namespace dpl {
 	template<typename GrammarT = dpl::Grammar<>>
 	inline std::ostream& operator<<(std::ostream& os, const std::optional<typename ParseTree<GrammarT>::node_type> value) {
 		if (value.has_value()) {
-			if (const auto* nt = std::get_if<RuleRef<GrammarT>>(&value.value())) os << nt->name << "(" << nt->prod << ")";
+			if (const auto* nt = std::get_if<RuleRef<GrammarT>>(&value.value())) os << nt->get_name() << "(" << nt->get_prod() << ")";
 			else if (const auto* tkn = std::get_if<typename GrammarT::token_type>(&value.value())) {
 				dpl::colored_stream(os, 0x03, (*tkn).stringify());
 			} else {
@@ -193,7 +193,7 @@ namespace dpl {
 
 	public:
 
-		BottomUpTreeBuilder(grammar_type& g_) : TreeBuilder(g_) { };
+		BottomUpTreeBuilder(grammar_type& g_) : TreeBuilder<grammar_type>(g_) { };
 
 		void addSubTree(typename tree_type::node_type tree) {
 			sub_trees.emplace_back(tree);
@@ -240,7 +240,7 @@ namespace dpl {
 
 	public:
 
-		TopDownTreeBuilder(grammar_type& g) : TreeBuilder(g) { }
+		TopDownTreeBuilder(grammar_type& g) : TreeBuilder<grammar_type>(g) { }
 
 		void pushNode(typename tree_type::node_type node) override {
 			pushNode(node, inner_tree);

@@ -3,6 +3,8 @@
 #include <string_view>
 #include <variant>
 #include <vector>
+#include <map>
+#include <set>
 
 #include "tokenizer/Token.h"
 #include "ConstexprUtils.h"
@@ -35,6 +37,7 @@ namespace dpl {
 		Assoc assoc = Assoc::None;
 		short prec = 0;
 
+		constexpr ProductionRule() = default;
 		constexpr ProductionRule(std::initializer_list<symbol_type> l) : sentence(l) { }
 		constexpr ProductionRule(std::initializer_list<symbol_type> l, Assoc assoc_, short prec_)
 			: sentence(l), assoc(assoc_), prec(prec_) { }
@@ -62,6 +65,7 @@ namespace dpl {
 		[[nodiscard]] constexpr auto rend() const { return sentence.rend(); }
 
 		constexpr void push_back(auto&& elem) { sentence.push_back(elem); }
+		constexpr void push_front(auto&& elem) { sentence.insert(sentence.begin(), elem); }
 
 		friend std::ostream& operator<<(std::ostream& os, const ProductionRule<nonterminal_type>& rule) {
 			if (rule.empty()) os << "epsilon";
@@ -143,6 +147,7 @@ namespace dpl {
 
 		using prod_type = ProductionRule<nonterminal_type>;
 		using ntrule_type = NonterminalRules<nonterminal_type>;
+		using grammar_type = Grammar<token_type, nonterminal_type, TerminalNameT>;
 
 		using firsts_type = std::map<nonterminal_type, hybrid::set<std::variant<epsilon_type, terminal_type>>>;
 		using follows_type = std::map<nonterminal_type, hybrid::set<terminal_type>>;
@@ -224,8 +229,12 @@ namespace dpl {
 
 		[[nodiscard]] constexpr bool contains(const nonterminal_type& index) const { return ntrules.contains(index); }
 
-		friend std::ostream& operator<<(std::ostream& os, const Grammar& grammar) {
-			for (const auto& [name, nonterminal] : grammar) {
+		constexpr const auto& get_start_symbol() const { return start_symbol; }
+		constexpr const auto& get_firsts() const { return firsts; } // #TASK : get_firsts(name) return for specific name
+		constexpr const auto& get_follows() const { return follows; } // same for follows
+
+		friend std::ostream& operator<<(std::ostream& os, const grammar_type& grammar) {
+			for (const auto& [name, nonterminal] : grammar.ntrules) {
 				dpl::colored_stream(os, (name == grammar.start_symbol ? 0x02 : 0x0F), name);
 				os << " ::=\n";
 				os << nonterminal;

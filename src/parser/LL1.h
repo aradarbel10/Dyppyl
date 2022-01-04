@@ -19,8 +19,8 @@ namespace dpl{
 	public:
 		using grammar_type = GrammarT;
 
-		using terminal_type = GrammarT::temrinal_type;
-		using nonterminal_type = GrammarT::nontemrinal_type;
+		using terminal_type = GrammarT::terminal_type;
+		using nonterminal_type = GrammarT::nonterminal_type;
 		using table_type = hybrid::map<std::pair<terminal_type, nonterminal_type>, int>;
 
 	private:
@@ -42,11 +42,7 @@ namespace dpl{
 
 		constexpr LLTable(grammar_type& g) : grammar(g) {
 			grammar.initialize();
-			try {
-				generate();
-			} catch (const std::invalid_argument&) {
-				std::cerr << "LL(1) parser can't accept non-LL(1) grammar!\n";
-			}
+			generate();
 		}
 
 		constexpr LLTable(grammar_type& g, table_type& t) : grammar(g), table_type(t) {
@@ -57,6 +53,7 @@ namespace dpl{
 			for (const auto& [terminal, row] : other) {
 				for (const auto& [nonterminal, val] : row) {
 					// #TASK : what if there are duplicates?
+					if (contains({ terminal, nonterminal })) throw std::exception{"duplicate entires - grammar provided is not LL1!"};
 					insert({terminal, nonterminal}, val);
 				}
 			}
@@ -92,7 +89,7 @@ namespace dpl{
 
 								insert({*tkn, name}, i);
 							} else {
-								for (auto iter = grammar.follows.at(name).begin(); iter != grammar.follows.at(name).end(); iter++) {
+								for (auto iter = grammar.get_follows().at(name).begin(); iter != grammar.get_follows().at(name).end(); iter++) {
 									if (contains({*iter, name})) throw std::invalid_argument("non LL(1) grammar");
 
 									insert({*iter, name}, i);
@@ -111,10 +108,11 @@ namespace dpl{
 
 	};
 
-	template<typename GrammarT = dpl::Grammar<>>
-	class LL1 : public Parser<GrammarT> {
+	template<typename GrammarT = dpl::Grammar<>, typename LexiconT = dpl::Lexicon<>>
+	class LL1 : public Parser<GrammarT, LexiconT> {
 	public:
 		using grammar_type = GrammarT;
+		using lexicon_type = LexiconT;
 
 		using accept_action = std::monostate;
 		using terminal_type = grammar_type::terminal_type;
@@ -136,6 +134,13 @@ namespace dpl{
 
 		std::stack<symbol_type> parse_stack;
 
+	public:
+		LL1(grammar_type& g, lexicon_type& l, const typename Parser<grammar_type>::Options& ops = {})
+			: Parser<GrammarT, LexiconT>(g, l, ops), tb(g), table(g) { }
+
+		LL1(const LLTable<grammar_type>& t, lexicon_type& l, const typename Parser<grammar_type>::Options& ops = {})
+			: table(t), Parser<GrammarT, LexiconT>(t.grammar, l, ops), tb(t.grammar) { }
+
 	private:
 
 		void operator<<(const token_type& t_) {
@@ -153,7 +158,7 @@ namespace dpl{
 			bool terminal_eliminated = false;
 			do {
 				if (parse_stack.empty()) {
-					err_unexpected_token(t_);
+					this->err_unexpected_token(t_);
 					return;
 				}
 
@@ -179,7 +184,7 @@ namespace dpl{
 						});
 
 					} else {
-						err_unexpected_token(t_);
+						this->err_unexpected_token(t_);
 						return;
 					}
 				}
@@ -204,7 +209,7 @@ namespace dpl{
 							return;
 						}
 					} else {
-						err_unexpected_token(t_);
+						this->err_unexpected_token(t_);
 						return;
 					}
 				}
@@ -213,19 +218,16 @@ namespace dpl{
 
 		const auto& getParseTable() { return table; }
 
-		LL1(grammar_type& g, const Parser<grammar_type>::Options& ops = {}) : Parser(g, ops), tb(g), table(g) { }
-		LL1(const LLTable<grammar_type>& t, const Parser<grammar_type>::Options& ops = {}) : table(t), Parser(t.grammar, ops), tb(t.grammar) { }
-
 		void parse_init() override {
 			std::stack<symbol_type>{}.swap(parse_stack); // clear stack
 
-			parse_stack.push(Terminal::Type::EndOfFile);
-			parse_stack.push(this->grammar.start_symbol);
+			parse_stack.push(terminal_type::Type::eof);
+			parse_stack.push(this->grammar.get_start_symbol());
 		}
 		
 		std::set<terminal_type> currently_expected_terminals() const {
 			if (parse_stack.empty()) {
-				return { {dpl::Terminal::Type::EndOfFile} };
+				return { {terminal_type::Type::eof} };
 			}
 
 			if (const auto* terminal = std::get_if<terminal_type>(&parse_stack.top())) {
@@ -234,7 +236,7 @@ namespace dpl{
 				const auto& nonterminal = std::get<nonterminal_type>(parse_stack.top());
 				std::set<terminal_type> result;
 
-				dpl::ProductionRule stack_beg;
+				typename grammar_type::prod_type stack_beg;
 
 				auto iter = parse_stack._Get_container().rbegin();
 				do {
@@ -253,7 +255,7 @@ namespace dpl{
 		std::set<terminal_type> sync_set() const {
 			if (const auto* nonterminal = std::get_if<nonterminal_type>(&parse_stack.top())) {
 				std::set<terminal_type> result;
-				for (const auto& symbol : this->grammar.follows[*nonterminal]) {
+				for (const auto& symbol : this->grammar.get_follows().at(*nonterminal)) {
 					result.insert(symbol);
 				}
 				return result;

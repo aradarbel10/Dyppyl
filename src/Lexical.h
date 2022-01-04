@@ -42,15 +42,28 @@ namespace dpl {
 	};
 
 	template<typename AtomT = char, typename TokenT = dpl::Token<>>
-	struct Lexicon : public std::map<typename TokenT::name_type, dpl::Lexeme<AtomT, TokenT>> {
+	struct Lexicon {
 	public:
 		using atom_type = AtomT;
 		using token_type = TokenT;
+
 		using name_type = token_type::name_type;
 		using lexeme_type = dpl::Lexeme<atom_type, token_type>;
 		using regex_type = lexeme_type::regex_type;
+		using span_type = lexeme_type::span_type;
+
+	private:
+		std::unordered_map<name_type, std::pair<lexeme_type, short>> lexemes;
 
 	public:
+	
 		std::optional<regex_type> discard_regex;
+
+		auto begin() const { return lexemes.begin(); }
+		auto end() const { return lexemes.end(); }
+
+		constexpr const lexeme_type& at(const name_type& key) const { return lexemes.at(key).first; }
+		constexpr bool contains(name_type name) const { return lexemes.contains(name); }
+		constexpr void insert(std::pair<name_type, lexeme_type> pair) { lexemes.insert({ pair.first, {pair.second, static_cast<short>(lexemes.size()) } }); }
 	};
 }

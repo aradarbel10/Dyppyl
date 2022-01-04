@@ -32,6 +32,8 @@ namespace dpl {
 		using atom_type = AtomT;
 		using token_type = TokenT;
 
+		using span_type = dpl::span_dict<atom_type>;
+
 	private:
 
 		int longest_accepted = -1, length_of_longest = 0;
@@ -56,13 +58,22 @@ namespace dpl {
 				// maximum munch - try all possible lexemes and choose the longest one
 				std::optional<typename token_type::name_type> longest_name{};
 				decltype(iter) longest_iter = iter;
+				short longest_prio = -1;
 
-				for (const auto& [name, lexeme] : lexicon) {
+				//for (const auto& [name, lexeme] : lexicon) {
+				for (auto i = lexicon.begin(); i != lexicon.end(); ++i) {
+					const auto& [name, lexpair] = *i;
+					const auto& [lexeme, priority] = lexpair;
+
 					auto result = lexeme.regex(iter, last);
+
 					if (result) {
-						if (std::distance(iter, *result) > std::distance(iter, longest_iter)) {
+						auto cmp_lengths = std::distance(iter, *result) <=> std::distance(iter, longest_iter);
+
+						if (cmp_lengths > 0 || (cmp_lengths == 0 && (priority > longest_prio))) {
 							longest_iter = *result;
 							longest_name = name;
+							longest_prio = priority;
 						}
 					}
 				}
@@ -92,6 +103,10 @@ namespace dpl {
 
 			return output;
 		}
+
+		void tokenize(span_type str, std::function<void(token_type)> output_func) { tokenize(str.begin(), str.end(), output_func); }
+
+		auto tokenize(span_type str) { return tokenize(str.begin(), str.end()); }
 
 	};
 }

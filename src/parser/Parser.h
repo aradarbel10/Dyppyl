@@ -13,19 +13,21 @@
 
 namespace dpl{
 
-	template<typename GrammarT = dpl::Grammar<>>
+	template<typename GrammarT = dpl::Grammar<>, typename LexiconT = dpl::Lexicon<>>
 	class Parser {
 	public:
 
 		using grammar_type = GrammarT;
+		using lexicon_type = LexiconT;
 		
-		using atom_type = grammar_type::atom_type;
+		using atom_type = lexicon_type::atom_type;
+		using span_type = lexicon_type::span_type;
+
 		using token_type = grammar_type::token_type;
 		using nonterminal_type = grammar_type::nonterminal_type;
 
 		using terminal_type = token_type::terminal_type;
 		using terminal_name_type = token_type::name_type;
-		using span_type = dpl::span_dict<atom_type>;
 
 		using tree_type = dpl::ParseTree<grammar_type>;
 
@@ -119,7 +121,7 @@ namespace dpl{
 
 		};
 
-		Parser(grammar_type& g, const Options& ops = {}) : grammar(g), tokenizer(grammar), options(ops) { }
+		Parser(grammar_type& g, lexicon_type& l, const Options& ops = {}) : grammar(g), lexicon(l), tokenizer(lexicon), options(ops) { }
 
 		std::pair<tree_type, std::vector<Error>> parse(span_type src) {
 			parse_init();
@@ -141,12 +143,12 @@ namespace dpl{
 				options.logprintln("Grammar", grammar);
 			if (options.log_grammar_info) {
 				options.logprint("Grammar", "\n\nFirst Sets:");
-				for (const auto& [nonterminal, terminals] : grammar.firsts) {
+				for (const auto& [nonterminal, terminals] : grammar.get_firsts()) {
 					options.logprint("Grammar", "\n", nonterminal, ": ", terminals);
 				}
 
 				options.logprint("Grammar", "\n\n\Follow Sets:");
-				for (const auto& [nonterminal, terminals] : grammar.follows) {
+				for (const auto& [nonterminal, terminals] : grammar.get_follows()) {
 					options.logprint("Grammar", "\n", nonterminal, ": ", terminals);
 				}
 			}
@@ -175,6 +177,7 @@ namespace dpl{
 		virtual std::set<terminal_type> currently_expected_terminals() const = 0;
 
 		grammar_type& grammar;
+		lexicon_type& lexicon;
 		Tokenizer<atom_type, token_type> tokenizer;
 
 		bool fixed_last_error = true;

@@ -137,22 +137,43 @@ int main() {
 		dpl::discard	|= dpl::Lexeme{ dpl::kleene{ dpl::whitespace } },
 
 		"id"t			|= dpl::Lexeme{ dpl::some{dpl::alpha} },
-		"op"t			|= dpl::Lexeme{ dpl::any_of{"+-*/"} },
+		"num"t			|= dpl::Lexeme{ dpl::some{dpl::digit} },
 
-		"E"nt			|= ("E"nt, "op"t, "E"nt)
-						|  ("("t ,"E"nt, ")"t )
-						|  ("id"t)
+		"Stmt"nt		|= ("if"t, "Expr"nt, "then"t, "Stmt"nt)
+						|  ("while"t ,"Expr"nt, "do"t, "Stmt"nt)
+						|  ("Expr"nt, ";"t),
+
+		"Expr"nt		|= ("Term"nt, "->"t, "id"t)
+						|  ("zero?"t, "Term"nt)
+						|  ("not"t, "Expr"nt)
+						|  ("++"t, "id"t)
+						|  ("--"t, "id"t),
+
+		"Term"nt		|= ("id"t) | ("num"t)
 	);
 
 	dpl::Tokenizer tokenizer{ lexicon };
 
-	constexpr std::string_view text = "\n((abc\t  + def) *   ghi) \0";
+	constexpr std::string_view text = "while not zero? var do --var;";
 	auto output = tokenizer.tokenize(text.begin(), text.end());
 
 	std::cout << "tokenizer output:\n";
 	for (auto tkn : output) {
 		std::cout << tkn << '\n';
 	}
+
+	dpl::LL1 parser{ grammar, lexicon, {
+		.log_step_by_step		= true,
+		.log_parse_tree			= true,
+		.log_errors				= true,
+		.log_tokenizer			= true,
+
+		.log_grammar			= true,
+		.log_grammar_info		= true,
+
+		.log_to_file			= false,
+	}};
+	auto [tree, errors] = parser.parse(text);
 
 	//dpl::Grammar grammar {
 	//	"Stmts"nt	|= ("Stmt"nt, "Stmts"nt)
