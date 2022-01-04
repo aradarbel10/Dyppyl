@@ -83,21 +83,22 @@ namespace dpl{
 					auto firsts_of_def = grammar.first_star(rule);
 
 					for (const auto& f : firsts_of_def) {
-						try {
-							if (const auto* tkn = std::get_if<terminal_type>(&f)) {
-								if (contains({*tkn, name})) throw std::invalid_argument("non LL(1) grammar");
-
-								insert({*tkn, name}, i);
-							} else {
-								for (auto iter = grammar.get_follows().at(name).begin(); iter != grammar.get_follows().at(name).end(); iter++) {
-									if (contains({*iter, name})) throw std::invalid_argument("non LL(1) grammar");
-
-									insert({*iter, name}, i);
-								}
+						if (const auto* tkn = std::get_if<terminal_type>(&f)) {
+							if (contains({ *tkn, name })) {
+								is_ll1 = false;
+								throw std::invalid_argument("non LL(1) grammar");
 							}
-						} catch (const std::invalid_argument& err) {
-							is_ll1 = false;
-							throw err; // rethrow
+
+							insert({ *tkn, name }, i);
+						} else {
+							for (auto iter = grammar.get_follows().at(name).begin(); iter != grammar.get_follows().at(name).end(); iter++) {
+								if (contains({ *iter, name })) {
+									is_ll1 = false;
+									throw std::invalid_argument("non LL(1) grammar");
+								}
+
+								insert({ *iter, name }, i);
+							}
 						}
 					}
 				}

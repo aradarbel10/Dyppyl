@@ -68,6 +68,8 @@ namespace dpl {
 	template<typename T, size_t N, template <typename, size_t> class Container>
 		requires requires (Container<T, N> cont) { cont.begin(); cont.end(); }
 	inline std::ostream& operator<<(std::ostream& os, streamer<Container<T, N>> cont) {
+		if (cont.val.empty()) return os;
+
 		os << streamer{ *cont.val.begin() };
 		for (auto iter = std::next(cont.val.begin()); iter != cont.val.end(); ++iter) {
 			os << streamer{ ", ", cont.color } << streamer{ *iter, cont.color };
@@ -96,6 +98,7 @@ namespace dpl {
 	}
 
 	inline std::ostream& operator<<(std::ostream& os, streamer<std::monostate> strm) {
+		os << "null";
 		return os;
 	}
 

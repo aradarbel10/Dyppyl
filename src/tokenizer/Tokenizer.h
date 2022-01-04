@@ -70,7 +70,7 @@ namespace dpl {
 					if (result) {
 						auto cmp_lengths = std::distance(iter, *result) <=> std::distance(iter, longest_iter);
 
-						if (cmp_lengths > 0 || (cmp_lengths == 0 && (priority > longest_prio))) {
+						if (cmp_lengths > 0 || (cmp_lengths == 0 && (priority >= longest_prio))) {
 							longest_iter = *result;
 							longest_name = name;
 							longest_prio = priority;

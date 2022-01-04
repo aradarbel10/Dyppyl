@@ -311,7 +311,7 @@ namespace dpl {
 						auto& rule = nt[j];
 						if (rule.isEpsilonProd()) continue;
 
-						for (int i = 0; i < rule.size() - 1; i++) {
+						for (int i = 0; i < rule.size(); i++) {
 							if (const auto* v = std::get_if<nonterminal_type>(&rule[i])) {
 								auto size_before = follows[*v].size();
 								
