@@ -28,7 +28,7 @@ namespace dpl {
 		dpl::Prec prec = 0;
 	};
 
-	ProdLit epsilon{ .sentence = {} };
+	static const ProdLit epsilon{ .sentence = {} };
 
 	struct NtRulesLit {
 		NonterminalLit name;
@@ -55,6 +55,10 @@ namespace dpl {
 
 		constexpr TerminalLit operator""t(const char* str, size_t) {
 			return TerminalLit{ str };
+		}
+
+		inline auto operator""tkn(const char* str, size_t) {
+			return dpl::Token<>{ std::string_view{str}, std::string_view{str} };
 		}
 	}
 
@@ -105,7 +109,11 @@ namespace dpl {
 	}
 
 	constexpr auto operator|=(const NonterminalLit& name, ProdLitSymbol auto&& sym) {
-		return NtRulesLit{ .name = name, .prods = { ProdLit{ .sentence = {sym} } } };
+		NtRulesLit rules { .name = name };
+		ProdLit prod{};
+		prod.sentence.push_back(sym);
+		rules.prods.push_back(prod);
+		return rules;
 	}
 
 	template<typename TokenT>

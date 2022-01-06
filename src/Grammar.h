@@ -410,8 +410,8 @@ namespace dpl {
 
 	public:
 
-		RuleRef(const grammar_type& g, nonterminal_type n, int p) : grammar(&g), name(n), prod(p) { }
-		RuleRef(nonterminal_type n, int p) : grammar(nullptr), name(n), prod(p) { }
+		RuleRef(const grammar_type& g, nonterminal_type n, int p) : grammar(&g), name(n), prod(p) {}
+		RuleRef(nonterminal_type n, int p) : grammar(nullptr), name(n), prod(p) {}
 
 		const grammar_type& get_grammar() const { return *grammar; }
 		const nonterminal_type get_name() const { return name; }
@@ -455,6 +455,8 @@ namespace dpl {
 
 			if (lexicon.contains(lexeme.name)) throw std::exception{ "terminal redefinition" };
 			lexicon.insert({ lexeme.name, lexeme.lex });
+
+			grammar.terminal_precs.insert({ lexeme.name, 0 });
 		}
 
 		// add all grammar rules
@@ -471,6 +473,7 @@ namespace dpl {
 					if (const auto* nonterminal = std::get_if<dpl::NonterminalLit>(&sym)) {
 						grammar.ntrules[ntrule.name].back().push_back(*nonterminal);
 					} else if (const auto* terminal = std::get_if<dpl::TerminalLit>(&sym)) {
+						grammar.terminal_precs.insert({ *terminal, 0 });
 
 						if (lexicon.contains(*terminal)) {
 							grammar.ntrules[ntrule.name].back().push_back(typename grammar_type::terminal_type{ *terminal });

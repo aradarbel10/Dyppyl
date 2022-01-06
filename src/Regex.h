@@ -309,19 +309,19 @@ namespace dpl {
 
 	};
 
-	dpl::range lower{ 'a', 'z' };
-	dpl::range upper{ 'A', 'Z' };
-	dpl::range digit{ '0', '9' };
+	static dpl::range lower{ 'a', 'z' };
+	static dpl::range upper{ 'A', 'Z' };
+	static dpl::range digit{ '0', '9' };
 
-	auto hex_digit = dpl::alternatives{
+	static auto hex_digit = dpl::alternatives{
 		dpl::digit,
 		dpl::range{'a', 'f'},
 		dpl::range{'A', 'F'}
 	};
 
-	auto alpha = dpl::alternatives{ dpl::lower, dpl::upper };
-	auto alphanum = dpl::alternatives{ dpl::alpha, dpl::digit };
-	dpl::any_of whitespace{ " \t\n\0" };
+	static auto alpha = dpl::alternatives{ dpl::lower, dpl::upper };
+	static auto alphanum = dpl::alternatives{ dpl::alpha, dpl::digit };
+	static dpl::any_of whitespace{ " \t\n\0" };
 
 	template<typename AtomT>
 	struct regex_wrapper {

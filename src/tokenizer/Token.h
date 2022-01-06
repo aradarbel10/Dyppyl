@@ -76,10 +76,11 @@ namespace dpl {
 		using token_type = Token<value_type, name_type>;
 
 		value_type value;
-		file_pos_t pos;
+		file_pos_t pos{};
 
 
 		Token() = default;
+		Token(const Token<value_type, name_type>& other) : terminal_type(other), value(other.value) {}
 		Token(terminal_type t) : terminal_type(t) {}
 		Token(name_type name_, value_type v) : terminal_type(name_), value(v) {}
 

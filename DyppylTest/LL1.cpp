@@ -14,64 +14,56 @@ using namespace dpl::literals;
 TEST_CASE("SimpleGrammar", "[LL1Tests]") {
 	std::cout << " ===== SimpleGrammar [LL1Tests] =============================\n";
 
-	dpl::Grammar grammar {
-		{ "Stmt", {
-			{ "if"_kwd, "Expr", "then"_kwd, "Stmt" },
-			{ "while"_kwd, "Expr", "do"_kwd, "Stmt" },
-			{ "Expr", ";"_sym }
-		}},
-		{ "Expr", {
-			{ "Term", "->"_sym, dpl::Token::Type::Identifier },
-			{ "zero?"_sym, "Term" },
-			{ "not"_kwd, "Expr" },
-			{ "++"_sym, dpl::Token::Type::Identifier },
-			{ "--"_sym, dpl::Token::Type::Identifier }
-		}},
-		{ "Term", {
-			{ dpl::Token::Type::Identifier },
-			{ dpl::Token::Type::Number }
-		}}
-	};
+	auto [grammar, lexicon] = (
+		dpl::discard	|= dpl::Lexeme{ dpl::kleene{dpl::whitespace} },
+		"num"t			|= dpl::Lexeme{ dpl::some{dpl::digit}, [](std::string_view str) -> long double { return dpl::from_string<int>(str); } },
+		"id"t			|= dpl::Lexeme{ dpl::some{dpl::alpha} },
 
-	grammar.keywords = { "if", "then", "while", "do", "not" };
-	grammar.symbols = { "->", ";", "zero?", "++", "--" };
+		"Stmt"nt		|= ("if"t, "Expr"nt, "then"t, "Stmt"nt)
+						|  ("while"t, "Expr"nt, "do"t, "Stmt"nt)
+						|  ("Expr"nt, ";"t),
+		"Expr"nt		|= ("Term"nt, "->"t, "id"t)
+						|  ("zero?"t, "Term"nt)
+						|  ("not"t, "Expr"nt)
+						|  ("++"t, "id"t)
+						|  ("--"t, "id"t),
+		"Term"nt		|= "id"t | "num"t
+	);
 
-	dpl::LL1 parser{ grammar };
+	dpl::LL1 parser{ grammar, lexicon };
 
 	// LL(1) Grammar Epsilon-less First Set
-	grammar.calcFirstSets();
+	grammar.initialize();
 
-	dpl::Grammar::firsts_type expected_firsts{
+	dpl::Grammar<>::firsts_type expected_firsts{
 		{ "Stmt", {
-			"if"_kwd, "while"_kwd, "zero?"_sym, "not"_kwd, "++"_sym, "--"_sym,
-			dpl::Token::Type::Identifier, dpl::Token::Type::Number
+			"if"t, "while"t, "zero?"t, "not"t, "++"t, "--"t, "id"t, "num"t
 		}},
 		{ "Expr", {
-			"zero?"_sym, "not"_kwd, "++"_sym, "--"_sym,
-			dpl::Token::Type::Identifier, dpl::Token::Type::Number
+			"zero?"t, "not"t, "++"t, "--"t, "id"t, "num"t
 		}},
 		{ "Term", {
-			dpl::Token::Type::Identifier, dpl::Token::Type::Number
+			"id"t, "num"t
 		}}
 	};
 
-	REQUIRE(std::is_permutation(expected_firsts.begin(), expected_firsts.end(), grammar.firsts.begin(), grammar.firsts.end()));
+	REQUIRE(expected_firsts == grammar.get_firsts());
 
 	// LL(1) Parse Table Generation
 	const auto& table = parser.getParseTable();
 
 	auto expected_table = dpl::LLTable{grammar, {
-		{ "if"_kwd, {{ "Stmt" , 0 }}},
+		{ "if"t, {{ "Stmt" , 0 }}},
 
-		{ "while"_kwd, {{ "Stmt", 1 }}},
+		{ "while"t, {{ "Stmt", 1 }}},
 
-		{ "zero?"_sym, {{ "Stmt", 2 }, { "Expr", 1 }}},
-		{ "not"_kwd, {{ "Stmt", 2 }, { "Expr", 2 }}},
-		{ "++"_sym, {{ "Stmt", 2 }, { "Expr", 3 }}},
-		{ "--"_sym, {{ "Stmt", 2 }, { "Expr", 4 }}},
+		{ "zero?"t, {{ "Stmt", 2 }, { "Expr", 1 }}},
+		{ "not"t, {{ "Stmt", 2 }, { "Expr", 2 }}},
+		{ "++"t, {{ "Stmt", 2 }, { "Expr", 3 }}},
+		{ "--"t, {{ "Stmt", 2 }, { "Expr", 4 }}},
 
-		{ dpl::Token::Type::Identifier, {{ "Stmt", 2 }, { "Expr", 0 }, { "Term", 0 }}},
-		{ dpl::Token::Type::Number, {{ "Stmt", 2 }, { "Expr", 0 }, { "Term", 1 }}}
+		{ "id"t, {{"Stmt", 2}, {"Expr", 0}, {"Term", 0}}},
+		{ "num"t, {{"Stmt", 2}, {"Expr", 0}, {"Term", 1}}}
 	}};
 
 	REQUIRE(table.compareTo(expected_table));
@@ -80,18 +72,17 @@ TEST_CASE("SimpleGrammar", "[LL1Tests]") {
 	using dpl::RuleRef;
 
 	// 1 - assignment
-	auto str_src1 = dpl::StringStream{ "x -> y;" };
-	auto [tree1, errors1] = parser.parse(str_src1);
+	auto [tree1, errors1] = parser.parse("x -> y;");
 
-	dpl::ParseTree expected_tree1{ RuleRef{grammar, "Stmt", 2}, {
-		{ RuleRef{ grammar, "Expr", 0 }, {
-			{ RuleRef{ grammar, "Term", 0 }, {
-				{dpl::Token{ dpl::Token::Type::Identifier, "x" }}
+	dpl::ParseTree<> expected_tree1{ RuleRef{ "Stmt", 2 }, {
+		{ RuleRef{ "Expr", 0 }, {
+			{ RuleRef{ "Term", 0 }, {
+				{ dpl::Token<>{ "id"sv, "x"t } }
 			}},
-			{ "->"_sym },
-			{dpl::Token{ dpl::Token::Type::Identifier, "y" }}
+			{ "->"tkn },
+			{ dpl::Token<>{ "id"sv, "y"t } }
 		}},
-		{ ";"_sym }
+		{ ";"tkn }
 	} };
 
 	std::cout << tree1;
@@ -101,28 +92,27 @@ TEST_CASE("SimpleGrammar", "[LL1Tests]") {
 
 
 	// 2 - while
-	auto str_src2 = dpl::StringStream{ "while not zero? id\n" \
-									   "	do --id;"};
-	auto [tree2, errors2] = parser.parse(str_src2);
+	auto [tree2, errors2] = parser.parse("while not zero? id\n"
+										 "	do --id;");
 
-	dpl::ParseTree expected_tree2{ RuleRef{grammar, "Stmt", 1}, {
-		{ "while"_kwd },
-		{ RuleRef{ grammar, "Expr", 2 }, {
-			{ "not"_kwd },
-			{ RuleRef{ grammar, "Expr", 1 }, {
-				{ "zero?"_sym },
-				{ RuleRef{ grammar, "Term", 0 }, {
-					{dpl::Token{ dpl::Token::Type::Identifier, "id" }}
+	dpl::ParseTree<> expected_tree2{ RuleRef{ "Stmt", 1 }, {
+		{ "while"tkn },
+		{ RuleRef{ "Expr", 2 }, {
+			{ "not"tkn },
+			{ RuleRef{ "Expr", 1 }, {
+				{ "zero?"tkn },
+				{ RuleRef{ "Term", 0 }, {
+					{ dpl::Token<>{ "id"sv, "id"t } }
 				}}
 			}}
 		}},
-		{ "do"_kwd },
-		{ RuleRef{ grammar, "Stmt", 2 }, {
-			{ RuleRef{ grammar, "Expr", 4 }, {
-				{ "--"_sym },
-				{dpl::Token{ dpl::Token::Type::Identifier, "id" }}
+		{ "do"tkn },
+		{ RuleRef{ "Stmt", 2 }, {
+			{ RuleRef{ "Expr", 4 }, {
+				{ "--"tkn },
+				{ dpl::Token<>{ "id"sv, "id"t } }
 			}},
-			{ ";"_sym }
+			{ ";"tkn }
 		}}
 	} };
 
@@ -133,44 +123,45 @@ TEST_CASE("SimpleGrammar", "[LL1Tests]") {
 
 
 	// 3 - nested ifs
-	auto str_src3 = dpl::StringStream{"if not zero? id then" \
-									  "    if not zero? id then" \
-									  "        constant -> id;"};
-	auto [tree3, errors3] = parser.parse(str_src3);
+	auto [tree3, errors3] = parser.parse(
+		"if not zero? id then"
+		"    if not zero? id then"
+		"        constant -> id;"
+	);
 
-	dpl::ParseTree expected_tree3{ RuleRef{ grammar, "Stmt", 0 }, {
-		{ "if"_kwd },
-		{ RuleRef{ grammar, "Expr", 2 }, {
-			{ "not"_kwd },
-			{ RuleRef{ grammar, "Expr", 1 }, {
-				{ "zero?"_sym },
-				{ RuleRef{ grammar, "Term", 0 }, {
-					{dpl::Token{ dpl::Token::Type::Identifier, "id" }}
+	dpl::ParseTree<> expected_tree3{ RuleRef{ "Stmt", 0 }, {
+		{ "if"tkn },
+		{ RuleRef{ "Expr", 2 }, {
+			{ "not"tkn },
+			{ RuleRef{ "Expr", 1 }, {
+				{ "zero?"tkn },
+				{ RuleRef{ "Term", 0 }, {
+					{ dpl::Token<>{ "id"sv, "id"t } }
 				}}
 			}}
 		}},
-		{ "then"_kwd },
-		{ RuleRef{ grammar, "Stmt", 0 }, {
-			{ "if"_kwd },
-			{ RuleRef{ grammar, "Expr", 2 }, {
-				{ "not"_kwd },
-				{ RuleRef{ grammar, "Expr", 1 }, {
-					{ "zero?"_sym },
-					{ RuleRef{ grammar, "Term", 0 }, {
-						{dpl::Token{ dpl::Token::Type::Identifier, "id" }}
+		{ "then"tkn },
+		{ RuleRef{ "Stmt", 0 }, {
+			{ "if"tkn },
+			{ RuleRef{ "Expr", 2 }, {
+				{ "not"tkn },
+				{ RuleRef{ "Expr", 1 }, {
+					{ "zero?"tkn },
+					{ RuleRef{ "Term", 0 }, {
+						{ dpl::Token<>{ "id"sv, "id"t } }
 					}}
 				}}
 			}},
-			{ "then"_kwd },
-			{ RuleRef{grammar, "Stmt", 2}, {
-				{ RuleRef{ grammar, "Expr", 0 }, {
-					{ RuleRef{ grammar, "Term", 0 }, {
-						{dpl::Token{ dpl::Token::Type::Identifier, "constant" }}
+			{ "then"tkn },
+			{ RuleRef{ "Stmt", 2}, {
+				{ RuleRef{ "Expr", 0 }, {
+					{ RuleRef{ "Term", 0 }, {
+						{ dpl::Token<>{ "id"sv, "constant"t }} 
 					}},
-					{ "->"_sym },
-					{dpl::Token{ dpl::Token::Type::Identifier, "id" }}
+					{ "->"tkn },
+					{ dpl::Token<>{ "id"sv, "id"t } }
 				}},
-				{ ";"_sym }
+				{ ";"tkn }
 			}}
 		}}
 	} };

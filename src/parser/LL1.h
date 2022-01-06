@@ -15,13 +15,13 @@
 namespace dpl{
 
 	template<typename GrammarT = dpl::Grammar<>>
-	class LLTable : private hybrid::map<std::pair<typename GrammarT::terminal_type, typename GrammarT::nonterminal_type>, int> {
+	class LLTable : private std::map<std::pair<typename GrammarT::terminal_type, typename GrammarT::nonterminal_type>, int> {
 	public:
 		using grammar_type = GrammarT;
 
 		using terminal_type = GrammarT::terminal_type;
 		using nonterminal_type = GrammarT::nonterminal_type;
-		using table_type = hybrid::map<std::pair<terminal_type, nonterminal_type>, int>;
+		using table_type = std::map<std::pair<terminal_type, nonterminal_type>, int>;
 
 	private:
 		grammar_type& grammar;
@@ -54,7 +54,7 @@ namespace dpl{
 				for (const auto& [nonterminal, val] : row) {
 					// #TASK : what if there are duplicates?
 					if (contains({ terminal, nonterminal })) throw std::exception{"duplicate entires - grammar provided is not LL1!"};
-					insert({terminal, nonterminal}, val);
+					insert({ {terminal, nonterminal}, val });
 				}
 			}
 		}
@@ -64,7 +64,7 @@ namespace dpl{
 			if (size() != other.size()) return false;
 
 			for (const auto& [pair, val] : *this) {
-				if (val != other[pair]) {
+				if (val != other.at(pair)) {
 					return false;
 				}
 			}
@@ -89,7 +89,7 @@ namespace dpl{
 								throw std::invalid_argument("non LL(1) grammar");
 							}
 
-							insert({ *tkn, name }, i);
+							insert({ { *tkn, name }, i });
 						} else {
 							for (auto iter = grammar.get_follows().at(name).begin(); iter != grammar.get_follows().at(name).end(); iter++) {
 								if (contains({ *iter, name })) {
@@ -97,7 +97,7 @@ namespace dpl{
 									throw std::invalid_argument("non LL(1) grammar");
 								}
 
-								insert({ *iter, name }, i);
+								insert({ { *iter, name }, i });
 							}
 						}
 					}
@@ -141,6 +141,8 @@ namespace dpl{
 
 		LL1(const LLTable<grammar_type>& t, lexicon_type& l, const typename Parser<grammar_type, lexicon_type>::Options& ops = {})
 			: table(t), Parser<grammar_type, lexicon_type>(t.grammar, l, ops), tb(t.grammar) { }
+
+		const auto& getParseTable() { return table; }
 
 	private:
 
@@ -216,8 +218,6 @@ namespace dpl{
 				}
 			} while (!terminal_eliminated);
 		}
-
-		const auto& getParseTable() { return table; }
 
 		void parse_init() override {
 			std::stack<symbol_type>{}.swap(parse_stack); // clear stack

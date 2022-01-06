@@ -12,12 +12,13 @@ using namespace dpl::literals;
 TEST_CASE("NonLR0Grammar", "[SLRTests]") {
 	std::cout << " ===== NonLR0Grammar [SLRTests] =============================\n";
 
-	dpl::Grammar non_lr0{
+	auto [grammar, lexicon] = (
+		dpl::discard |= dpl::Lexeme{ dpl::kleene{dpl::whitespace} },
 		"E"nt	|= ("*"t, "E"nt)
-				|  ("*"t)
-	};
+				| ("*"t)
+	);
 
-	dpl::SLR parser{ non_lr0 };
+	dpl::SLR parser{ grammar, lexicon };
 	auto [tree, errors] = parser.parse("* * *"sv);
 
 	std::cout << tree;

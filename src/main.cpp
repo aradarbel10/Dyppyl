@@ -135,21 +135,17 @@ int main() {
 
 
 	auto [grammar, lexicon] = (
-		dpl::discard |= dpl::Lexeme{ dpl::kleene{dpl::whitespace} },
-		"Es"nt	|= ("e"t, "Es"nt) | dpl::epsilon
+		dpl::discard |= dpl::Lexeme{ dpl::kleene{dpl::whitespace}},
+
+		"E"nt	|= ("a"t, "g"t, "d"t)
+				|  ("a"t, "A"nt,"c"t)
+				|  ("b"t, "A"nt,"d"t)
+				|  ("b"t, "g"t, "e"t),
+		"A"nt	|= ("B"nt),
+		"B"nt	|= ("g"t)
 	);
 
-	dpl::Tokenizer tokenizer{ lexicon };
-
-	constexpr std::string_view text = "e e e e";
-	auto output = tokenizer.tokenize(text.begin(), text.end());
-
-	std::cout << "tokenizer output:\n";
-	for (auto tkn : output) {
-		std::cout << tkn << '\n';
-	}
-
-	dpl::LL1 parser{ grammar, lexicon, {
+	dpl::LR0 parser{ grammar, lexicon, {
 		.log_step_by_step		= true,
 		.log_parse_tree			= true,
 		.log_errors				= true,
@@ -157,10 +153,12 @@ int main() {
 
 		.log_grammar			= true,
 		.log_grammar_info		= true,
+		.log_automaton			= true,
 
 		.log_to_file			= false,
 	}};
-	auto [tree, errors] = parser.parse(text);
+
+	//auto [tree, errors] = parser.parse(text);
 
 	//dpl::Grammar grammar {
 	//	"Stmts"nt	|= ("Stmt"nt, "Stmts"nt)

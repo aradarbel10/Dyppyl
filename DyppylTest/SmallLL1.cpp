@@ -14,57 +14,49 @@ using namespace dpl::literals;
 TEST_CASE("SmallGrammar", "[LL1Tests]") {
 	std::cout << " ===== SmallGrammar [LL1Tests] =============================\n";
 
-	dpl::Grammar grammar{
-		{ "E", {
-			{ "int"_kwd },
-			{ "("_sym, "E", "Op", "E", ")"_sym }
-		}},
-		{ "Op", {
-			{ "+"_sym },
-			{ "*"_sym }
-		}}
-	};
+	auto [grammar, lexicon] = (
+		dpl::discard	|= dpl::Lexeme{ dpl::kleene{dpl::whitespace} },
+		"E"nt			|= ("int"t)
+						|  ("("t, "E"nt, "Op"nt, "E"nt, ")"t),
+		"Op"nt			|= "+"t | "*"t
+	);
 
-	grammar.keywords = { "int" };
-	grammar.symbols = { "+", "*", "(", ")" };
-
-	dpl::LL1 parser{ grammar };
+	dpl::LL1 parser{ grammar, lexicon };
 
 	// LL(1) Parse Table Generation
 	const auto& table = parser.getParseTable();
 
 	auto expected_table = dpl::LLTable{grammar, {
-		{ "int"_kwd, {{ "E" , 0 }}},
-		{ "("_sym, {{ "E", 1 }}},
-		{ "+"_sym, {{ "Op", 0 }}},
-		{ "*"_sym, {{ "Op", 1 }}}
+		{ "int"t, {{ "E" , 0 }}},
+		{ "("t, {{ "E", 1 }}},
+		{ "+"t, {{ "Op", 0 }}},
+		{ "*"t, {{ "Op", 1 }}}
 	}};
 
 	REQUIRE(table.compareTo(expected_table));
 
 
 	// LL(1) Parsing
-	auto str_src = dpl::StringStream{ "(int + (int * int))" };
-	auto [tree, errors] = parser.parse(str_src);
+	auto [tree, errors] = parser.parse("(int + (int * int))");
 
 	using dpl::RuleRef;
 
-	dpl::ParseTree expected_tree{ RuleRef{grammar, "E", 1}, {
-		{ "("_sym },
-		{ RuleRef{ grammar, "E", 0 }, {{ "int"_kwd }} },
-		{ RuleRef{ grammar, "Op", 0 }, {
-			{ "+"_sym }
+	dpl::ParseTree<> expected_tree{ RuleRef{"E", 1}, {
+		{ "("tkn },
+		{ RuleRef{ "E", 0 }, {{ "int"tkn }}},
+		{ RuleRef{ "Op", 0 }, {
+			{ "+"tkn }
 		}},
-		{ RuleRef{grammar, "E", 1}, {
-			{ "("_sym },
-			{ RuleRef{ grammar, "E", 0 }, {{ "int"_kwd }} },
-			{ RuleRef{ grammar, "Op", 1 }, {
-				{ "*"_sym }
+		{ RuleRef{"E", 1}, {
+			{ "("tkn },
+			{ RuleRef{ "E", 0 }, {{ "int"tkn }} },
+			{ RuleRef{ "Op", 1 }, {
+				{ "*"tkn }
 			}},
-			{ RuleRef{ grammar, "E", 0 }, {{ "int"_kwd }} },
-			{ ")"_sym }
+			{ RuleRef{ "E", 0 }, {{ "int"tkn }} },
+			{ ")"tkn }
 		}},
-		{ ")"_sym }
+		{ ")"tkn }
 	} };
 
 	std::cout << tree;

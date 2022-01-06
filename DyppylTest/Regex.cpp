@@ -6,42 +6,42 @@ TEST_CASE("exact", "[RegexTests] [match]") {
 	constexpr std::string_view text = "abc";
 	auto lex = dpl::match{ "abc" };
 
-	REQUIRE(lex(text.begin()) == text.end());
+	REQUIRE(lex(text.begin(), text.end()) == text.end());
 }
 
 TEST_CASE("trailing text", "[RegexTests] [match]") {
 	constexpr std::string_view text = "abcdefg";
 	auto lex = dpl::match{ "abc" };
 
-	REQUIRE(lex(text.begin()) == text.begin() + 3);
+	REQUIRE(lex(text.begin(), text.end()) == text.begin() + 3);
 }
 
 TEST_CASE("no match", "[RegexTests] [match]") {
 	constexpr std::string_view text = "abcdefg";
 	auto lex = dpl::match{ "abce" };
 
-	REQUIRE(!lex(text.begin()));
+	REQUIRE(!lex(text.begin(), text.end()));
 }
 
 TEST_CASE("alts", "[RegexTests] [alternatives]") {
 	constexpr std::string_view text = "jump up and down";
 	auto lex = dpl::alternatives{ dpl::match{"jump"}, dpl::match{"sit"}, dpl::match{"dance"} };
 
-	REQUIRE(lex(text.begin()) == text.begin() + 4);
+	REQUIRE(lex(text.begin(), text.end()) == text.begin() + 4);
 }
 
 TEST_CASE("nested", "[RegexTests] [alternatives]") {
 	constexpr std::string_view text = "jump up and down";
 	auto lex = dpl::alternatives{ dpl::alternatives{ dpl::match{"sit"}, dpl::match{"jump"} }, dpl::match{"dance"} };
 
-	REQUIRE(lex(text.begin()) == text.begin() + 4);
+	REQUIRE(lex(text.begin(), text.end()) == text.begin() + 4);
 }
 
 TEST_CASE("seqs", "[RegexTests] [sequence]") {
 	constexpr std::string_view text = "hello world!";
 	auto lex = dpl::sequence{ dpl::match{"hell"}, dpl::match{"o wo"}, dpl::match{"rld!"} };
 
-	REQUIRE(lex(text.begin()) == text.end());
+	REQUIRE(lex(text.begin(), text.end()) == text.end());
 }
 
 TEST_CASE("seq of alts", "[RegexTests] [sequence]") {
@@ -59,7 +59,7 @@ TEST_CASE("seq of alts", "[RegexTests] [sequence]") {
 		}
 	};
 
-	REQUIRE(lex(text.begin()) == text.end() - 1);
+	REQUIRE(lex(text.begin(), text.end()) == text.end() - 1);
 }
 
 TEST_CASE("maybe", "[RegexTests] [maybe]") {
@@ -68,8 +68,8 @@ TEST_CASE("maybe", "[RegexTests] [maybe]") {
 
 	auto lex = dpl::sequence{ dpl::match{"hello world"}, dpl::maybe{ dpl::match{"!"} }};
 
-	REQUIRE(lex(text1.begin()) == text1.end());
-	REQUIRE(lex(text2.begin()) == text2.end() - 1);
+	REQUIRE(lex(text1.begin(), text1.end()) == text1.end());
+	REQUIRE(lex(text2.begin(), text2.end()) == text2.end() - 1);
 }
 
 TEST_CASE("between", "[RegexTests] [between]") {
@@ -81,11 +81,11 @@ TEST_CASE("between", "[RegexTests] [between]") {
 	
 	auto lex = dpl::between{ 3, 7, dpl::match{"x"} };
 
-	REQUIRE(!lex(text1.begin()));
-	REQUIRE(lex(text2.begin()) == text2.begin() + 3);
-	REQUIRE(lex(text3.begin()) == text3.begin() + 5);
-	REQUIRE(lex(text4.begin()) == text4.begin() + 7);
-	REQUIRE(lex(text5.begin()) == text5.begin() + 7);
+	REQUIRE(!lex(text1.begin(), text1.end()));
+	REQUIRE(lex(text2.begin(), text2.end()) == text2.begin() + 3);
+	REQUIRE(lex(text3.begin(), text3.end()) == text3.begin() + 5);
+	REQUIRE(lex(text4.begin(), text4.end()) == text4.begin() + 7);
+	REQUIRE(lex(text5.begin(), text5.end()) == text5.begin() + 7);
 }
 
 TEST_CASE("at least", "[RegexTests] [between]") {
@@ -97,11 +97,11 @@ TEST_CASE("at least", "[RegexTests] [between]") {
 
 	auto lex = dpl::at_least{ 5, dpl::match{"x"} };
 
-	REQUIRE(!lex(text1.begin()));
-	REQUIRE(!lex(text2.begin()));
-	REQUIRE(lex(text3.begin()) == text3.begin() + 5);
-	REQUIRE(lex(text4.begin()) == text4.begin() + 7);
-	REQUIRE(lex(text5.begin()) == text5.begin() + 9);
+	REQUIRE(!lex(text1.begin(), text1.end()));
+	REQUIRE(!lex(text2.begin(), text2.end()));
+	REQUIRE(lex(text3.begin(), text3.end()) == text3.begin() + 5);
+	REQUIRE(lex(text4.begin(), text4.end()) == text4.begin() + 7);
+	REQUIRE(lex(text5.begin(), text5.end()) == text5.begin() + 9);
 }
 
 TEST_CASE("at most", "[RegexTests] [between]") {
@@ -113,11 +113,11 @@ TEST_CASE("at most", "[RegexTests] [between]") {
 
 	auto lex = dpl::at_most{ 5, dpl::match{"x"} };
 
-	REQUIRE(lex(text1.begin()) == text1.begin() + 2);
-	REQUIRE(lex(text2.begin()) == text2.begin() + 3);
-	REQUIRE(lex(text3.begin()) == text3.begin() + 5);
-	REQUIRE(lex(text4.begin()) == text4.begin() + 5);
-	REQUIRE(lex(text5.begin()) == text5.begin() + 5);
+	REQUIRE(lex(text1.begin(), text1.end()) == text1.begin() + 2);
+	REQUIRE(lex(text2.begin(), text2.end()) == text2.begin() + 3);
+	REQUIRE(lex(text3.begin(), text3.end()) == text3.begin() + 5);
+	REQUIRE(lex(text4.begin(), text4.end()) == text4.begin() + 5);
+	REQUIRE(lex(text5.begin(), text5.end()) == text5.begin() + 5);
 }
 
 TEST_CASE("exactly", "[RegexTests] [between]") {
@@ -129,11 +129,11 @@ TEST_CASE("exactly", "[RegexTests] [between]") {
 
 	auto lex = dpl::exactly{ 5, dpl::match{"x"} };
 
-	REQUIRE(!lex(text1.begin()));
-	REQUIRE(!lex(text2.begin()));
-	REQUIRE(lex(text3.begin()) == text3.begin() + 5);
-	REQUIRE(lex(text4.begin()) == text4.begin() + 5);
-	REQUIRE(lex(text5.begin()) == text5.begin() + 5);
+	REQUIRE(!lex(text1.begin(), text1.end()));
+	REQUIRE(!lex(text2.begin(), text2.end()));
+	REQUIRE(lex(text3.begin(), text3.end()) == text3.begin() + 5);
+	REQUIRE(lex(text4.begin(), text4.end()) == text4.begin() + 5);
+	REQUIRE(lex(text5.begin(), text5.end()) == text5.begin() + 5);
 }
 
 TEST_CASE("some", "[RegexTests] [between]") {
@@ -143,9 +143,9 @@ TEST_CASE("some", "[RegexTests] [between]") {
 
 	auto lex = dpl::some{ dpl::match{"+"} };
 
-	REQUIRE(!lex(text1.begin()));
-	REQUIRE(lex(text2.begin()) == text2.begin() + 1);
-	REQUIRE(lex(text3.begin()) == text3.begin() + 6);
+	REQUIRE(!lex(text1.begin(), text1.end()));
+	REQUIRE(lex(text2.begin(), text2.end()) == text2.begin() + 1);
+	REQUIRE(lex(text3.begin(), text3.end()) == text3.begin() + 6);
 }
 
 TEST_CASE("kleene", "[RegexTests] [between]") {
@@ -155,16 +155,16 @@ TEST_CASE("kleene", "[RegexTests] [between]") {
 
 	auto lex = dpl::kleene{ dpl::match{"*"} };
 
-	REQUIRE(lex(text1.begin()) == text1.begin() + 0);
-	REQUIRE(lex(text2.begin()) == text2.begin() + 1);
-	REQUIRE(lex(text3.begin()) == text3.begin() + 6);
+	REQUIRE(lex(text1.begin(), text1.end()) == text1.begin() + 0);
+	REQUIRE(lex(text2.begin(), text2.end()) == text2.begin() + 1);
+	REQUIRE(lex(text3.begin(), text3.end()) == text3.begin() + 6);
 }
 
 TEST_CASE("any", "[RegexTests] [character sets]") {
 	constexpr std::string_view text = "abcde12345";
 	auto lex = dpl::exactly{ 5, dpl::any<char> };
 
-	REQUIRE(lex(text.begin()) == text.begin() + 5);
+	REQUIRE(lex(text.begin(), text.end()) == text.begin() + 5);
 }
 
 TEST_CASE("any of", "[RegexTests] [character sets]") {
@@ -173,8 +173,8 @@ TEST_CASE("any of", "[RegexTests] [character sets]") {
 
 	auto lex = dpl::exactly{ 5, dpl::any_of{"1234"} };
 
-	REQUIRE(lex(text1.begin()) == text1.begin() + 5);
-	REQUIRE(!lex(text2.begin()));
+	REQUIRE(lex(text1.begin(), text1.end()) == text1.begin() + 5);
+	REQUIRE(!lex(text2.begin(), text2.end()));
 }
 
 TEST_CASE("range", "[RegexTests] [character sets]") {
@@ -183,8 +183,8 @@ TEST_CASE("range", "[RegexTests] [character sets]") {
 
 	auto lex = dpl::exactly{ 4, dpl::range{'1', '4'} };
 
-	REQUIRE(lex(text1.begin()) == text1.begin() + 4);
-	REQUIRE(!lex(text2.begin()));
+	REQUIRE(lex(text1.begin(), text1.end()) == text1.begin() + 4);
+	REQUIRE(!lex(text2.begin(), text2.end()));
 }
 
 TEST_CASE("hex", "[RegexTests] [character sets]") {
@@ -197,9 +197,9 @@ TEST_CASE("hex", "[RegexTests] [character sets]") {
 		dpl::exactly{ 6, dpl::hex_digit }
 	};
 
-	REQUIRE(lex(text1.begin()) == text1.end());
-	REQUIRE(lex(text2.begin()) == text2.end());
-	REQUIRE(!lex(text3.begin()));
+	REQUIRE(lex(text1.begin(), text1.end()) == text1.end());
+	REQUIRE(lex(text2.begin(), text2.end()) == text2.end());
+	REQUIRE(!lex(text3.begin(), text3.end()));
 }
 //
 //TEST_CASE("array of regex", "[RegexTests]") {

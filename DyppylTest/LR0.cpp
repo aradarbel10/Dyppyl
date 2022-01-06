@@ -8,63 +8,54 @@
 #include <string_view>
 
 
-using namespace std::literals::string_view_literals;
-using namespace dpl::literals;
-
 TEST_CASE("SimpleMathGrammar", "[LR0Tests]") {
 	std::cout << " ===== SimpleGrammar [LR0Tests] =============================\n";
+	
+	using namespace std::literals::string_view_literals;
+	using namespace dpl::literals;
 
-	dpl::Grammar grammar{
-		{ "S" , {
-			{ "E" },
-		}},
-		{ "E" , {
-			{ "T", ";"_sym },
-			{ "T", "+"_sym, "E"}
-		}},
-		{ "T", {
-			{ dpl::Terminal::Type::Number },
-			{ "("_sym, "E", ")"_sym }
-		}}
-	};
+	auto [grammar, lexicon] = (
+		dpl::discard	|= dpl::Lexeme{ dpl::kleene{dpl::whitespace} },
+		"num"t			|= dpl::Lexeme{ dpl::some{dpl::digit}, [](std::string_view str) -> long double { return dpl::from_string<int>(str); } },
 
-	grammar.symbols = { "+", ";", "(", ")" };
+		"E"nt			|= ("T"nt, ";"t)
+						|  ("T"nt, "+"t, "E"nt),
+		"T"nt			|= ("num"t)
+						|  ("("t, "E"nt, ")"t)
+	);
 
-	dpl::LR0 parser{ grammar };
+	dpl::LR0 parser{ grammar, lexicon };
 
-	auto src = dpl::StringStream("5 + ( 10 + 1.5; );");
-	auto [tree, errors] = parser.parse(src);
+	auto [tree, errors] = parser.parse("5 + ( 10 + 3; );");
 
 
 	using dpl::RuleRef;
 
-	dpl::ParseTree expected_tree{ RuleRef{ grammar, "S", 0 }, {
-		{ RuleRef{ grammar, "E", 1 }, {
-			{ RuleRef{ grammar, "T", 0 }, {
-				{dpl::Token{ dpl::Token::Type::Number, 5.0 }}
-			}},
-			{ "+"_sym },
-			{ RuleRef{ grammar, "E", 0 }, {
-				{ RuleRef{ grammar, "T", 1 }, {
-					{ "("_sym },
-					{ RuleRef{ grammar, "E", 1 }, {
-						{ RuleRef{ grammar, "T", 0 }, {
-							{dpl::Token{ dpl::Token::Type::Number, 10.0 }}
-						}},
-						{ "+"_sym },
-						{ RuleRef{ grammar, "E", 0 }, {
-							{ RuleRef{ grammar, "T", 0 }, {
-								{dpl::Token{ dpl::Token::Type::Number, 1.5 }}
-							}},
-							{ ";"_sym }
-						}}
+	dpl::ParseTree<> expected_tree{ RuleRef{ "E", 1 }, {
+		{ RuleRef{ "T", 0 }, {
+			{ dpl::Token<>{ "num"sv, 5.0 } }
+		}},
+		{ "+"tkn },
+		{ RuleRef{ "E", 0 }, {
+			{ RuleRef{ "T", 1 }, {
+				{ "("tkn },
+				{ RuleRef{ "E", 1 }, {
+					{ RuleRef{ "T", 0 }, {
+						{ dpl::Token<>{ "num"sv, 10.0 } }
 					}},
-					{ ")"_sym }
+					{ "+"tkn },
+					{ RuleRef{ "E", 0 }, {
+						{ RuleRef{ "T", 0 }, {
+							{ dpl::Token<>{ "num"sv, 3.0 } }
+						}},
+						{ ";"tkn }
+					}}
 				}},
-				{ ";"_sym }
-			}}
+				{ ")"tkn }
+			}},
+			{ ";"tkn }
 		}}
-	} };
+	}};
 
 	std::cout << tree;
 	std::cout << expected_tree;

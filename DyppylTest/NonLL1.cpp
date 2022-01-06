@@ -14,23 +14,23 @@ using namespace dpl::literals;
 TEST_CASE("NonLL1Grammar", "[LL1Tests]") {
 	std::cout << " ===== NonLL1Grammar [LL1Tests] =============================\n";
 
-	dpl::Grammar non_ll1{
-		{ "E" , {
-			{ "T", ";"_sym },
-			{ "T", "+"_sym, "E"}
-		}},
-		{ "T", {
-			{ "Int"_kwd },
-			{ "("_sym, "E", ")"_sym }
-		}}
-	};
+	auto [grammar, lexicon] = (
+		dpl::discard |= dpl::Lexeme{ dpl::kleene{dpl::whitespace} },
 
-	non_ll1.keywords = { "Int" };
-	non_ll1.symbols = { ";", "+", "(", ")" };
+		"E"nt	|= ("T"nt, ";"t)
+				|  ("T"nt, "+"t, "E"nt),
+		"T"nt	|= ("int"t)
+				|  ("("t, "E"nt, ")"t)
+	);
 
-	dpl::LL1 parser{ non_ll1 };
-	bool good_grammar = true;
+	bool is_ll1 = true;
 
-	REQUIRE(!parser.getParseTable().isLL1());
+	try {
+		dpl::LL1 parser{ grammar, lexicon };
+	} catch (...) {
+		is_ll1 = false;
+	}
+	
+	REQUIRE(!is_ll1);
 
 }

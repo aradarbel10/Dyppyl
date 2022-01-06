@@ -55,7 +55,7 @@ namespace dpl {
 
 		Tree() : is_wildcard(true) {}
 		Tree(T node) : value(node) {}
-		Tree(std::convertible_to<T> auto&& val) : value(std::forward<decltype(val)>(val)) {}
+		//Tree(std::convertible_to<T> auto&& val) : value(std::forward<decltype(val)>(val)) {}
 		Tree(T node, std::initializer_list<Tree<T>> cs) : value(node), children(cs) {}
 
 		auto& operator[](size_t index) { return children[index]; }

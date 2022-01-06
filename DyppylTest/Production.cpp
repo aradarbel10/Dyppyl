@@ -14,35 +14,19 @@ TEST_CASE("Production", "[GrammarTests]") {
 	using namespace dpl::literals;
 
 	// production construction
-	dpl::ProductionRule prod_sum{ dpl::Terminal::Type::Identifier, "+"_sym, dpl::Terminal::Type::Identifier };
+	dpl::ProductionRule prod_sum{ {dpl::Terminal{"id"sv}, dpl::Terminal{"+"sv}, dpl::Terminal{"id"sv}} };
 	dpl::ProductionRule prod_eps{};
 
 	// epsilon productions
 	REQUIRE( prod_eps.isEpsilonProd());
 	REQUIRE(!prod_sum.isEpsilonProd());
 
-	// production printing
-	std::ostringstream out;
-	out << prod_sum;
-	REQUIRE(out.view() == "Identifier + Identifier");
-
-	std::ostringstream().swap(out);
-	out << prod_eps;
-	REQUIRE(out.view() == "epsilon");
-
 	// rule construction
-	dpl::NonterminalRules rule_exp{ "Exp", {
-		{ dpl::Terminal::Type::Identifier, "-"_sym, dpl::Terminal::Type::Identifier },
+	dpl::NonterminalRules rule_exp{ "Exp"sv, {
+		{ dpl::Terminal{"id"sv}, dpl::Terminal{"+"sv}, dpl::Terminal{"id"sv} },
 		prod_sum,
 		prod_eps
 	}};
-
-	// rule printing
-	std::ostringstream().swap(out);
-	out << rule_exp;
-	REQUIRE(out.view() == "    | Identifier - Identifier\n"
-						  "    | Identifier + Identifier\n"
-						  "    | epsilon\n");
 }
 
 

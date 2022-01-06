@@ -11,7 +11,7 @@
 
 namespace dpl {
 	struct discard_type {};
-	discard_type discard;
+	static constexpr discard_type discard;
 
 
 	template<typename AtomT = char, typename TokenT = dpl::Token<>>
