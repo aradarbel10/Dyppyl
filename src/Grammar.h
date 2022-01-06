@@ -53,6 +53,7 @@ namespace dpl {
 		constexpr void clear() { sentence.clear(); }
 		constexpr symbol_type& operator[](size_t index) { return sentence[index]; }
 		[[nodiscard]] constexpr const symbol_type& operator[](size_t index) const { return sentence[index]; }
+		[[nodiscard]] constexpr const symbol_type& at(size_t index) const { return sentence.at(index); }
 
 		[[nodiscard]] constexpr auto begin() { return sentence.begin(); }
 		[[nodiscard]] constexpr auto end() { return sentence.end(); }
@@ -104,7 +105,7 @@ namespace dpl {
 		constexpr NonterminalRules() = default;
 		constexpr NonterminalRules(nonterminal_type n) : name(n) { }
 		constexpr NonterminalRules(nonterminal_type n, std::initializer_list<production_type> l)
-			: std::vector<production_type>(l), name(n) { }
+			: rules(l), name(n) { }
 
 		[[nodiscard]] constexpr size_t size() const { return rules.size(); }
 
@@ -160,13 +161,17 @@ namespace dpl {
 		follows_type follows;
 
 		nonterminal_type start_symbol;
-		hybrid::map<terminal_type, short> terminal_precs;
+		std::map<terminal_type, short> terminal_precs;
 
 	public:
 
 		template<typename TokenT_>
 		friend constexpr std::pair<dpl::Grammar<TokenT_, std::string_view, std::string_view>,
 			dpl::Lexicon<char, TokenT_>> decompose_grammar_lit(dpl::GrammarLit<TokenT_> lit);
+
+		// LR automaton does lots of grammar augmentation
+		template<class StateT>
+		friend class LR0Automaton;
 
 		constexpr void initialize() {
 			calcFirstSets();
@@ -219,7 +224,7 @@ namespace dpl {
 		[[nodiscard]] constexpr size_t size() const { return ntrules.size(); }
 		
 		constexpr ntrule_type& operator[](const nonterminal_type& index) { return ntrules[index]; }
-		[[nodiscard]] constexpr const ntrule_type& operator[](const nonterminal_type& index) const { return ntrules[index]; }
+		[[nodiscard]] constexpr const ntrule_type& operator[](const nonterminal_type& index) const { return ntrules.at(index); }
 		[[nodiscard]] constexpr const ntrule_type& at(const nonterminal_type& index) const { return ntrules.at(index); }
 		
 		[[nodiscard]] constexpr auto begin() { return ntrules.begin(); }
@@ -232,6 +237,7 @@ namespace dpl {
 		constexpr const auto& get_start_symbol() const { return start_symbol; }
 		constexpr const auto& get_firsts() const { return firsts; } // #TASK : get_firsts(name) return for specific name
 		constexpr const auto& get_follows() const { return follows; } // same for follows
+		constexpr const auto& get_terminal_precs() const { return terminal_precs; } // same for precs
 
 		friend std::ostream& operator<<(std::ostream& os, const grammar_type& grammar) {
 			for (const auto& [name, nonterminal] : grammar.ntrules) {
@@ -242,6 +248,18 @@ namespace dpl {
 			}
 			return os;
 		}
+
+		constexpr const auto& augment_start_symbol() {
+			if constexpr (!std::is_same_v<nonterminal_type, std::string_view>) throw std::exception{"cannot augment non-string_view nonterminals"};
+			else {
+				if (contains("S")) throw std::exception{ "start symbol name S already used" };
+
+				ntrules.insert({ "S", {"S", {{ start_symbol }}} });
+				start_symbol = "S";
+				return start_symbol;
+			}
+		}
+
 
 
 	private:
@@ -386,16 +404,16 @@ namespace dpl {
 		using nonterminal_type = grammar_type::nonterminal_type;
 
 	private:
-		grammar_type* grammar;
+		const grammar_type* grammar;
 		nonterminal_type name;
 		size_t prod;
 
 	public:
 
-		RuleRef(grammar_type& g, nonterminal_type n, int p) : grammar(&g), name(n), prod(p) { }
+		RuleRef(const grammar_type& g, nonterminal_type n, int p) : grammar(&g), name(n), prod(p) { }
 		RuleRef(nonterminal_type n, int p) : grammar(nullptr), name(n), prod(p) { }
 
-		const grammar_type* get_grammar() const { return grammar; }
+		const grammar_type& get_grammar() const { return *grammar; }
 		const nonterminal_type get_name() const { return name; }
 		const size_t get_prod() const { return prod; }
 
@@ -406,7 +424,7 @@ namespace dpl {
 	};
 
 	template<typename GrammarT>
-	inline bool operator==(const RuleRef<GrammarT>& lhs, const typename GrammarT::nonterminal_type rhs) { return lhs.name == rhs; }
+	inline bool operator==(const RuleRef<GrammarT>& lhs, const typename GrammarT::nonterminal_type rhs) { return lhs.get_name() == rhs; }
 
 	template<typename GrammarT>
 	inline bool operator==(const typename GrammarT::nonterminal_type lhs, const RuleRef<GrammarT>& rhs) { return rhs == lhs; }

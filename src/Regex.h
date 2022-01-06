@@ -360,4 +360,25 @@ namespace dpl {
 
 	};
 
+	template<typename T>
+	constexpr T from_string(dpl::span_dict<char>) = delete;
+
+	template<>
+	constexpr int from_string(dpl::span_dict<char> str) {
+		int result = 0;
+		int i = 1;
+		int factor;
+
+		if (str[0] == '+') factor = 1;
+		else if (str[0] == '-') factor = -1;
+		else i = 0;
+
+		for (; i < str.size(); ++i) {
+			result *= 10;
+			result += str[i] & 0b00001111;
+		}
+
+		return result;
+	}
+
 }

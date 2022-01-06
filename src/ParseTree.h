@@ -53,9 +53,10 @@ namespace dpl {
 	
 		using node_type = T;
 
-		Tree() : is_wildcard(true) { }
-		Tree(T node) : value(node) { }
-		Tree(T node, std::initializer_list<Tree<T>> cs) : value(node), children(cs) { }
+		Tree() : is_wildcard(true) {}
+		Tree(T node) : value(node) {}
+		Tree(std::convertible_to<T> auto&& val) : value(std::forward<decltype(val)>(val)) {}
+		Tree(T node, std::initializer_list<Tree<T>> cs) : value(node), children(cs) {}
 
 		auto& operator[](size_t index) { return children[index]; }
 		const auto& operator[](size_t index) const { return children[index]; }
@@ -73,7 +74,9 @@ namespace dpl {
 			if (pattern.is_wildcard) return std::vector{ *this };
 
 			if (!std::visit([]<typename T1, typename T2> (const T1 & lhs, const T2 & rhs) {
-				if constexpr (!std::equality_comparable_with<T1, T2>) return false;
+				//static_assert(std::equality_comparable_with<T1, T2>);
+
+				if constexpr (!requires (T1 t1, T2 t2) { t1 == t2; }) return false;
 				else return lhs == rhs;
 			}, pattern.value, value)) return std::nullopt;
 
@@ -111,7 +114,7 @@ namespace dpl {
 		}
 
 		template <typename Func> requires std::invocable<Func, Tree<T>>
-		&& std::is_same_v<std::invoke_result_t<Func, Tree<T>>, Tree<T>>
+		&& std::convertible_to<std::invoke_result_t<Func, Tree<T>>, Tree<T>>
 		void replace_with(const Tree<T>& pattern, const Func& transformer, TraverseOrder order = TraverseOrder::BottomUp) {
 			const auto apply_root = [&] {
 				if (this->match(pattern)) {
@@ -143,6 +146,8 @@ namespace dpl {
 		
 		call_by_traversal_order(apply_root, apply_children, order);
 	}
+
+
 
 	template<typename GrammarT = dpl::Grammar<>>
 	using ParseTree = dpl::Tree<std::variant<
@@ -268,7 +273,7 @@ namespace dpl {
 			}
 
 			for (auto& child : tree.children) {
-				if (pushNode(node, child)) return true;
+				if (pushNode(node, static_cast<tree_type&>(child))) return true;
 			}
 
 			return false;

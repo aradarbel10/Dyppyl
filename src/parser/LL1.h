@@ -136,18 +136,18 @@ namespace dpl{
 		std::stack<symbol_type> parse_stack;
 
 	public:
-		LL1(grammar_type& g, lexicon_type& l, const typename Parser<grammar_type>::Options& ops = {})
-			: Parser<GrammarT, LexiconT>(g, l, ops), tb(g), table(g) { }
+		LL1(grammar_type& g, lexicon_type& l, const typename Parser<grammar_type, lexicon_type>::Options& ops = {})
+			: Parser<grammar_type, lexicon_type>(g, l, ops), tb(g), table(g) { }
 
-		LL1(const LLTable<grammar_type>& t, lexicon_type& l, const typename Parser<grammar_type>::Options& ops = {})
-			: table(t), Parser<GrammarT, LexiconT>(t.grammar, l, ops), tb(t.grammar) { }
+		LL1(const LLTable<grammar_type>& t, lexicon_type& l, const typename Parser<grammar_type, lexicon_type>::Options& ops = {})
+			: table(t), Parser<grammar_type, lexicon_type>(t.grammar, l, ops), tb(t.grammar) { }
 
 	private:
 
 		void operator<<(const token_type& t_) {
 			const terminal_type t = t_;
 
-			if (this->options.error_mode == Parser<grammar_type>::Options::ErrorMode::Panic && !this->fixed_last_error) {
+			if (this->options.error_mode == ErrorMode::Panic && !this->fixed_last_error) {
 				if (sync_set().contains(t)) {
 					parse_stack.pop();
 					this->fixed_last_error = true;

@@ -10,27 +10,31 @@
 #include <format>
 
 namespace dpl {
-	template<class AutomatonT>
-	class LR : public Parser {
+	template<class AutomatonT, typename GrammarT = dpl::Grammar<>, typename LexiconT = dpl::Lexicon<>>
+	class LR : public Parser<GrammarT, LexiconT> {
 	public:
+		using automaton_type = AutomatonT;
+		using grammar_type = GrammarT;
+		using lexicon_type = LexiconT;
 
 		using state_type = int;
 		using accept_action = std::monostate;
-		using terminal_type = Terminal;
-		using nonterminal_type = std::string_view;
+		using terminal_type = grammar_type::terminal_type;
+		using token_type = grammar_type::token_type;
+		using nonterminal_type = grammar_type::nonterminal_type;
 
-		using out_type = std::variant<Token, RuleRef>;
-		using symbol_type = std::variant<std::monostate, terminal_type, nonterminal_type>;
+		using out_type = std::variant<token_type, RuleRef<grammar_type>>;
+		using symbol_type = std::variant<terminal_type, nonterminal_type>;
 
-		using action_type = std::variant<accept_action, state_type, RuleRef>;
+		using action_type = std::variant<accept_action, state_type, RuleRef<grammar_type>>;
 
-		LR(Grammar& g, Options ops = {}) : Parser(g, ops), tb(g) {
-			AutomatonT automaton{ grammar };
+		LR(grammar_type& g, lexicon_type& l, Parser<grammar_type, lexicon_type>::Options ops = {}) : Parser<grammar_type, lexicon_type>(g, l, ops), tb(g) {
+			automaton_type automaton{ this->grammar };
 
-			if (options.log_automaton) {
-				options.logprint("Parser Automaton", automaton);
+			if (this->options.log_automaton) {
+				this->options.logprint("Parser Automaton", automaton);
 			}
-			options.flush_logs();
+			this->options.flush_logs();
 
 			// generate parse tables
 			for (int i = 0; i < automaton.states.size(); i++) {
@@ -38,43 +42,43 @@ namespace dpl {
 
 				auto row = state.getActions(g);
 				for (const auto& [token, action] : row) {
-					if (!addActionEntry(i, token, action) && options.log_errors)
-						options.logprintln("Errors", "grammar error: Duplicate Action Entries -- Non-LL0 Grammar!");
+					if (!addActionEntry(i, token, action) && this->options.log_errors)
+						this->options.logprintln("Errors", "grammar error: Duplicate Action Entries -- Non-LL0 Grammar!");
 				}
 
 				for (const auto& [symbol, dest] : transes) {
 					// #TASK : get these error messages to work
-					if (!addGotoEntry(i, symbol, dest) && options.log_errors)
-						options.logprintln("Errors", "grammar error: Duplicate Goto Entries -- Non-LL0 Grammar!");
+					if (!addGotoEntry(i, symbol, dest) && this->options.log_errors)
+						this->options.logprintln("Errors", "grammar error: Duplicate Goto Entries -- Non-LL0 Grammar!");
 				}
 			}
 
-			if (options.log_parse_table) {
-				options.logprint("Parse Table", "Action Table:\n");
+			if (this->options.log_parse_table) {
+				this->options.logprint("Parse Table", "Action Table:\n");
 				for (const auto& [state, row] : action_table) {
-					options.logprint("Parse Table", state, ": ");
+					this->options.logprint("Parse Table", state, ": ");
 					for (const auto& [terminal, action] : row) {
-						options.logprint("Parse Table", terminal, "(");
+						this->options.logprint("Parse Table", terminal, "(");
 
-						if (std::holds_alternative<std::monostate>(action))
-							options.logprint("Parse Table", "acc");
-						else if (auto* rule = std::get_if<dpl::RuleRef>(&action))
-							options.logprint("Parse Table", "reduce ", rule->name, rule->prod);
+						if (std::holds_alternative<accept_action>(action))
+							this->options.logprint("Parse Table", "acc");
+						else if (auto* rule = std::get_if<RuleRef<grammar_type>>(&action))
+							this->options.logprint("Parse Table", "reduce ", rule->get_name(), rule->get_prod());
 						else
-							options.logprint("Parse Table", "shift ", std::get<state_type>(action));
+							this->options.logprint("Parse Table", "shift ", std::get<state_type>(action));
 
-						options.logprint("Parse Table", ")  ");
+						this->options.logprint("Parse Table", ")  ");
 					}
-					options.logprint("Parse Table", "\n");
+					this->options.logprint("Parse Table", "\n");
 				}
 
-				options.logprint("Parse Table", "Goto Table:\n");
+				this->options.logprint("Parse Table", "Goto Table:\n");
 				for (const auto& [state, row] : goto_table) {
-					options.logprint("Parse Table", state, ": ");
+					this->options.logprint("Parse Table", state, ": ");
 					for (const auto& [symbol, newstate] : row) {
-						options.logprint("Parse Table", symbol, "(", newstate, ")  ");
+						this->options.logprint("Parse Table", symbol, "(", newstate, ")  ");
 					}
-					options.logprint("Parse Table", "\n");
+					this->options.logprint("Parse Table", "\n");
 				}
 			}
 		}
@@ -84,10 +88,10 @@ namespace dpl {
 			parse_stack.push(0);
 		}
 
-		void operator<<(const Token& t_) {
+		void operator<<(const token_type& t_) {
 			terminal_type t = t_;
 
-			if (options.error_mode == Options::ErrorMode::Panic && !fixed_last_error) {
+			if (this->options.error_mode == ErrorMode::Panic && !this->fixed_last_error) {
 				size_t states_to_pop = 0;
 				for (auto state = parse_stack._Get_container().rbegin(); state != parse_stack._Get_container().rend(); state++) {
 					if (hasActionEntry(*state, t) || hasGotoEntry(*state, t))
@@ -97,7 +101,7 @@ namespace dpl {
 
 				if (states_to_pop != parse_stack.size()) {
 					for (int i = 0; i < states_to_pop; i++) parse_stack.pop();
-					fixed_last_error = true;
+					this->fixed_last_error = true;
 				} else {
 					return;
 				}
@@ -109,7 +113,7 @@ namespace dpl {
 				// #TASK : make sure stack is non-empty
 				if (!hasActionEntry(parse_stack.top(), t)) { // not contains means the action is shift
 					if (!hasGotoEntry(parse_stack.top(), t)) {
-						err_unexpected_token(t_);
+						this->err_unexpected_token(t_);
 						return;
 					}
 
@@ -118,34 +122,34 @@ namespace dpl {
 
 					terminal_eliminated = true;
 
-					if (options.log_step_by_step)
-						options.logprintln("Parser Trace", "Shift: ", t.stringify(), ", goto ", new_state);
+					if (this->options.log_step_by_step)
+						this->options.logprintln("Parser Trace", "Shift: ", t.stringify(), ", goto ", new_state);
 
 					tree_builder().pushNode(t_);
-				} else if (const auto* prod = std::get_if<RuleRef>(&getActionEntry(parse_stack.top(), t))) { // reduce action
-					const ProductionRule& rule = prod->getRule();
+				} else if (const auto* prod = std::get_if<RuleRef<grammar_type>>(&getActionEntry(parse_stack.top(), t))) { // reduce action
+					const typename grammar_type::prod_type& rule = prod->getRule();
 
 					for (int i = 0; i < rule.size(); i++) parse_stack.pop();
 
-					if (!hasGotoEntry(parse_stack.top(), prod->name)) {
-						err_unexpected_token(t_);
+					if (!hasGotoEntry(parse_stack.top(), prod->get_name())) {
+						this->err_unexpected_token(t_);
 						return;
 					}
 
-					state_type new_state = getGotoEntry(parse_stack.top(), prod->name);
+					state_type new_state = getGotoEntry(parse_stack.top(), prod->get_name());
 					parse_stack.push(new_state);
 
-					if (options.log_step_by_step)
-						options.logprintln("Parser Trace", "Reduce: ", rule, ", goto ", new_state);
+					if (this->options.log_step_by_step)
+						this->options.logprintln("Parser Trace", "Reduce: ", rule, ", goto ", new_state);
 
 					tree_builder().pushNode(*prod);
-				} else if (std::holds_alternative<std::monostate>(getActionEntry(parse_stack.top(), t_))) { // accept
+				} else if (std::holds_alternative<accept_action>(getActionEntry(parse_stack.top(), t_))) { // accept
 					terminal_eliminated = true;
 
-					this->tree_builder().assignToTree(out_tree);
+					this->tree_builder().assignToTree(this->out_tree);
 
 				} else { // report error
-					err_unexpected_token(t_);
+					this->err_unexpected_token(t_);
 				}
 
 			} while (!terminal_eliminated);
@@ -153,7 +157,7 @@ namespace dpl {
 
 		std::set<terminal_type> currently_expected_terminals() const {
 			if (parse_stack.empty()) {
-				return {{ dpl::Terminal::Type::EndOfFile }};
+				return {{ terminal_type::Type::eof }};
 			}
 
 			std::set<terminal_type> result;
@@ -214,12 +218,12 @@ namespace dpl {
 				terminal_type terminal = std::get<terminal_type>(t);
 
 				if (hasActionEntry(state, terminal))
-				if (const auto* r = std::get_if<dpl::RuleRef>(&getActionEntry(state, std::get<terminal_type>(t)))) {
+				if (const auto* r = std::get_if<RuleRef<grammar_type>>(&getActionEntry(state, std::get<terminal_type>(t)))) {
 					const auto& rule = r->getRule();
 
-					if (grammar.terminal_precs[terminal] < rule.prec) {
+					if (this->grammar.get_terminal_precs().at(terminal) < rule.prec) {
 						return true;
-					} else if (grammar.terminal_precs[terminal] == rule.prec) {
+					} else if (this->grammar.get_terminal_precs().at(terminal) == rule.prec) {
 						if (rule.assoc == Assoc::Left) {
 							return true;
 						} else if (rule.assoc == Assoc::None) {
@@ -245,8 +249,8 @@ namespace dpl {
 
 	protected:
 
-		BottomUpTreeBuilder tb;
-		TreeBuilder& tree_builder() { return tb; }
+		BottomUpTreeBuilder<grammar_type> tb;
+		TreeBuilder<grammar_type>& tree_builder() { return tb; }
 
 		std::unordered_map<state_type, std::map<symbol_type, state_type>> goto_table;
 		std::unordered_map<state_type, std::map<terminal_type, action_type>> action_table;
@@ -256,52 +260,58 @@ namespace dpl {
 
 	};
 
+	template<typename GrammarT = dpl::Grammar<>>
 	struct Configuration {
-		RuleRef production;
+		using grammar_type = GrammarT;
+
+		RuleRef<grammar_type> production;
 		int pos = 0;
 
-		Configuration(RuleRef prod_, int pos_)
+		Configuration(RuleRef<grammar_type> prod_, int pos_)
 			: production(prod_), pos(pos_) { }
 
-		bool operator==(const Configuration&) const = default;
+		bool operator==(const Configuration<grammar_type>&) const = default;
 
-		auto dot(Grammar& g) const {
-			return production.getRule()[pos];
+		auto dot() const {
+			return production.getRule().at(pos);
 		}
 
 		void next() {
 			pos++;
 		}
 
-		bool atEnd(Grammar& g) const {
+		bool atEnd() const {
 			return production.getRule().size() == pos;
 		}
 
-		static auto getStartConfig(Grammar& g) {
-			return Configuration{ {g, g.start_symbol, 0}, 0 };
+		auto getStartConfig() const {
+			RuleRef<grammar_type> ruleref(production.get_grammar(), production.get_grammar().get_start_symbol(), 0);
+			return Configuration<grammar_type>{ruleref, 0};
 		}
 
-		auto toEnd(Grammar& g) {
+		auto toEnd() const {
 			auto result = *this;
 			result.pos = int(production.getRule().size());
 			return result;
 		}
 
-		void print_lookahead(std::ostream& os) const {}
+		void print_lookahead(std::ostream& os) const {
+			// #TASK : fill in
+		}
 
 	};
 
 	template<class ConfigT>
-	std::vector<ConfigT> computeConfigClosure(Grammar& g, const ConfigT& config) = delete;
+	std::vector<ConfigT> computeConfigClosure(typename ConfigT::grammar_type& g, const ConfigT& config) = delete;
 
-	template<>
-	inline std::vector<Configuration> computeConfigClosure<Configuration>(Grammar& g, const Configuration& config) {
-		if (config.atEnd(g)) return {};
+	template<typename GrammarT>
+	inline std::vector<Configuration<GrammarT>> computeConfigClosure(GrammarT& g, const Configuration<GrammarT>& config) {
+		if (config.atEnd()) return {};
 
-		auto symbol = config.dot(g);
-		if (const auto* nonterminal = std::get_if<std::string_view>(&symbol)) {
+		auto symbol = config.dot();
+		if (const auto* nonterminal = std::get_if<typename GrammarT::nonterminal_type>(&symbol)) {
 
-			std::vector<Configuration> result;
+			std::vector<Configuration<GrammarT>> result;
 
 			size_t prods_amount = g[*nonterminal].size();
 			result.reserve(prods_amount);
@@ -311,8 +321,6 @@ namespace dpl {
 
 			return result;
 		} else return {};
-
-		
 	}
 
 	template<class ConfigT>
@@ -320,10 +328,11 @@ namespace dpl {
 
 		using config_type = ConfigT;
 
-		using terminal_type = Terminal;
-		using nonterminal_type = std::string_view;
+		using grammar_type = config_type::grammar_type;
+		using terminal_type = grammar_type::terminal_type;
+		using nonterminal_type = grammar_type::nonterminal_type;
 
-		void computeClosure(Grammar& g) {
+		void computeClosure(grammar_type& g) {
 			size_t old_size;
 			do {
 				old_size = size();
@@ -331,7 +340,7 @@ namespace dpl {
 				// iterate through all configurations in state
 				for (int i = 0; i < size(); i++) {
 					const config_type& config = (*this)[i];
-					const ProductionRule& rule = config.production.getRule();
+					const typename grammar_type::prod_type& rule = config.production.getRule();
 
 					const auto new_configs = computeConfigClosure(g, config);
 					
@@ -352,13 +361,13 @@ namespace dpl {
 			return false;
 		}
 
-		State successor(std::variant<terminal_type, nonterminal_type> symbol, Grammar& g) const {
-			State result;
+		State<ConfigT> successor(std::variant<terminal_type, nonterminal_type> symbol, grammar_type& g) const {
+			State<ConfigT> result;
 
 			for (const config_type& config : *this) {
-				if (config.atEnd(g)) continue;
+				if (config.atEnd()) continue;
 
-				if (config.dot(g) == symbol) {
+				if (config.dot() == symbol) {
 					config_type next_config = config;
 					next_config.next();
 					result.push_back(next_config);
@@ -369,14 +378,14 @@ namespace dpl {
 			return result;
 		}
 
-		virtual std::map<typename LR<void>::terminal_type, typename LR<void>::action_type> getActions(Grammar& g) const {
-			std::map<typename LR<void>::terminal_type, typename LR<void>::action_type> result;
+		virtual std::map<terminal_type, typename LR<void>::action_type> getActions(grammar_type& g) const {
+			std::map<terminal_type, typename LR<void>::action_type> result;
 
 			for (const config_type& config : *this) {
-				if (config == config_type::getStartConfig(g).toEnd(g))
-					result[Terminal::Type::EndOfFile] = std::monostate{};
-				else if (config.atEnd(g))
-					result[Terminal::Type::Unknown] = config.production;
+				if (config == config.getStartConfig().toEnd())
+					result[terminal_type::Type::wildcard] = std::monostate{};
+				else if (config.atEnd())
+					result[terminal_type::Type::wildcard] = config.production;
 			}
 
 			return result;
@@ -391,11 +400,11 @@ namespace dpl {
 		using std::vector<ConfigT>::empty;
 
 
-		friend std::ostream& operator<<(std::ostream& os, const State& state) {
+		friend std::ostream& operator<<(std::ostream& os, const State<ConfigT>& state) {
 			os << "<TABLE BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\">\n";
 
 			for (auto iter = state.begin(); iter != state.end(); iter++) {
-				const State::config_type& config = *iter;
+				const State<ConfigT>::config_type& config = *iter;
 
 				os << "<TR>\n";
 
@@ -403,7 +412,7 @@ namespace dpl {
 				if (iter == state.begin()) os << " WIDTH=\"100\"";
 				os << ">";
 
-				os << config.production.name << "  &#8594; "; // right arrow
+				os << config.production.get_name() << "  &#8594; "; // right arrow
 
 				const auto& rule = config.production.getRule();
 				for (int j = 0; j < rule.size(); j++) {
@@ -448,30 +457,24 @@ namespace dpl {
 
 	public:
 		
-		using terminal_type = Terminal;
-		using nonterminal_type = std::string_view;
 		using state_type = StateT;
-		using symbol_type = std::variant<std::monostate, terminal_type, nonterminal_type>;
+		using grammar_type = state_type::grammar_type;
+
+		using terminal_type = grammar_type::terminal_type;
+		using nonterminal_type = grammar_type::nonterminal_type;
+		using symbol_type = std::variant<terminal_type, nonterminal_type>;
 		using whole_state_type = std::pair<state_type, std::map<symbol_type, int>>;
 
 		std::vector<whole_state_type> states;
 
-		LR0Automaton(Grammar& g) {
+		LR0Automaton(grammar_type& g) {
 			// augment grammar
-			std::string augmented_start_symbol{ g.start_symbol };
-			std::string_view old_start_symbol = g[g.start_symbol].name;
-			do {
-				augmented_start_symbol.push_back('_');
-			} while (g.contains(augmented_start_symbol));
-
-			std::swap(g.start_symbol, augmented_start_symbol);
-			g[g.start_symbol] = { g.start_symbol, {{ old_start_symbol }} };
-
+			g.augment_start_symbol();
 			g.initialize();
 
 			// construct initial state
-			StateT start_state;
-			start_state.push_back(StateT::config_type::getStartConfig(g));
+			state_type start_state;
+			start_state.push_back(typename state_type::config_type{ {g, g.get_start_symbol(), 0}, 0});
 			states.push_back({ start_state, {} });
 			states.back().first.computeClosure(g);
 
@@ -488,12 +491,12 @@ namespace dpl {
 
 					for (size_t j = 0; j < states[i].first.size(); j++) {
 						auto& [state, transes] = states[i];
-						const StateT::config_type& config = states[i].first[j];
+						const typename state_type::config_type& config = states[i].first[j];
 
-						if (config.atEnd(g)) continue;
+						if (config.atEnd()) continue;
 
-						const auto& symbol = config.dot(g);
-						StateT succ = state.successor(symbol, g);
+						const auto& symbol = config.dot();
+						state_type succ = state.successor(symbol, g);
 
 						if (!succ.empty()) {
 							int dest = contains(succ);
@@ -514,7 +517,7 @@ namespace dpl {
 			} while (states.size() != old_size);
 		}
 
-		friend std::ostream& operator<<(std::ostream& os, const LR0Automaton& automaton) {
+		friend std::ostream& operator<<(std::ostream& os, const LR0Automaton<state_type>& automaton) {
 			os << "digraph {\nnode [shape = box];\nstart [shape = none];\n\n";
 
 			for (int i = 0; i < automaton.states.size(); i++) {
@@ -536,6 +539,13 @@ namespace dpl {
 
 	};
 
-
-	typedef LR<LR0Automaton<State<Configuration>>> LR0;
+	template<typename GrammarT = dpl::Grammar<>, typename LexiconT = dpl::Lexicon<>>
+	struct LR0 : public LR<LR0Automaton<State<Configuration<GrammarT>>>, GrammarT, LexiconT> {
+	private:
+		using parent = LR<LR0Automaton<State<Configuration<GrammarT>>>, GrammarT, LexiconT>;
+	public:
+		using parent::LR;
+		constexpr LR0(GrammarT& g, LexiconT& l, Parser<GrammarT, LexiconT>::Options ops = {})
+			: parent(g, l, ops) {}
+	};
 }

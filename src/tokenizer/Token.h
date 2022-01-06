@@ -32,15 +32,21 @@ namespace dpl {
 		constexpr bool is_eof() const { return type == Type::eof; }
 		constexpr bool is_unknown() const{ return type == Type::unknown; }
 
-		constexpr friend auto operator<=>(const Terminal& lhs, const Terminal& rhs) {
+		constexpr friend auto operator<=>(const Terminal<name_type>& lhs, const Terminal<name_type>& rhs) {
 			if (lhs == rhs) return std::strong_ordering::equal;
 			else return std::tie(lhs.name) <=> std::tie(rhs.name);
 		}
 
-		constexpr friend bool operator==(const Terminal& lhs, const Terminal& rhs) {
+		constexpr friend bool operator==(const Terminal<name_type>& lhs, const Terminal<name_type>& rhs) {
 			if (lhs.is_wildcard() || rhs.is_wildcard()) return true;
 			else return lhs.name == rhs.name;
 		}
+
+		constexpr friend bool operator==(const Terminal<name_type>& lhs, const name_type& rhs) {
+			if (lhs.is_wildcard()) return true;
+			else return lhs.name == rhs;
+		}
+		constexpr friend bool operator==(const name_type& lhs, const Terminal<name_type>& rhs) { return rhs == lhs; }
 
 		friend std::ostream& operator<<(std::ostream& os, const Terminal& t) {
 			os << t.stringify();
@@ -67,6 +73,7 @@ namespace dpl {
 		using name_type = TerminalNameT;
 		
 		using terminal_type = Terminal<name_type>;
+		using token_type = Token<value_type, name_type>;
 
 		value_type value;
 		file_pos_t pos;
@@ -76,16 +83,14 @@ namespace dpl {
 		Token(terminal_type t) : terminal_type(t) {}
 		Token(name_type name_, value_type v) : terminal_type(name_), value(v) {}
 
-		friend constexpr auto operator<=>(const Token& lhs, const Token& rhs) {
+		friend constexpr auto operator<=>(const token_type& lhs, const token_type& rhs) {
 			if (lhs.is_wildcard() || rhs.is_wildcard()) return std::partial_ordering::equivalent;
 			return std::tie(lhs.name, lhs.type, lhs.value, lhs.pos) <=> std::tie(rhs.name, rhs.type, rhs.value, rhs.pos);
 		}
 
-		friend constexpr bool operator==(const Token& lhs, const Token& rhs) {
-			if (lhs.is_wildcard || rhs.is_wildcard) return true;
-			if (lhs.type != rhs.type) return false;
-			if (lhs.terminal_value != rhs.terminal_value) return false;
-			return lhs.value == rhs.value;
+		friend constexpr bool operator==(const token_type& lhs, const token_type& rhs) {
+			if (lhs.is_wildcard() || rhs.is_wildcard()) return true;
+			return (lhs.name == rhs.name) && (lhs.value == rhs.value);
 		}
 
 		friend std::ostream& operator<<(std::ostream& os, const Token& t) {

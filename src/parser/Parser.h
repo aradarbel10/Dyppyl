@@ -13,6 +13,8 @@
 
 namespace dpl{
 
+	enum class ErrorMode { Ignore, Panic, RepairOnFollow };
+
 	template<typename GrammarT = dpl::Grammar<>, typename LexiconT = dpl::Lexicon<>>
 	class Parser {
 	public:
@@ -49,7 +51,7 @@ namespace dpl{
 
 				, log_to_file			: 1 = false;
 
-			enum class ErrorMode { Ignore, Panic, RepairOnFollow } error_mode = ErrorMode::Ignore;
+			ErrorMode error_mode = ErrorMode::Ignore;
 			std::filesystem::path log_dir = std::filesystem::current_path() / "/dyppyl_log.txt";
 
 		};
@@ -168,7 +170,7 @@ namespace dpl{
 			if (options.log_errors)
 				options.logprintln("Errors", "syntax error: unexpected token ", tkn, " at position ", dpl::streamer{ tkn.pos });
 
-			if (options.error_mode == Options::ErrorMode::Panic) fixed_last_error = false;
+			if (options.error_mode == ErrorMode::Panic) fixed_last_error = false;
 		}
 
 		virtual TreeBuilder<grammar_type>& tree_builder() = 0;

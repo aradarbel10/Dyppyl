@@ -19,6 +19,7 @@
 #include "TextStream.h"
 
 #include "parser/LL1.h"
+#include "parser/LR.h"
 
 using namespace dpl::literals;
 
