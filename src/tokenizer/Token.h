@@ -66,7 +66,7 @@ namespace dpl {
 
 	};
 
-	template<typename T = std::variant<std::monostate, std::string_view, std::string, long double>, typename TerminalNameT = std::string_view>
+	template<typename T = std::variant<std::monostate, std::string_view, long double>, typename TerminalNameT = std::string_view>
 	struct Token : public Terminal<TerminalNameT> {
 
 		using value_type = T;

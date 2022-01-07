@@ -8,6 +8,32 @@
 
 #include "parser/LL1.h"
 
+
+// soem helper functions to use when transforming the parse tree
+bool is_punctuation(const dpl::Token<>& tkn, const dpl::Lexicon<>& lexicon) {
+	// a token is considered punctuation if it doesn't hold any semantic information (it's value is just it's type without any other parameters)
+	return std::holds_alternative<dpl::match<>>(lexicon.at(tkn.name).regex.get_variant());
+}
+
+std::optional<dpl::Terminal<>> get_first_terminal(const dpl::RuleRef<>& rule, const dpl::Lexicon<>& lexicon) {
+	for (const auto& symbol : rule.getRule()) {
+		auto* terminal = std::get_if<dpl::Terminal<>>(&symbol);
+
+		// if token represents punctuation
+		if (terminal && std::holds_alternative<dpl::match<>>(lexicon.at(terminal->name).regex.get_variant()))
+			return *terminal;
+	}
+	return std::nullopt;
+}
+
+int count_nodes(const dpl::ParseTree<>& tree) {
+	int count = 1;
+	for (const auto& child : tree.children) {
+		count += count_nodes(child);
+	}
+	return count;
+}
+
 int main() {
 	using namespace dpl::literals;
 
@@ -89,6 +115,69 @@ BEGIN
 	END
 END.
 )s");
+
+	if (!errors.empty()) return -1;
+
+/*
+CONST A = 8, B = 2 ;
+VAR X, Y ;
+BEGIN
+	X := A ;
+	Y := 8 ;
+	IF X < 42 THEN BEGIN
+		Y := X + B ;
+		X := A
+	END
+END.
+*/
+
+	std::cout << "\n\n\nparse tree (" << count_nodes(tree) << ")\n" << tree;
+
+
+	dpl::tree_visit(tree, [&](dpl::ParseTree<>& subtree) {
+		// ignore empty
+		if (subtree.children.empty()) return;
+
+		// lift only-child
+		if (subtree.children.size() == 1) {
+			auto child = subtree[0];
+			subtree = child;
+
+			return;
+		}
+
+		// traversing bottom-up so all inner nodes should be rule refs
+		const auto rule = std::get<dpl::RuleRef<>>(subtree.value);
+
+		// rename tree node (!)
+		auto first_terminal = get_first_terminal(rule, lexicon);
+		if (first_terminal) {
+			dpl::Token<> token{ *first_terminal };
+			token.value = token.name;
+			subtree.value = token;
+		}
+		else subtree.value = rule.get_name();
+
+		int index_in_prod = -1;
+		for (int i = 0; i < subtree.children.size(); i++) {
+			// keep track of the actual index in the production
+			index_in_prod++;
+
+			auto* token = std::get_if<dpl::Token<>>(&subtree[i].value);
+			auto* childrule = std::get_if<dpl::RuleRef<>>(&subtree[i].value);
+
+			// remove redundant punctuations and epsilon productions
+			if (token && is_punctuation(*token, lexicon) && subtree[i].children.empty() || childrule && childrule->getRule().empty()) {
+				subtree.children.erase(subtree.children.begin() + i);
+				i--;
+				continue;
+			}
+		}
+	});
+
+
+
+	std::cout << "\n\n\nAST (" << count_nodes(tree) << ")\n" << tree;
 
 	return 0;
 }

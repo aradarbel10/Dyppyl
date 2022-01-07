@@ -55,7 +55,6 @@ namespace dpl {
 
 		Tree() : is_wildcard(true) {}
 		Tree(T node) : value(node) {}
-		//Tree(std::convertible_to<T> auto&& val) : value(std::forward<decltype(val)>(val)) {}
 		Tree(T node, std::initializer_list<Tree<T>> cs) : value(node), children(cs) {}
 
 		auto& operator[](size_t index) { return children[index]; }
@@ -74,8 +73,6 @@ namespace dpl {
 			if (pattern.is_wildcard) return std::vector{ *this };
 
 			if (!std::visit([]<typename T1, typename T2> (const T1 & lhs, const T2 & rhs) {
-				//static_assert(std::equality_comparable_with<T1, T2>);
-
 				if constexpr (!requires (T1 t1, T2 t2) { t1 == t2; }) return false;
 				else return lhs == rhs;
 			}, pattern.value, value)) return std::nullopt;
@@ -241,47 +238,44 @@ namespace dpl {
 		using tree_type = dpl::ParseTree<grammar_type>;
 
 	private:
+		bool completely_empty;
 		tree_type inner_tree;
 
 	public:
 
-		TopDownTreeBuilder(grammar_type& g) : TreeBuilder<grammar_type>(g) { }
+		TopDownTreeBuilder(grammar_type& g) : TreeBuilder<grammar_type>(g), completely_empty(true) { }
 
 		void pushNode(typename tree_type::node_type node) override {
-			pushNode(node, inner_tree);
+			if (completely_empty) {
+				inner_tree.value = node;
+				completely_empty = false;
+			} else {
+				pushNode(node, inner_tree);
+			}
 		}
 
 		bool pushNode(typename tree_type::node_type node, tree_type& tree) {
-			if (std::holds_alternative<std::monostate>(tree.value)) {
-				tree.value = node;
-
-				if (auto* const prod = std::get_if<RuleRef<grammar_type>>(&tree.value)) {
-					const auto& rule = prod->getRule();
-
-					if (rule.isEpsilonProd()) {
-						tree.children.reserve(1);
-						tree.children.push_back({ std::monostate{} });
-					} else {
-						tree.children.reserve(rule.size());
-						for (int i = 0; i < tree.children.capacity(); i++) {
-							tree.children.push_back(tree_type{});
-						}
-					}
+			if (auto* rule = std::get_if<RuleRef<grammar_type>>(&tree.value)) {
+				// recursively try to insert node to all children in order
+				for (auto& child : tree.children) {
+					if (pushNode(node, child)) return true;
 				}
 
-				return true;
+				// if all children are full, try inserting to itself
+				if (rule->getRule().size() > tree.children.size()) {
+					tree.children.push_back(node);
+					return true;
+				}
 			}
 
-			for (auto& child : tree.children) {
-				if (pushNode(node, static_cast<tree_type&>(child))) return true;
-			}
-
+			// in any other case fail
 			return false;
 		}
 
 		void assignToTree(tree_type& tree) override {
 			tree = std::move(inner_tree);
 			inner_tree = tree_type{};
+			completely_empty = true;
 		}
 	};
 

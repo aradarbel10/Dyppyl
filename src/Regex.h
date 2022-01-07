@@ -358,6 +358,8 @@ namespace dpl {
 			return std::visit([&](auto&& r_) { return r_(iter, end); }, r);
 		}
 
+		const variant_type& get_variant() const { return r; }
+
 	};
 
 	template<typename T>

@@ -173,7 +173,6 @@ namespace dpl{
 			if (options.error_mode == ErrorMode::Panic) fixed_last_error = false;
 		}
 
-		virtual TreeBuilder<grammar_type>& tree_builder() = 0;
 		virtual void operator<<(const token_type&) = 0;
 		virtual void parse_init() = 0;
 		virtual std::set<terminal_type> currently_expected_terminals() const = 0;

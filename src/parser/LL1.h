@@ -125,8 +125,7 @@ namespace dpl{
 		using table_type = dpl::cc::map<terminal_type, dpl::cc::map<nonterminal_type, int>>;
 
 	private:
-		TopDownTreeBuilder<grammar_type> tb;
-		TreeBuilder<grammar_type>& tree_builder() { return tb; }
+		TopDownTreeBuilder<grammar_type> tree_builder;
 
 		out_type next_node;
 		bool next_node_ready = false;
@@ -137,10 +136,10 @@ namespace dpl{
 
 	public:
 		LL1(grammar_type& g, lexicon_type& l, const typename Parser<grammar_type, lexicon_type>::Options& ops = {})
-			: Parser<grammar_type, lexicon_type>(g, l, ops), tb(g), table(g) { }
+			: Parser<grammar_type, lexicon_type>(g, l, ops), tree_builder(g), table(g) { }
 
 		LL1(const LLTable<grammar_type>& t, lexicon_type& l, const typename Parser<grammar_type, lexicon_type>::Options& ops = {})
-			: table(t), Parser<grammar_type, lexicon_type>(t.grammar, l, ops), tb(t.grammar) { }
+			: table(t), Parser<grammar_type, lexicon_type>(t.grammar, l, ops), tree_builder(t.grammar) { }
 
 		const auto& getParseTable() { return table; }
 
@@ -174,10 +173,9 @@ namespace dpl{
 						if (this->options.log_step_by_step)
 							this->options.logprintln("Parser Trace", "Production out: (", nontr, ", ", table[{t, nontr}], ")");
 
-						this->tree_builder().pushNode(RuleRef{ this->grammar, nontr, table[{t, nontr}] });
-
+						tree_builder.pushNode(RuleRef{ this->grammar, nontr, table[{t, nontr}] });
 						parse_stack.pop();
-
+						
 						std::for_each(rule.rbegin(), rule.rend(), [&](const auto& e) {
 							if (const auto* v = std::get_if<terminal_type>(&e)) {
 								parse_stack.push(*v);
@@ -194,22 +192,21 @@ namespace dpl{
 
 				if (const auto* tr = std::get_if<terminal_type>(&parse_stack.top())) {
 					if (*tr == t) {
-
-						if (this->options.log_step_by_step)
-							this->options.logprintln("Parser Trace", "Token out: ", t.stringify());
-
-						this->tree_builder().pushNode(t_);
+						terminal_eliminated = true;
 						parse_stack.pop();
 
-						terminal_eliminated = true;
-
-						if (parse_stack.empty()) {
+						if (tr->type == terminal_type::Type::eof) {
 							if (this->options.log_step_by_step)
 								this->options.logprintln("Parser Trace", "end of parsing");
 
-							this->tree_builder().assignToTree(this->out_tree);
+							tree_builder.assignToTree(this->out_tree);
 
 							return;
+						} else {
+							if (this->options.log_step_by_step)
+								this->options.logprintln("Parser Trace", "Token out: ", t.stringify());
+
+							tree_builder.pushNode(t_);
 						}
 					} else {
 						this->err_unexpected_token(t_);
