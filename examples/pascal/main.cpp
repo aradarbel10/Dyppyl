@@ -7,6 +7,7 @@
 #include "TextStream.h"
 
 #include "parser/LL1.h"
+#include "parser/LALR.h"
 
 
 // soem helper functions to use when transforming the parse tree
@@ -178,6 +179,24 @@ END.
 
 
 	std::cout << "\n\n\nAST (" << count_nodes(tree) << ")\n" << tree;
+
+
+
+
+
+
+
+	std::ofstream fileout;
+
+	fileout.open("LR1_table.html");
+	dpl::LR1 lr1_parser{ grammar, lexicon };
+	lr1_parser.print_parse_table(fileout);
+	fileout.close();
+
+	fileout.open("LALR_table.html");
+	dpl::LALR lalr_parser{ grammar, lexicon };
+	lalr_parser.print_parse_table(fileout);
+	fileout.close();
 
 	return 0;
 }
