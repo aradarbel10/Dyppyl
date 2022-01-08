@@ -19,9 +19,9 @@
 #include "TextStream.h"
 
 #include "parser/LL1.h"
-#include "parser/LR.h"
-
-using namespace dpl::literals;
+#include "parser/LR1.h"
+#include "parser/SLR.h"
+#include "parser/LALR.h"
 
 #define SYMBOLS_MACRO \
 	X(LeftParen, "(") \
@@ -116,6 +116,10 @@ using namespace dpl::literals;
 
 
 int main() {
+
+	using namespace dpl::literals;
+	using namespace std::string_view_literals;
+
 	//#define X(name, symbol) name,
 	//#define Y(name) name,
 	//enum Symbols { SYMBOLS_MACRO };
@@ -134,29 +138,20 @@ int main() {
 	//#undef Y
 
 
-	auto [grammar, lexicon] = (
-		dpl::discard |= dpl::Lexeme{ dpl::kleene{dpl::whitespace}},
 
-		"E"nt	|= ("a"t, "g"t, "d"t)
-				|  ("a"t, "A"nt,"c"t)
-				|  ("b"t, "A"nt,"d"t)
-				|  ("b"t, "g"t, "e"t),
-		"A"nt	|= ("B"nt),
-		"B"nt	|= ("g"t)
-	);
 
-	dpl::LR0 parser{ grammar, lexicon, {
-		.log_step_by_step		= true,
-		.log_parse_tree			= true,
-		.log_errors				= true,
-		.log_tokenizer			= true,
+	//dpl::LR1 parser{ grammar, lexicon, {
+	//	.log_step_by_step		= true,
+	//	.log_parse_tree			= true,
+	//	.log_errors				= true,
+	//	.log_tokenizer			= true,
 
-		.log_grammar			= true,
-		.log_grammar_info		= true,
-		.log_automaton			= true,
+	//	.log_grammar			= true,
+	//	.log_grammar_info		= true,
+	//	.log_automaton			= true,
 
-		.log_to_file			= false,
-	}};
+	//	.log_to_file			= false,
+	//}};
 
 	//auto [tree, errors] = parser.parse(text);
 
@@ -234,43 +229,52 @@ int main() {
 	//std::cout << "Input String: " << src.getString() << "\n";
 	//std::cout << "Result: " << std::get<long double>(tree.get<dpl::Token>().value);
 	//std::cout << "\n\n\n";
-	//
+	
+
+
+
+
+	auto [grammar, lexicon] = (
+		dpl::discard |= dpl::Lexeme{ dpl::kleene{dpl::whitespace}},
+
+		"E"nt	|= ("a"t, "g"t, "d"t)
+				|  ("a"t, "A"nt,"c"t)
+				|  ("b"t, "A"nt,"d"t)
+				|  ("b"t, "g"t, "e"t),
+		"A"nt	|= ("B"nt),
+		"B"nt	|= ("g"t)
+	);
+
+	dpl::LALR lalr_parser{ grammar, lexicon };
 
 
 
 
 
 
-	//
+	//dpl::LR1 parser{ grammar, lexicon, {
+	//	.log_step_by_step	= true,
+	//	.log_errors			= true,
+	//	.log_automaton		= true
+	//} };
+	//auto [tree, errors] = parser.parse("1 + 2 * (3 + 4) * 5");
 
-	//dpl::Grammar grammar2{
-	//	"E"nt	|= ("E"nt, "+"t, "E"nt) & dpl::Assoc::Left & dpl::Prec{5}
-	//			|  ("E"nt, "*"t, "E"nt) & dpl::Assoc::Left & dpl::Prec{10}
-	//			|  ("("t ,"E"nt, ")"t )
-	//			|  (dpl::Terminal::Type::Number)
-	//};
-
-	//dpl::LR1 parser2{ grammar2 };
-	//dpl::StringStream src2{ "1 + 2 * (3 + 4) * 5" };
-	//auto [tree2, errors2] = parser2.parse(src2);
-
-	//tree2.replace_with(
-	//	dpl::ParseTree{ "E", {{"("_sym}, {}, {")"_sym}}},
-	//	[](const dpl::ParseTree& cs) { return cs[1]; }
+	//tree.replace_with(
+	//	dpl::ParseTree<>{ "E"sv, { {"("tkn}, {}, {")"tkn} }},
+	//	[](const dpl::ParseTree<>& cs) { return cs[1]; }
 	//);
 
-	//tree2.replace_with(
-	//	dpl::ParseTree{ "E", { {}, {}, {} } },
-	//	[](const dpl::ParseTree& cs) {
-	//		return dpl::ParseTree{ cs[1].value, {
+	//tree.replace_with(
+	//	dpl::ParseTree<>{ "E", { {}, {}, {} } },
+	//	[](const dpl::ParseTree<>& cs) {
+	//		return dpl::ParseTree<>{ cs[1].value, {
 	//			(cs[0].match({"E"}) ? cs[0][0].value : cs[0]),
 	//			(cs[2].match({"E"}) ? cs[2][0].value : cs[2])
 	//		}};
 	//	}
 	//);
 
-	//std::cout << "Input String: " << src2.getString() << "\n";
-	//std::cout << "\n\nAST:\n" << tree2;
+	//std::cout << "\n\nAST:\n" << tree;
 	
 
 	return 0;

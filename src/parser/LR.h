@@ -38,18 +38,18 @@ namespace dpl {
 
 			// generate parse tables
 			for (int i = 0; i < automaton.states.size(); i++) {
-				auto& [state, transes] = automaton.states[i];
+				const auto& [state, transes] = automaton.states[i];
 
 				auto row = state.getActions(g);
 				for (const auto& [token, action] : row) {
-					if (!addActionEntry(i, token, action) && this->options.log_errors)
-						this->options.logprintln("Errors", "grammar error: Duplicate Action Entries -- Non-LL0 Grammar!");
+					if (!addActionEntry(i, token, action))
+						throw std::exception{ "duplicate entires - grammar/parser mismatch!" };
 				}
 
 				for (const auto& [symbol, dest] : transes) {
 					// #TASK : get these error messages to work
-					if (!addGotoEntry(i, symbol, dest) && this->options.log_errors)
-						this->options.logprintln("Errors", "grammar error: Duplicate Goto Entries -- Non-LL0 Grammar!");
+					if (!addGotoEntry(i, symbol, dest))
+						throw std::exception{ "duplicate entires - grammar/parser mismatch!" };
 				}
 			}
 
@@ -221,9 +221,12 @@ namespace dpl {
 				if (const auto* r = std::get_if<RuleRef<grammar_type>>(&getActionEntry(state, std::get<terminal_type>(t)))) {
 					const auto& rule = r->getRule();
 
-					if (this->grammar.get_terminal_precs().at(terminal) < rule.prec) {
+					auto terminal_prec = this->grammar.get_terminal_precs().find(terminal);
+					if (terminal_prec == this->grammar.get_terminal_precs().end()) return false;
+
+					if (terminal_prec->second < rule.prec) {
 						return true;
-					} else if (this->grammar.get_terminal_precs().at(terminal) == rule.prec) {
+					} else if (terminal_prec->second == rule.prec) {
 						if (rule.assoc == Assoc::Left) {
 							return true;
 						} else if (rule.assoc == Assoc::None) {
@@ -284,8 +287,8 @@ namespace dpl {
 			return production.getRule().size() == pos;
 		}
 
-		auto getStartConfig() const {
-			RuleRef<grammar_type> ruleref(production.get_grammar(), production.get_grammar().get_start_symbol(), 0);
+		static auto getStartConfig(const grammar_type& g) {
+			RuleRef<grammar_type> ruleref(g, g.get_start_symbol(), 0);
 			return Configuration<grammar_type>{ruleref, 0};
 		}
 
@@ -382,7 +385,7 @@ namespace dpl {
 			std::map<terminal_type, typename LR<void>::action_type> result;
 
 			for (const config_type& config : *this) {
-				if (config == config.getStartConfig().toEnd())
+				if (config == config.getStartConfig(g).toEnd())
 					result[terminal_type::Type::wildcard] = std::monostate{};
 				else if (config.atEnd())
 					result[terminal_type::Type::wildcard] = config.production;
@@ -474,7 +477,7 @@ namespace dpl {
 
 			// construct initial state
 			state_type start_state;
-			start_state.push_back(typename state_type::config_type{ {g, g.get_start_symbol(), 0}, 0});
+			start_state.push_back(typename state_type::config_type::getStartConfig(g));
 			states.push_back({ start_state, {} });
 			states.back().first.computeClosure(g);
 

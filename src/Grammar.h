@@ -169,9 +169,12 @@ namespace dpl {
 		friend constexpr std::pair<dpl::Grammar<TokenT_, std::string_view, std::string_view>,
 			dpl::Lexicon<char, TokenT_>> decompose_grammar_lit(dpl::GrammarLit<TokenT_> lit);
 
-		// LR automaton does lots of grammar augmentation
+		// LR automatons do lots of grammar augmentation
 		template<class StateT>
 		friend class LR0Automaton;
+
+		template<typename>
+		friend class LALRAutomaton;
 
 		constexpr void initialize() {
 			calcFirstSets();
@@ -251,9 +254,7 @@ namespace dpl {
 
 		constexpr const auto& augment_start_symbol() {
 			if constexpr (!std::is_same_v<nonterminal_type, std::string_view>) throw std::exception{"cannot augment non-string_view nonterminals"};
-			else {
-				if (contains("S")) throw std::exception{ "start symbol name S already used" };
-
+			else if (!contains("S")) {
 				ntrules.insert({ "S", {"S", {{ start_symbol }}} });
 				start_symbol = "S";
 				return start_symbol;
@@ -265,6 +266,8 @@ namespace dpl {
 	private:
 
 		constexpr void calcFirstSets() {
+			firsts.clear();
+
 			for (const auto& [name, nt] : *this) {
 				firsts.insert({ name, {} });
 
@@ -299,6 +302,8 @@ namespace dpl {
 		}
 
 		constexpr void calcFollowSets() {
+			follows.clear();
+
 			for (const auto& [name, nt] : ntrules) {
 				// #TASK : change loop to "auto& rule : nt" (why doesn't it work in constexpr??)
 				for (int j = 0; j < nt.size(); j++) {
@@ -316,7 +321,7 @@ namespace dpl {
 				}
 			}
 
-			follows.insert({ start_symbol, {} });
+			follows.insert({ ntrules[start_symbol].name, { } });
 			follows[start_symbol].insert(terminal_type{ terminal_type::Type::eof });
 
 			// #TASK : rewrite this huge ass nested loop
@@ -333,7 +338,7 @@ namespace dpl {
 							if (const auto* v = std::get_if<nonterminal_type>(&rule[i])) {
 								auto size_before = follows[*v].size();
 								
-								dpl::ProductionRule rest_of_rule = {};
+								prod_type rest_of_rule = {};
 								for (int k = i + 1; k < rule.size(); k++) {
 									rest_of_rule.push_back(rule[k]);
 								}
@@ -421,6 +426,11 @@ namespace dpl {
 
 		friend bool operator==(const RuleRef& lhs, const RuleRef& rhs) { return (lhs.name == rhs.name) && (lhs.prod == rhs.prod); }
 		operator nonterminal_type() const { return name; }
+
+		template<typename GrammarT>
+		friend inline bool operator<(const RuleRef<GrammarT>& lhs, const RuleRef<GrammarT>& rhs) {
+			return std::tie(lhs.grammar, lhs.name, lhs.prod) < std::tie(rhs.grammar, rhs.name, rhs.prod);
+		}
 	};
 
 	template<typename GrammarT>
@@ -456,7 +466,7 @@ namespace dpl {
 			if (lexicon.contains(lexeme.name)) throw std::exception{ "terminal redefinition" };
 			lexicon.insert({ lexeme.name, lexeme.lex });
 
-			grammar.terminal_precs.insert({ lexeme.name, 0 });
+			
 		}
 
 		// add all grammar rules
@@ -467,24 +477,31 @@ namespace dpl {
 			grammar.ntrules.insert({ ntrule.name, typename grammar_type::ntrule_type{ ntrule.name } });
 			for (const auto& prod : ntrule.prods) {
 				grammar.ntrules[ntrule.name].push_back(typename grammar_type::prod_type{});
-				for (const auto& sym : prod.sentence) {
 
+				for (const auto& sym : prod.sentence) {
 					// add nonterminals as themselves, terminals from the lexicon
 					if (const auto* nonterminal = std::get_if<dpl::NonterminalLit>(&sym)) {
 						grammar.ntrules[ntrule.name].back().push_back(*nonterminal);
 					} else if (const auto* terminal = std::get_if<dpl::TerminalLit>(&sym)) {
-						grammar.terminal_precs.insert({ *terminal, 0 });
+						grammar.ntrules[ntrule.name].back().push_back(typename grammar_type::terminal_type{ *terminal });
 
-						if (lexicon.contains(*terminal)) {
-							grammar.ntrules[ntrule.name].back().push_back(typename grammar_type::terminal_type{ *terminal });
-						} else {
-							// if terminal not in lexicon, add its raw string value
-							grammar.ntrules[ntrule.name].back().push_back(typename grammar_type::terminal_type{ *terminal });
+						// if terminal not in lexicon, add its raw string value
+						if (!lexicon.contains(*terminal)) {
 							lexicon.insert({ *terminal, dpl::Lexeme{ dpl::match{ *terminal } } });
 						}
-
 					} // exhaustive
 				}
+
+				// set precedence of first terminal from end of the rule
+				for (auto iter = prod.sentence.rbegin(); iter != prod.sentence.rend(); ++iter) {
+					if (const auto* terminal = std::get_if<dpl::TerminalLit>(&*iter)) {
+						grammar.terminal_precs.insert({ *terminal, prod.prec });
+					}
+				}
+
+				// set precedence of the rule itself
+				grammar.ntrules[ntrule.name].back().prec = prod.prec;
+				grammar.ntrules[ntrule.name].back().assoc = prod.assoc;
 			}
 		}
 

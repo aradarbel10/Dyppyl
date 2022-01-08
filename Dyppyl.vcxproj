@@ -160,6 +160,7 @@
     <ClInclude Include="src\Grammar.h" />
     <ClInclude Include="src\Lexical.h" />
     <ClInclude Include="src\Logger.h" />
+    <ClInclude Include="src\parser\LALR.h" />
     <ClInclude Include="src\parser\LL1.h" />
     <ClInclude Include="src\parser\LR.h" />
     <ClInclude Include="src\parser\LR1.h" />
