@@ -11,9 +11,12 @@ namespace dpl {
 	template<typename TokenT, typename NonterminalT, typename TerminalNameT>
 	class Grammar;
 
-
-	struct NonterminalLit : public std::string_view {};
-	struct TerminalLit : public std::string_view {};
+	struct NonterminalLit : public std::string_view {
+		TreeModifier modifier{ TreeModifier::None };
+	};
+	struct TerminalLit : public std::string_view {
+		TreeModifier modifier{ TreeModifier::None };
+	};
 
 	using Prec = short;
 
@@ -62,6 +65,28 @@ namespace dpl {
 		}
 	}
 
+	template<typename T>
+	concept ProdLitSymbol =
+		std::is_same_v<T, TerminalLit>
+		|| std::is_same_v<T, NonterminalLit>;
+
+	// symbol modifiers
+	constexpr auto operator~(ProdLitSymbol auto&& symbol) {
+		symbol.modifier = TreeModifier::Hide;
+		return symbol;
+	}
+
+	constexpr auto operator!(ProdLitSymbol auto&& symbol) {
+		symbol.modifier = TreeModifier::Lift;
+		return symbol;
+	}
+
+	constexpr auto operator*(ProdLitSymbol auto&& symbol) {
+		symbol.modifier = TreeModifier::Adopt;
+		return symbol;
+	}
+
+	// production modifiers
 	constexpr auto operator&(ProdLit&& rule, Assoc assoc) {
 		rule.assoc = assoc;
 		return rule;
@@ -72,11 +97,6 @@ namespace dpl {
 		return rule;
 	}
 
-	template<typename T>
-	concept ProdLitSymbol =
-		std::is_same_v<T, TerminalLit>
-		|| std::is_same_v<T, NonterminalLit>;
-
 	constexpr auto operator&(const ProdLitSymbol auto& sym, Assoc assoc) {
 		return ProdLit{ .sentence = {sym}, .assoc = assoc };
 	}
@@ -85,6 +105,7 @@ namespace dpl {
 		return ProdLit{ .sentence = {sym}, .prec = prec };
 	}
 
+	// symbols list to production
 	constexpr auto operator,(const ProdLitSymbol auto& lhs, const ProdLitSymbol auto& rhs) {
 		return ProdLit{{ lhs, rhs }};
 	}
@@ -99,6 +120,7 @@ namespace dpl {
 		|| std::is_same_v<T, TerminalLit>
 		|| std::is_same_v<T, NonterminalLit>;
 
+	// productions list to nonterminal
 	constexpr auto operator|=(const NonterminalLit& name, NtRulesLit&& nt) {
 		nt.name = name;
 		return nt;
@@ -164,6 +186,7 @@ namespace dpl {
 		return lhs;
 	}
 
+	// nonterminals list to grammar
 	constexpr auto operator,(const NtRulesLit& lhs, const NtRulesLit& rhs) {
 		return GrammarLit<void_token_t>{ .rules = { lhs, rhs } };
 	}

@@ -1,14 +1,6 @@
-#include "Regex.h"
-#include "tokenizer/Token.h"
-#include "Lexical.h"
-#include "tokenizer/Tokenizer.h"
+#include <dyppyl.h>
 
-#include "Grammar.h"
-#include "TextStream.h"
-
-#include "parser/LL1.h"
-#include "parser/LALR.h"
-
+#include "treewalk.h"
 
 // soem helper functions to use when transforming the parse tree
 bool is_punctuation(const dpl::Token<>& tkn, const dpl::Lexicon<>& lexicon) {
@@ -45,158 +37,141 @@ int main() {
 		"num"t			|= dpl::Lexeme{dpl::some{dpl::digit}},
 		"add_op"t		|= dpl::Lexeme{dpl::any_of{"+-"}},
 		"mul_op"t		|= dpl::Lexeme{dpl::any_of{"*/"}},
+		"comp"t			|= dpl::Lexeme{dpl::alternatives{
+											dpl::match{"<>"},
+											dpl::match{">="},
+											dpl::match{"<="},
+											dpl::match{"<"},
+											dpl::match{"="},
+											dpl::match{">"}
+										}},
 
 
-		"program"nt		|= ("block"nt, "."t),
+		"program"nt		|= (!"block"nt, ~"."t),
 		"block"nt		|= ("decls"nt, "stmt?"nt),
 
-		"decls"nt		|= ("decl"nt, "decls"nt) | dpl::epsilon,
-		"decl"nt		|= "const"nt | "var"nt | "func"nt,
+		"decls"nt		|= ("decl"nt, *"decls"nt) | dpl::epsilon,
+		"decl"nt		|= !"const"nt | !"var"nt | !"func"nt,
 
-		"const"nt		|= ("CONST"t, "const_def"nt, "const_defs"nt, ";"t),
+		"const"nt		|= (!"CONST"t, "const_def"nt, *"const_defs"nt, ~";"t),
+		"const_defs"nt	|= (~","t, "const_def"nt, *"const_defs"nt) | dpl::epsilon,
+		"const_def"nt	|= ("name"t, !"="t, "num"t),
 
-		"const_defs"nt	|= (","t, "const_def"nt, "const_defs"nt) | dpl::epsilon,
-		"const_def"nt	|= ("name"t, "="t, "num"t),
+		"var"nt			|= (!"VAR"t, "name"t, *"names"nt, ~";"t),
+		"names"nt		|= (~","t, "name"t, *"names"nt) | dpl::epsilon,
 
-		"var"nt			|= ("VAR"t, "name"t, "names"nt, ";"t),
-		"names"nt		|= (","t, "name"t, "names"nt) | dpl::epsilon,
+		"func"nt		|= (!"FUNCTION"t, "name"t, ~"("t, "names_list"nt, ~")"t, "block"nt, ~";"t),
+		"names_list"nt	|= ("name"t, *"names"nt) | dpl::epsilon,
 
-		"func"nt		|= ("FUNCTION"t, "name"t, "("t, "names_list"nt, ")"t, "block"nt, ";"t),
-		"names_list"nt	|= ("name"t, "names"nt) | dpl::epsilon,
+		"expr"nt		|= (!"NOT"t, "expr"nt)
+						|  ("expr"nt, !"mul_op"t, "expr"nt) & dpl::Prec{ 5 } & dpl::Assoc::Left
+						|  ("expr"nt, !"add_op"t, "expr"nt) & dpl::Prec{ 4 } & dpl::Assoc::Left
+						|  ("expr"nt, !"comp"t, "expr"nt) & dpl::Prec{ 3 } & dpl::Assoc::Left
+						|  ("expr"nt, !"AND"t, "expr"nt) & dpl::Prec{ 2 } & dpl::Assoc::Left
+						|  ("expr"nt, !"OR"t, "expr"nt) & dpl::Prec{ 1 } & dpl::Assoc::Left
+						|  (!"ODD"t, "expr"nt)
+						|  (!"name"t)
+						|  (!"name"t, ~"("t, *"exprs_list"nt, ~")"t)
+						|   !"num"t
+						|  (~"("t, !"expr"nt, ~")"t),
+		"exprs_list"nt	|= ("expr"nt, *"exprs"nt) | dpl::epsilon,
+		"exprs"nt		|= (~","t, "expr"nt, *"exprs"nt) | dpl::epsilon,
 
-		"expr"nt		|= ("add_op?"nt, "term"nt, "terms"nt),
-		"add_op?"nt		|=  "add_op"t | dpl::epsilon,
-		"terms"nt		|= ("add_op"t, "term"nt, "terms"nt) | dpl::epsilon,
-
-		"term"nt		|= ("factor"nt, "factors"nt),
-		"factors"nt		|= ("mul_op"t, "factor"nt, "factors"nt) | dpl::epsilon,
-
-		"factor"nt		|= ("name"t, "params"nt)
-						|  "num"t
-						|  ("("t, "expr"nt, ")"t),
-		"params"nt		|= ("("t, "exprs_list"nt, ")"t) | dpl::epsilon,
-		"exprs_list"nt	|= ("expr"nt, "exprs"nt) | dpl::epsilon,
-		"exprs"nt		|= (","t, "expr"nt, "exprs"nt),
-
-		"stmt?"nt		|= "stmt"nt | dpl::epsilon,
-		"stmt"nt		|= ("name"t, ":="t, "expr"nt)
-						|  ("BEGIN"t, "stmts_list"nt, "END"t)
-						|  ("IF"t, "condition"nt, "THEN"t, "stmt"nt)
-						|  ("WHILE"t, "condition"nt, "DO"t, "stmt"nt)
-						|  ("RETURN"t, "expr"nt)
-						|  ("WRITE"t, "expr"nt),
-		"stmts_list"nt	|= ("stmt"nt, "stmts"nt),
-		"stmts"nt		|= (";"t, "stmt"nt, "stmts"nt) | dpl::epsilon,
-
-		"condition"nt	|= ("ODD"t, "expr"nt)
-						|  ("expr"nt, "comp"nt, "expr"nt),
-		"comp"nt		|= "="t | "<>"t | "<"t | "<="t | ">"t | ">="t
+		"stmt?"nt		|= !"stmt"nt | dpl::epsilon,
+		"stmt"nt		|= ("name"t, !":="t, "expr"nt)
+						|  (!"BEGIN"t, *"stmts_list"nt, ~"END"t)
+						|  (!"IF"t, "expr"nt, ~"THEN"t, "stmt"nt)
+						|  (!"WHILE"t, "expr"nt, ~"DO"t, "stmt"nt)
+						|  (!"RETURN"t, "expr"nt)
+						|  (!"WRITE"t, "expr"nt),
+		"stmts_list"nt	|= ("stmt"nt, *"stmts"nt),
+		"stmts"nt		|= (~";"t, "stmt"nt, *"stmts"nt) | dpl::epsilon
 	);
 
 
-	dpl::LL1 parser{ grammar, lexicon, {
-		.log_step_by_step = true,
-		.log_parse_tree = true,
+	dpl::SLR parser{ grammar, lexicon, {
 		.log_errors = true,
 		.log_tokenizer = true,
-
-		.log_grammar_info = true,
 	}};
 
 	auto [tree, errors] = parser.parse(
 R"s(
-CONST A = 8, B = 2 ;
-VAR X, Y ;
+
+
+CONST A = 8, B = 2;
+VAR X, Y;
+
+FUNCTION myfunc(A, B)
+VAR Asqrd, Bsqrd;
+BEGIN
+	Asqrd := A * A;
+	Bsqrd := B * B;
+
+	IF A >= B THEN
+		RETURN (Asqrd + Bsqrd);
+	IF A <  B THEN
+		RETURN (Asqrd - Bsqrd)
+END;
+
 BEGIN
 	X := A ;
 	Y := 8 ;
 	IF X < 42 THEN BEGIN
-		Y := X + B ;
+		Y := myfunc(X - 2 * Y, Y);
 		X := A
 	END
 END.
+
+
 )s");
 
 	if (!errors.empty()) return -1;
 
-/*
-CONST A = 8, B = 2 ;
-VAR X, Y ;
-BEGIN
-	X := A ;
-	Y := 8 ;
-	IF X < 42 THEN BEGIN
-		Y := X + B ;
-		X := A
-	END
-END.
-*/
 
-	std::cout << "\n\n\nparse tree (" << count_nodes(tree) << ")\n" << tree;
+	//dpl::tree_visit(tree, [&](dpl::ParseTree<>& subtree) {
+	//	// ignore empty
+	//	if (subtree.children.empty()) return;
 
+	//	// traversing bottom-up so all inner nodes should be rule refs
+	//	const auto rule = std::get<dpl::RuleRef<>>(subtree.value);
 
-	dpl::tree_visit(tree, [&](dpl::ParseTree<>& subtree) {
-		// ignore empty
-		if (subtree.children.empty()) return;
+	//	// rename tree node (!)
+	//	auto first_terminal = get_first_terminal(rule, lexicon);
+	//	if (first_terminal) {
+	//		dpl::Token<> token{ *first_terminal };
+	//		token.value = token.name;
+	//		subtree.value = token;
+	//	} else subtree.value = rule.get_name();
 
-		// lift only-child
-		if (subtree.children.size() == 1) {
-			auto child = subtree[0];
-			subtree = child;
+	//	int index_in_prod = -1;
+	//	for (int i = 0; i < subtree.children.size(); i++) {
+	//		// keep track of the actual index in the production
+	//		index_in_prod++;
 
-			return;
-		}
+	//		auto* token = std::get_if<dpl::Token<>>(&subtree[i].value);
+	//		auto* childrule = std::get_if<dpl::RuleRef<>>(&subtree[i].value);
 
-		// traversing bottom-up so all inner nodes should be rule refs
-		const auto rule = std::get<dpl::RuleRef<>>(subtree.value);
+	//		// remove redundant punctuations and epsilon productions
+	//		if (token && is_punctuation(*token, lexicon) && subtree[i].children.empty() || childrule && childrule->getRule().empty()) {
+	//			subtree.children.erase(subtree.children.begin() + i);
+	//			i--;
+	//			continue;
+	//		}
+	//	}
 
-		// rename tree node (!)
-		auto first_terminal = get_first_terminal(rule, lexicon);
-		if (first_terminal) {
-			dpl::Token<> token{ *first_terminal };
-			token.value = token.name;
-			subtree.value = token;
-		}
-		else subtree.value = rule.get_name();
-
-		int index_in_prod = -1;
-		for (int i = 0; i < subtree.children.size(); i++) {
-			// keep track of the actual index in the production
-			index_in_prod++;
-
-			auto* token = std::get_if<dpl::Token<>>(&subtree[i].value);
-			auto* childrule = std::get_if<dpl::RuleRef<>>(&subtree[i].value);
-
-			// remove redundant punctuations and epsilon productions
-			if (token && is_punctuation(*token, lexicon) && subtree[i].children.empty() || childrule && childrule->getRule().empty()) {
-				subtree.children.erase(subtree.children.begin() + i);
-				i--;
-				continue;
-			}
-		}
-	});
+	//	// lift only-child
+	//	if (subtree.children.size() == 1) {
+	//		auto child = subtree[0];
+	//		subtree = child;
+	//	}
+	//});
 
 
 
 	std::cout << "\n\n\nAST (" << count_nodes(tree) << ")\n" << tree;
 
-
-
-
-
-
-
-	std::ofstream fileout;
-
-	fileout.open("LR1_table.html");
-	dpl::LR1 lr1_parser{ grammar, lexicon };
-	lr1_parser.print_parse_table(fileout);
-	fileout.close();
-
-	fileout.open("LALR_table.html");
-	dpl::LALR lalr_parser{ grammar, lexicon };
-	lalr_parser.print_parse_table(fileout);
-	fileout.close();
+	TreeWalker interpreter;
+	interpreter.interpret_tree(tree);
 
 	return 0;
 }

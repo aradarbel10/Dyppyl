@@ -10,3 +10,6 @@
 
 #include "parser/LL1.h"
 #include "parser/LR.h"
+#include "parser/SLR.h"
+#include "parser/LALR.h"
+#include "parser/LR1.h"

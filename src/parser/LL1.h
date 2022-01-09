@@ -199,6 +199,7 @@ namespace dpl{
 							if (this->options.log_step_by_step)
 								this->options.logprintln("Parser Trace", "end of parsing");
 
+							tree_builder.pushNode(*tr);
 							tree_builder.assignToTree(this->out_tree);
 
 							return;

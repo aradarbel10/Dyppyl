@@ -13,6 +13,7 @@
 
 namespace dpl {
 	enum class Assoc { None, Left, Right };
+	enum class TreeModifier { None, Hide, Lift, Adopt };
 }
 
 #include "EDSL.h"
@@ -36,6 +37,7 @@ namespace dpl {
 		
 		Assoc assoc = Assoc::None;
 		short prec = 0;
+		std::vector<TreeModifier> tree_modifiers;
 
 		constexpr ProductionRule() = default;
 		constexpr ProductionRule(std::initializer_list<symbol_type> l) : sentence(l) { }
@@ -465,8 +467,6 @@ namespace dpl {
 
 			if (lexicon.contains(lexeme.name)) throw std::exception{ "terminal redefinition" };
 			lexicon.insert({ lexeme.name, lexeme.lex });
-
-			
 		}
 
 		// add all grammar rules
@@ -490,6 +490,8 @@ namespace dpl {
 							lexicon.insert({ *terminal, dpl::Lexeme{ dpl::match{ *terminal } } });
 						}
 					} // exhaustive
+
+					std::visit([&](const auto& symbol) { grammar.ntrules[ntrule.name].back().tree_modifiers.push_back(symbol.modifier); }, sym);
 				}
 
 				// set precedence of first terminal from end of the rule
@@ -499,7 +501,7 @@ namespace dpl {
 					}
 				}
 
-				// set precedence of the rule itself
+				// set properties of the rule itself
 				grammar.ntrules[ntrule.name].back().prec = prod.prec;
 				grammar.ntrules[ntrule.name].back().assoc = prod.assoc;
 			}

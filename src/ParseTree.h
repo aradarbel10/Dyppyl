@@ -10,6 +10,7 @@
 #include <optional>
 #include <span>
 #include <type_traits>
+#include <stack>
 
 // #TASK : improve this macro into a mini-edsl
 #define call_by_traversal_order(root, children, ord)	\
@@ -53,7 +54,7 @@ namespace dpl {
 	
 		using node_type = T;
 
-		Tree() : is_wildcard(true) {}
+		Tree() = default;
 		Tree(T node) : value(node) {}
 		Tree(T node, std::initializer_list<Tree<T>> cs) : value(node), children(cs) {}
 
@@ -69,13 +70,35 @@ namespace dpl {
 			return (lhs.value == rhs.value) && (lhs.children == rhs.children);
 		}
 
+		void apply_modifiers(const std::vector<TreeModifier>& modifiers) {
+			int child_index = 0;
+
+			for (auto modifier : modifiers) {
+				if (modifier == TreeModifier::None) {
+					child_index++;
+				} else if (modifier == TreeModifier::Hide) {
+					children.erase(children.begin() + child_index);
+				} else {
+					if (modifier == TreeModifier::Lift) {
+						value = children[child_index].value;
+					} // else it's TreeModifier::Adopt, just keep going
+
+					int grandchildren_count = children[child_index].children.size();
+					children.insert(children.begin() + child_index, children[child_index].children.begin(), children[child_index].children.end());
+					child_index += grandchildren_count;
+					children.erase(children.begin() + child_index);
+				}
+			}
+		}
+
 		std::optional<std::vector<Tree<T>>> match(const Tree<T>& pattern) const {
 			if (pattern.is_wildcard) return std::vector{ *this };
 
-			if (!std::visit([]<typename T1, typename T2> (const T1 & lhs, const T2 & rhs) {
-				if constexpr (!requires (T1 t1, T2 t2) { t1 == t2; }) return false;
-				else return lhs == rhs;
-			}, pattern.value, value)) return std::nullopt;
+			if constexpr (requires { pattern.value != value; }) {
+				if (pattern.value != value)
+					return std::nullopt;
+			} else return std::nullopt;
+				
 
 			if (pattern.children.size() != children.size()) {
 				if (pattern.children.size() != 0) return std::nullopt;
@@ -145,7 +168,6 @@ namespace dpl {
 	}
 
 
-
 	template<typename GrammarT = dpl::Grammar<>>
 	using ParseTree = dpl::Tree<std::variant<
 		std::monostate,
@@ -201,8 +223,8 @@ namespace dpl {
 			sub_trees.emplace_back(tree);
 		}
 
-		void packTree(tree_type::node_type tree, size_t n) {
-			auto new_root = tree_type{ tree };
+		void packTree(tree_type::node_type node, size_t n) {
+			auto new_root = tree_type{ node };
 
 			for (int i = 0; i < n; i++) {
 				new_root.children.emplace_back(std::move(sub_trees.back()));
@@ -211,6 +233,10 @@ namespace dpl {
 			std::reverse(new_root.children.begin(), new_root.children.end());
 
 			sub_trees.emplace_back(std::move(new_root));
+
+			if (auto* rule = std::get_if<RuleRef<grammar_type>>(&node)) {
+				sub_trees.back().apply_modifiers(rule->getRule().tree_modifiers);
+			}
 		}
 
 		void pushNode(typename tree_type::node_type node) override {
@@ -238,44 +264,39 @@ namespace dpl {
 		using tree_type = dpl::ParseTree<grammar_type>;
 
 	private:
-		bool completely_empty;
 		tree_type inner_tree;
+		std::stack<tree_type*> last_inserted;
 
 	public:
 
-		TopDownTreeBuilder(grammar_type& g) : TreeBuilder<grammar_type>(g), completely_empty(true) { }
+		TopDownTreeBuilder(grammar_type& g) : TreeBuilder<grammar_type>(g) {}
 
 		void pushNode(typename tree_type::node_type node) override {
-			if (completely_empty) {
+			if (last_inserted.empty()) {
 				inner_tree.value = node;
-				completely_empty = false;
-			} else {
-				pushNode(node, inner_tree);
+				last_inserted.push(&inner_tree);
+				return;
 			}
-		}
-
-		bool pushNode(typename tree_type::node_type node, tree_type& tree) {
-			if (auto* rule = std::get_if<RuleRef<grammar_type>>(&tree.value)) {
-				// recursively try to insert node to all children in order
-				for (auto& child : tree.children) {
-					if (pushNode(node, child)) return true;
-				}
-
-				// if all children are full, try inserting to itself
-				if (rule->getRule().size() > tree.children.size()) {
-					tree.children.push_back(node);
-					return true;
+			
+			if (auto* rule = std::get_if<RuleRef<grammar_type>>(&last_inserted.top()->value)) {
+				if (last_inserted.top()->children.size() < rule->getRule().size()) {
+					last_inserted.top()->children.push_back(node);
+					last_inserted.push(&last_inserted.top()->children.back());
+					return;
+				} else {
+					last_inserted.top()->apply_modifiers(rule->getRule().tree_modifiers);
 				}
 			}
 
-			// in any other case fail
-			return false;
+			last_inserted.pop();
+			if (!last_inserted.empty()) pushNode(node);
 		}
 
 		void assignToTree(tree_type& tree) override {
 			tree = std::move(inner_tree);
 			inner_tree = tree_type{};
-			completely_empty = true;
+			
+			std::stack<tree_type*>{}.swap(last_inserted);
 		}
 	};
 
