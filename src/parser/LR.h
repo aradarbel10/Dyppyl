@@ -7,7 +7,6 @@
 #include "Parser.h"
 
 #include <stack>
-#include <format>
 
 namespace dpl {
 	template<class AutomatonT, typename GrammarT = dpl::Grammar<>, typename LexiconT = dpl::Lexicon<>>
@@ -43,13 +42,13 @@ namespace dpl {
 				auto row = state.getActions(g);
 				for (const auto& [token, action] : row) {
 					if (!addActionEntry(i, token, action))
-						throw std::exception{ "duplicate entires - grammar/parser mismatch!" };
+						throw std::exception{}; // duplicate entires - grammar/parser mismatch!
 				}
 
 				for (const auto& [symbol, dest] : transes) {
 					// #TASK : get these error messages to work
 					if (!addGotoEntry(i, symbol, dest))
-						throw std::exception{ "duplicate entires - grammar/parser mismatch!" };
+						throw std::exception{}; // duplicate entires - grammar/parser mismatch!
 				}
 			}
 
@@ -84,8 +83,8 @@ namespace dpl {
 		}
 		
 		void parse_init() override {
-			std::stack<state_type>{}.swap(parse_stack); // clear stack
-			parse_stack.push(0);
+			decltype(parse_stack){}.swap(parse_stack); // clear stack
+			parse_stack.push_back(0);
 		}
 
 		void operator<<(const token_type& t_) {
@@ -93,14 +92,14 @@ namespace dpl {
 
 			if (this->options.error_mode == ErrorMode::Panic && !this->fixed_last_error) {
 				size_t states_to_pop = 0;
-				for (auto state = parse_stack._Get_container().rbegin(); state != parse_stack._Get_container().rend(); state++) {
+				for (auto state = parse_stack.rbegin(); state != parse_stack.rend(); state++) {
 					if (hasActionEntry(*state, t) || hasGotoEntry(*state, t))
 						break;
 					else states_to_pop++;
 				}
 
 				if (states_to_pop != parse_stack.size()) {
-					for (int i = 0; i < states_to_pop; i++) parse_stack.pop();
+					for (int i = 0; i < states_to_pop; i++) parse_stack.pop_back();
 					this->fixed_last_error = true;
 				} else {
 					return;
@@ -111,14 +110,14 @@ namespace dpl {
 			do {
 
 				// #TASK : make sure stack is non-empty
-				if (!hasActionEntry(parse_stack.top(), t)) { // not contains means the action is shift
-					if (!hasGotoEntry(parse_stack.top(), t)) {
+				if (!hasActionEntry(parse_stack.back(), t)) { // not contains means the action is shift
+					if (!hasGotoEntry(parse_stack.back(), t)) {
 						this->err_unexpected_token(t_);
 						return;
 					}
 
-					state_type new_state = getGotoEntry(parse_stack.top(), t);
-					parse_stack.push(new_state);
+					state_type new_state = getGotoEntry(parse_stack.back(), t);
+					parse_stack.push_back(new_state);
 
 					terminal_eliminated = true;
 
@@ -126,24 +125,24 @@ namespace dpl {
 						this->options.logprintln("Parser Trace", "Shift: ", t.stringify(), ", goto ", new_state);
 
 					tree_builder().pushNode(t_);
-				} else if (const auto* prod = std::get_if<RuleRef<grammar_type>>(&getActionEntry(parse_stack.top(), t))) { // reduce action
+				} else if (const auto* prod = std::get_if<RuleRef<grammar_type>>(&getActionEntry(parse_stack.back(), t))) { // reduce action
 					const typename grammar_type::prod_type& rule = prod->getRule();
 
-					for (int i = 0; i < rule.size(); i++) parse_stack.pop();
+					for (int i = 0; i < rule.size(); i++) parse_stack.pop_back();
 
-					if (!hasGotoEntry(parse_stack.top(), prod->get_name())) {
+					if (!hasGotoEntry(parse_stack.back(), prod->get_name())) {
 						this->err_unexpected_token(t_);
 						return;
 					}
 
-					state_type new_state = getGotoEntry(parse_stack.top(), prod->get_name());
-					parse_stack.push(new_state);
+					state_type new_state = getGotoEntry(parse_stack.back(), prod->get_name());
+					parse_stack.push_back(new_state);
 
 					if (this->options.log_step_by_step)
 						this->options.logprintln("Parser Trace", "Reduce: ", rule, ", goto ", new_state);
 
 					tree_builder().pushNode(*prod);
-				} else if (std::holds_alternative<accept_action>(getActionEntry(parse_stack.top(), t_))) { // accept
+				} else if (std::holds_alternative<accept_action>(getActionEntry(parse_stack.back(), t_))) { // accept
 					terminal_eliminated = true;
 
 					this->tree_builder().assignToTree(this->out_tree);
@@ -162,8 +161,8 @@ namespace dpl {
 
 			std::set<terminal_type> result;
 
-			if (goto_table.contains(parse_stack.top())) {
-				const auto& row = goto_table.at(parse_stack.top());
+			if (goto_table.contains(parse_stack.back())) {
+				const auto& row = goto_table.at(parse_stack.back());
 				for (const auto& [symbol, state] : row) {
 					if (const auto* terminal = std::get_if<terminal_type>(&symbol)) {
 						result.insert(*terminal);
@@ -171,8 +170,8 @@ namespace dpl {
 				}
 			}
 
-			if (action_table.contains(parse_stack.top())) {
-				const auto& row = action_table.at(parse_stack.top());
+			if (action_table.contains(parse_stack.back())) {
+				const auto& row = action_table.at(parse_stack.back());
 				for (const auto& [terminal, action] : row) {
 					result.insert(terminal);
 				}
@@ -260,7 +259,7 @@ namespace dpl {
 
 	protected:
 
-		bool hasGotoEntry(state_type state, const typename symbol_type& t) {
+		bool hasGotoEntry(state_type state, const symbol_type& t) {
 			return goto_table.contains(state) && goto_table[state].contains(t);
 		}
 
@@ -268,7 +267,7 @@ namespace dpl {
 			return action_table.contains(state) && action_table[state].contains(t);
 		}
 
-		state_type& getGotoEntry(state_type state, const typename symbol_type& t) {
+		state_type& getGotoEntry(state_type state, const symbol_type& t) {
 			return goto_table[state][t];
 		}
 
@@ -331,7 +330,7 @@ namespace dpl {
 		std::unordered_map<state_type, std::map<terminal_type, action_type>> action_table;
 
 		state_type initial_state = -1;
-		std::stack<state_type> parse_stack;
+		std::deque<state_type> parse_stack;
 
 	};
 
@@ -415,7 +414,6 @@ namespace dpl {
 				// iterate through all configurations in state
 				for (int i = 0; i < size(); i++) {
 					const config_type& config = (*this)[i];
-					const typename grammar_type::prod_type& rule = config.production.getRule();
 
 					const auto new_configs = computeConfigClosure(g, config);
 					
@@ -549,7 +547,7 @@ namespace dpl {
 
 			// construct initial state
 			state_type start_state;
-			start_state.push_back(typename state_type::config_type::getStartConfig(g));
+			start_state.push_back(state_type::config_type::getStartConfig(g));
 			states.push_back({ start_state, {} });
 			states.back().first.computeClosure(g);
 

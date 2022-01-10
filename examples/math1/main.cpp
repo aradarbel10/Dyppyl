@@ -1,4 +1,4 @@
-#include <dyppyl.h>
+#include "../src/dyppyl.h"
 
 int main() {
 	using namespace dpl::literals;
@@ -6,7 +6,9 @@ int main() {
 	auto [grammar, lexicon] = ( // context free grammar
 		dpl::discard |= dpl::Lexeme{ dpl::kleene{dpl::whitespace} },
 
-		"num"t  |= dpl::Lexeme{ dpl::some{dpl::digit}, [](std::string_view str) -> long double { return dpl::from_string<int>(str); } },
+		"num"t  |= dpl::Lexeme{ dpl::some{dpl::digit}, [](std::string_view str) -> long double {
+			return dpl::from_string<int>(str);
+		}},
 
 		"E"nt	|= ("("t, "E"nt, "Op"nt, "E"nt, ")"t)
 				|  ("num"t),
@@ -40,6 +42,7 @@ int main() {
 			continue;
 		}
 		
+		std::cout << "\n\nParse Tree:\n" << tree << "\n\n";
 
 		tree.replace_with(
 			dpl::ParseTree<>{ dpl::RuleRef{"E", 1} },
@@ -58,9 +61,9 @@ int main() {
 				long double lhs = std::get<long double>(std::get<dpl::Token<>>(tree[0].value).value);
 				long double rhs = std::get<long double>(std::get<dpl::Token<>>(tree[1].value).value);
 
-				if (tree.match({ "+" }))
+				if (tree.match({ "+"tkn }))
 					tree = dpl::ParseTree<>{ dpl::Token<>{ "num", lhs + rhs } };
-				else if (tree.match({ "*" }))
+				else if (tree.match({ "*"tkn }))
 					tree = dpl::ParseTree<>{ dpl::Token<>{ "num", lhs * rhs } };
 			}
 		});

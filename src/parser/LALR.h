@@ -45,7 +45,6 @@ namespace dpl {
 			return spell_state;
 		}
 
-		template<typename GrammarT = dpl::Grammar<>>
 		struct VirtualState {
 		private:
 			using grammar_type = GrammarT;
@@ -77,7 +76,6 @@ namespace dpl {
 			}
 		};
 
-		template<typename GrammarT = dpl::Grammar<>>
 		struct VirtualStates {
 		private:
 			using grammar_type = GrammarT;
@@ -90,11 +88,11 @@ namespace dpl {
 			}
 			auto operator[](size_t index) const {
 				const auto& transes = automaton->lr0_automaton.states[index].second;
-				return std::pair{ VirtualState<grammar_type>{ automaton, index }, transes };
+				return std::pair{ VirtualState{ automaton, index }, transes };
 			}
 		};
 	public:
-		VirtualStates<grammar_type> states{ this };
+		VirtualStates states{ this };
 
 		LALRAutomaton(grammar_type& grammar) : lr0_automaton(grammar) {
 			// construct augmented grammar

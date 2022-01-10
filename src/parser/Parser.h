@@ -96,7 +96,7 @@ namespace dpl{
 					std::time_t now_time = std::chrono::system_clock::to_time_t(now);
 
 					struct tm buf;
-					localtime_s(&buf, &now_time);
+					// localtime_r(&buf, &now_time); // #TASK : nonstandard, replace!
 
 					log_dest = new std::ofstream(this->log_dir);
 
@@ -149,7 +149,7 @@ namespace dpl{
 					options.logprint("Grammar", "\n", nonterminal, ": ", terminals);
 				}
 
-				options.logprint("Grammar", "\n\n\Follow Sets:");
+				options.logprint("Grammar", "\n\nFollow Sets:");
 				for (const auto& [nonterminal, terminals] : grammar.get_follows()) {
 					options.logprint("Grammar", "\n", nonterminal, ": ", terminals);
 				}

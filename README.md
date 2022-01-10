@@ -1,5 +1,5 @@
 # Dyppyl
-A compiler generator written in modern C++.
+A parser generator library written in modern C++.
 
 <img src="promotional/logo.png" alt="logo" width="250">
 
@@ -12,39 +12,25 @@ auto [grammar, lexicon] = (
 
 	"num"t	|= dpl::Lexeme{ dpl::some{dpl::digit}, [](std::string_view str) -> double { return dpl::stod(str); } },
 
-	"E"nt	|= ("E"nt, "+"t, "E"nt) & dpl::Assoc::Left, dpl::Prec{5}
-			|  ("E"nt, "*"t, "E"nt) & dpl::Assoc::Left, dpl::Prec{10}
-			|  ("("t, "E"nt, ")"t)
-			|  ("num"t)
+	"E"nt	|= ("E"nt, !"+"t, "E"nt) & dpl::Assoc::Left, dpl::Prec{5}
+			|  ("E"nt, !"*"t, "E"nt) & dpl::Assoc::Left, dpl::Prec{10}
+			|  (~"("t, "E"nt, ~")"t)
+			|  (!"num"t)
 );
 dpl::LR1 parser{ grammar, lexicon };
 
 // use parser
 dpl::ParseTree tree = parser2.parse("1 + 2 * (3 + 4) * 5");
-
-// transform from parse tree to AST
-tree.replace_with(
-	dpl::ParseTree{ "E", {{"("_sym}, {}, {")"_sym}}},
-	[](const std::vector<dpl::ParseTree>& cs) { return cs[0]; }
-);
-
-tree.replace_with(
-	dpl::ParseTree{ "E", {{}, {}, {}} },
-	[](const std::vector<dpl::ParseTree>& cs) {
-		return dpl::ParseTree{ cs[1].value, {
-			(cs[0].match({"E"}) ? cs[0][0].value : cs[0]),
-			(cs[2].match({"E"}) ? cs[2][0].value : cs[2])
-		}};
-	},
-	dpl::TraverseOrder::BottomUp
-);
 ```
 
 ## What is Dyppyl?
 
-Dyppyl is a compiler-generator library written with modern C++ features.
+Dyppyl is a compiler-generator library written with modern C++20 features.
 Usually you'd hear about parser generators, so what's a *compiler* generator?
-Dyppyl is mostly just a parser generator, but also includes a suite of tools dedicated specifically for compiler construction.
+It is mostly just a *parser generator*, but also includes a suite of tools dedicated specifically for *compiler construction*.
+
+It's meant to be better than other parser generators by being more readable and much easier to learn & use.
+Additionally, with Dyppyl being a library, the grammar description happens directly inside your C++ source, so it's very convenient to integrate to your projects. In the future it is planned to support *compile-time parser construction* as to avoid the (usually small) runtime overhead imposed by the library.
 
 ## How's progress?
 
@@ -55,7 +41,7 @@ Here's the roadmap for Dyppyl's development (keep in mind it's always changing a
 	- [x] LR(0)
 	- [x] LR(1)
 	- [x] SLR(1)
-	- [ ] LALR(1)
+	- [x] LALR(1)
 	- [ ] LL(k)
 	- [ ] GLR
 - [x] embedded grammar specification language
@@ -74,7 +60,7 @@ Here's the roadmap for Dyppyl's development (keep in mind it's always changing a
 	- [ ] optimization passes
 
 For detailed progress plans see this very half-assed [Trello board](https://trello.com/b/u2pzCbZc/dyppyl#).
-(cards are ordered left-to-right top-to-bottom from highest priority to lowest).
+(cards are roughly ordered left-to-right top-to-bottom from highest priority to lowest).
 
 ## How does it work?
 
@@ -93,7 +79,7 @@ Notice the code is divided into many different files (for example, different fil
 The repository doesn't follow any particular formatting style. You are always welcome to contribute examples, fixes, etc... For larger features you should talk to me so we can work together!
 
 ## Some Old Examples
-These are a little outdated by now, but I keep them here anyway.
+These are quite outdated by now, but I keep them here anyway.
 #### LL(1) Grammar in-code with generated parse tree
 ![LL1 example](promotional/LL1.png)
 

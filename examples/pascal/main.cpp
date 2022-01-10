@@ -71,7 +71,7 @@ int main() {
 						|  ("expr"nt, !"OR"t, "expr"nt) & dpl::Prec{ 1 } & dpl::Assoc::Left
 						|  (!"ODD"t, "expr"nt)
 						|  (!"name"t)
-						|  (!"name"t, ~"("t, *"exprs_list"nt, ~")"t)
+						|  (!"name"t, ~"("t, "exprs_list"nt, ~")"t)
 						|   !"num"t
 						|  (~"("t, !"expr"nt, ~")"t),
 		"exprs_list"nt	|= ("expr"nt, *"exprs"nt) | dpl::epsilon,
@@ -165,7 +165,6 @@ END.
 	//		subtree = child;
 	//	}
 	//});
-
 
 
 	std::cout << "\n\n\nAST (" << count_nodes(tree) << ")\n" << tree;

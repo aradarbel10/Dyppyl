@@ -9,7 +9,7 @@
 #include <map>
 #include <string_view>
 #include <variant>
-#include <any>
+#include <iostream>
 
 #include <iostream>
 #include "../Logger.h"
@@ -26,7 +26,7 @@ namespace dpl {
 
 		constexpr Terminal() = default;
 		constexpr Terminal(Type t_) : type(t_) {};
-		constexpr Terminal(name_type name_) : name(name_), type(Type::value) {}
+		constexpr Terminal(name_type name_) : type(Type::value), name(name_) {}
 
 		constexpr bool is_wildcard() const { return type == Type::wildcard; }
 		constexpr bool is_eof() const { return type == Type::eof; }
@@ -119,7 +119,7 @@ namespace std {
 	public:
 		//credit to boost::hash_combine
 		std::size_t operator()(dpl::Token<T, S> const& t) const noexcept {
-			size_t intermediate = std::hash<dpl::Terminal<S>>{}(static_cast<dpl::Terminal>(t));
+			size_t intermediate = std::hash<dpl::Terminal<S>>{}(static_cast<dpl::Terminal<S>>(t));
 			intermediate ^= std::hash<typename dpl::Token<T, S>::value_type>{}(t.value)
 				+ 0x9e3779b9 + (intermediate << 6) + (intermediate >> 2);
 			return intermediate;

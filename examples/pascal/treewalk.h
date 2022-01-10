@@ -40,16 +40,16 @@ public:
 		using val_type = IRTree*;
 
 	private:
-		std::stack<std::vector<std::pair<key_type, val_type>>> scopes;
+		std::deque<std::vector<std::pair<key_type, val_type>>> scopes;
 
 	public:
-		void enter_scope() { scopes.push({}); }
-		void exit_scope() { scopes.pop(); }
+		void enter_scope() { scopes.push_back({}); }
+		void exit_scope() { scopes.pop_back(); }
 
 		const auto& get_scopes() const { return scopes; }
 
 		std::optional<val_type> lookup(key_type key) const {
-			for (auto iter = scopes._Get_container().rbegin(); iter != scopes._Get_container().rend(); ++iter) {
+			for (auto iter = scopes.rbegin(); iter != scopes.rend(); ++iter) {
 				auto entry = std::find_if(iter->rbegin(), iter->rend(), [&](const auto& p) {
 					return p.first == key;
 				});
@@ -60,7 +60,7 @@ public:
 		}
 
 		void insert(key_type key, val_type val) {
-			scopes.top().push_back({ key, val });
+			scopes.back().push_back({ key, val });
 		}
 
 		std::optional<val_type> lookup_or_insert(key_type key, val_type val) {
@@ -101,10 +101,24 @@ private:
 
 		if (tree.value.tkn.name == "name"t) {
 			auto result = symbol_table.lookup(tree.value.get_str());
-			if (!result) throw std::exception{ "use of undefined identifier" };
+			if (!result) throw std::runtime_error{ "use of undefined identifier" };
 
-			tree.value.typetag = TypeTag::Int;
 			tree.value.symbol_addr = *result;
+			tree.value.typetag = TypeTag::Int;
+
+			if (tree.children.empty()) {
+				if ((*result)->value.typetag == TypeTag::Func) throw std::runtime_error{ "missing parameter list" };
+			} else {
+				auto& params = tree.children[0];
+
+				for (auto& param : params.children) {
+					resolve_symbols(param);
+					if (param.value.typetag != TypeTag::Int) throw std::runtime_error{ "cant pass non-integer parameters to function" };
+				}
+
+				if (tree[0].children.size() != (**result)[1].children.size())
+					throw std::runtime_error{ "wrong amount of parameters" };
+			}
 		} else if (tree.value.tkn.name == "num"t) {
 			tree.value.typetag = TypeTag::Int;
 		} else if (tree.value.tkn.name == "add_op"t || tree.value.tkn.name == "mul_op"t || tree.value.tkn.name == "comp"t) {
@@ -115,7 +129,7 @@ private:
 			resolve_symbols(rhs);
 
 			if (lhs.value.typetag != TypeTag::Int || rhs.value.typetag != TypeTag::Int)
-				throw std::exception{"cannot perform arithmeric on non-integer operands"};
+				throw std::runtime_error{"cannot perform arithmeric on non-integer operands"};
 
 			tree.value.typetag = (tree.value.tkn.name == "comp"t ? TypeTag::Bool : TypeTag::Int);
 		} else if (tree.value.tkn == "block"tkn) {
@@ -165,7 +179,7 @@ private:
 
 			resolve_symbols(lhs);
 			resolve_symbols(rhs);
-			if (rhs.value.typetag != TypeTag::Int) throw std::exception{"cannot assign non-integer values"};
+			if (rhs.value.typetag != TypeTag::Int) throw std::runtime_error{"cannot assign non-integer values"};
 		} else if (tree.value.tkn == "BEGIN"tkn) {
 			symbol_table.enter_scope();
 			for (auto& stmt : tree.children)
@@ -177,13 +191,13 @@ private:
 			auto& body = tree.children[1];
 
 			resolve_symbols(cond);
-			if (cond.value.typetag != TypeTag::Bool) throw std::exception{"branch condition must be a boolean"};
+			if (cond.value.typetag != TypeTag::Bool) throw std::runtime_error{"branch condition must be a boolean"};
 		
 			symbol_table.enter_scope();
 			resolve_symbols(body);
 			symbol_table.exit_scope();
 		} else if (tree.value.tkn == "RETURN"tkn) {
-			const auto& scopes = symbol_table.get_scopes()._Get_container();
+			const auto& scopes = symbol_table.get_scopes();
 			auto& expr = tree.children[0];
 
 			for (auto iter = scopes.rbegin(); iter != scopes.rend(); ++iter) {
@@ -194,12 +208,33 @@ private:
 			}
 
 			resolve_symbols(expr);
-			if (expr.value.typetag != TypeTag::Int) throw std::exception{"cant return non-integer value"};
+			if (expr.value.typetag != TypeTag::Int) throw std::runtime_error{"cant return non-integer value"};
 		} else if (tree.value.tkn == "WRITE"tkn) {
 			auto& expr = tree.children[0];
 			resolve_symbols(expr);
+		} else if (tree.value.tkn == "NOT"tkn) {
+			auto& expr = tree.children[0];
+			resolve_symbols(expr);
+			if (expr.value.typetag != TypeTag::Bool) throw std::runtime_error{"cant negate non-boolean value"};
+			tree.value.typetag = TypeTag::Bool;
+		} else if (tree.value.tkn == "ODD"tkn) {
+			auto& expr = tree.children[0];
+			resolve_symbols(expr);
+			if (expr.value.typetag != TypeTag::Int) throw std::runtime_error{"cant test parity of non-integer value"};
+			tree.value.typetag = TypeTag::Bool;
+		} else if (tree.value.tkn == "AND"tkn || tree.value.tkn == "OR"tkn) {
+			auto& lhs = tree.children[0];
+			auto& rhs = tree.children[1];
+
+			resolve_symbols(lhs);
+			resolve_symbols(rhs);
+
+			if (lhs.value.typetag != TypeTag::Bool || rhs.value.typetag != TypeTag::Bool)
+				throw std::runtime_error{ "cannot perform boolean operators on non-boolean operands" };
+
+			tree.value.typetag = TypeTag::Bool;
 		} else {
-			throw std::exception{"unhandled case"};
+			throw std::runtime_error{"unhandled case"};
 		}
 	}
 

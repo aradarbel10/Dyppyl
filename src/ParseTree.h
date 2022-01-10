@@ -11,6 +11,7 @@
 #include <span>
 #include <type_traits>
 #include <stack>
+#include <ranges>
 
 // #TASK : improve this macro into a mini-edsl
 #define call_by_traversal_order(root, children, ord)	\
@@ -109,7 +110,7 @@ namespace dpl {
 			for (int i = 0; i < children.size(); i++) {
 				auto subchildren = children[i].match(pattern.children[i]);
 
-				if (subchildren) std::ranges::for_each(*subchildren, [&](Tree<T>& child) { result.push_back(std::move(child)); });
+				if (subchildren) std::for_each(subchildren->begin(), subchildren->end(), [&](Tree<T>& child) { result.push_back(std::move(child)); });
 				else return std::nullopt;
 			}
 

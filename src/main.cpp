@@ -16,108 +16,19 @@
 #include "tokenizer/Tokenizer.h"
 
 #include "Grammar.h"
-#include "TextStream.h"
+
 
 #include "parser/LL1.h"
+#include "parser/LR.h"
 #include "parser/LR1.h"
 #include "parser/SLR.h"
 #include "parser/LALR.h"
-
-#define SYMBOLS_MACRO \
-	X(LeftParen, "(") \
-	X(RightParen, ")") \
-	X(LeftCurly, "{") \
-	X(RightCurly, "}") \
-	X(LeftSquare, "[") \
-	X(RightSquare, "]") \
-	X(LeftAngle, "<") \
-	X(RightAngle, ">") \
-	X(LeftShift, "<<") \
-	X(RightShift, ">>") \
-	X(LeftRotate, "-<<") \
-	X(RightRotate, "->>") \
-	X(Tick, "`") \
-	X(Tilda, "~") \
-	X(Exclamation, "!") \
-	X(At, "@") \
-	X(Hash, "#") \
-	X(Dollar, "$") \
-	X(Percentage, "%") \
-	X(Caret, "^") \
-	X(DoubleCaret, "^^") \
-	X(Ampersand, "&") \
-	X(DoubleAmpersand, "&&") \
-	X(Asterisk, "*") \
-	X(DoubleAsterisk, "**") \
-	X(Minus, "-") \
-	X(MinusMinus, "--") \
-	X(Plus, "+") \
-	X(PlusPlus, "++") \
-	X(UprightSlash, "|") \
-	X(DoubleUprightSlash, "||") \
-	X(Equal, "=") \
-	X(DoubleEqual, "==") \
-	X(TripleEqual, "===") \
-	X(TildaEqual, "~=") \
-	X(ExclamationEqual, "!=") \
-	X(PercentageEqual, "%=") \
-	X(CaretEqual, "^=") \
-	X(AmpersandEqual, "&=") \
-	X(AsteriskEqual, "*=") \
-	X(MinusEqual, "-=") \
-	X(PlusEqual, "+=") \
-	X(UprightSlashEqual, "|=") \
-	X(SlashEqual, "/=") \
-	X(LessEqual, "<=") \
-	X(GreaterEqual, ">=") \
-	X(Spaceship, "<=>") \
-	X(LeftShiftEqual, "<<=") \
-	X(RightShiftEqual, ">>=") \
-	X(LeftRotateEqual, "-<<=") \
-	X(RightRotateEqual, "->>=") \
-	X(ColonEqual, ":=") \
-	X(Colon, ":") \
-	X(DoubleColon, "::") \
-	X(Semicolon, ";") \
-	X(Comma, ",") \
-	X(Period, ".") \
-	X(Ellipsis, "...") \
-	X(Question, "?") \
-	X(Slash, "/") \
-	X(Arrow, "->") \
-	X(LongArrow, "-->") \
-	X(SquigglyArrow, "~>") \
-	X(WideArrow, "=>") \
-	X(LeftArry, "<-")
-
-#define KEYWORDS_MACRO \
-	Y(Int) \
-	X(Return, "return") \
-	Y(Bitfield) \
-	Y(True) \
-	Y(False) \
-	X(If, "if") \
-	X(Then, "then") \
-	X(Else, "else") \
-	X(While, "while") \
-	X(Zero, "zero") \
-	X(Not, "not") \
-	X(Do, "do") \
-	Y(Hello) \
-	Y(Heya) \
-	Y(Yo) \
-	Y(World) \
-	Y(PROGRAM) \
-	Y(BEGIN) \
-	Y(END)
-
-
 
 
 
 int main() {
 
-	using namespace dpl::literals;
+	//using namespace dpl::literals;
 	using namespace std::string_view_literals;
 
 	//#define X(name, symbol) name,
@@ -234,18 +145,18 @@ int main() {
 
 
 
-	auto [grammar, lexicon] = (
-		dpl::discard |= dpl::Lexeme{ dpl::kleene{dpl::whitespace}},
+	//auto [grammar, lexicon] = (
+	//	dpl::discard |= dpl::Lexeme{ dpl::kleene{dpl::whitespace}},
 
-		"E"nt	|= ("a"t, "g"t, "d"t)
-				|  ("a"t, "A"nt,"c"t)
-				|  ("b"t, "A"nt,"d"t)
-				|  ("b"t, "g"t, "e"t),
-		"A"nt	|= ("B"nt),
-		"B"nt	|= ("g"t)
-	);
+	//	"E"nt	|= ("a"t, "g"t, "d"t)
+	//			|  ("a"t, "A"nt,"c"t)
+	//			|  ("b"t, "A"nt,"d"t)
+	//			|  ("b"t, "g"t, "e"t),
+	//	"A"nt	|= ("B"nt),
+	//	"B"nt	|= ("g"t)
+	//);
 
-	dpl::LALR lalr_parser{ grammar, lexicon };
+	//dpl::LALR lalr_parser{ grammar, lexicon };
 
 
 

@@ -4,19 +4,18 @@
 #include <span>
 #include <array>
 #include <vector>
+#include <variant>
 #include <optional>
 #include <variant>
 #include <unordered_set>
+#include <string_view>
+#include <numeric>
 
 namespace dpl {
 
 	template<typename AtomT>
 	struct any_impl;
 
-
-
-	template<typename IterT, typename AtomT>
-	concept initer_of_type = std::input_iterator<IterT> && std::is_same_v<typename IterT::value_type, AtomT>;
 
 	template<class RegexT>
 	concept regex =
@@ -54,18 +53,13 @@ namespace dpl {
 
 
 	template<typename AtomT = char>
-	struct regex_wrapper;
-
-
-
-	template<typename AtomT = char>
 	struct match {
 		using atom_type = AtomT;
 		using span_type = span_dict<atom_type>;
 
 		constexpr match(span_type str_) : str({ str_ }) { }
 
-		template<initer_of_type<atom_type> IterT>
+		template<std::input_iterator IterT>
 		constexpr auto operator()(IterT iter, IterT end) const -> std::optional<decltype(iter)> {
 			for (int i = 0; i < str.size(); i++) {
 				if (iter == end || *iter != str[i]) return std::nullopt;
@@ -89,7 +83,7 @@ namespace dpl {
 		template<dpl::regex ...AltsTs>
 		alternatives(const AltsTs&... alts_) : alts({ dpl::regex_wrapper<atom_type>(alts_)... }) { }
 
-		template<initer_of_type<atom_type> IterT>
+		template<std::input_iterator IterT>
 		auto operator()(IterT iter, IterT end) const -> std::optional<decltype(iter)> {
 			for (const auto& alt : alts) {
 				auto result = alt(iter, end);
@@ -114,7 +108,7 @@ namespace dpl {
 		template<dpl::regex ...SubsTs>
 		sequence(const SubsTs&... subs_) : subs({ subs_... }) { }
 
-		template<initer_of_type<atom_type> IterT>
+		template<std::input_iterator IterT>
 		auto operator()(IterT iter, IterT end) const -> std::optional<decltype(iter)> {
 			auto head = iter;
 			for (const auto& sub : subs) {
@@ -161,7 +155,7 @@ namespace dpl {
 		constexpr maybe(const dpl::regex auto& sub_)
 			: ruleof3_ptr<dpl::regex_wrapper<AtomT>>(sub_) {}
 
-		template<initer_of_type<atom_type> IterT>
+		template<std::input_iterator IterT>
 		constexpr auto operator()(IterT iter, IterT end) const -> std::optional<decltype(iter)> {
 			auto result = (*this->inner)(iter, end);
 
@@ -181,7 +175,7 @@ namespace dpl {
 		constexpr between(size_t L, size_t M, const dpl::regex auto& inner_)
 			: ruleof3_ptr<dpl::regex_wrapper<AtomT>>(inner_), Least(L), Most(M) {}
 
-		template<initer_of_type<atom_type> IterT>
+		template<std::input_iterator IterT>
 		constexpr auto operator()(IterT iter, IterT end) const -> std::optional<decltype(iter)> {
 			auto result = iter;
 
@@ -256,7 +250,7 @@ namespace dpl {
 	struct any_impl {
 		using atom_type = AtomT;
 
-		template<initer_of_type<atom_type> IterT>
+		template<std::input_iterator IterT>
 		constexpr auto operator()(IterT iter, IterT end) const -> std::optional<decltype(iter)> {
 			if (iter == end) return std::nullopt;
 			else return iter + 1;
@@ -276,7 +270,7 @@ namespace dpl {
 
 		constexpr any_of(span_type str_) : str(str_.begin(), str_.end()) { }
 
-		template<initer_of_type<atom_type> IterT>
+		template<std::input_iterator IterT>
 		constexpr auto operator()(IterT iter, IterT end) const -> std::optional<decltype(iter)> {
 			if (iter == end) return std::nullopt;
 			auto result = std::find(str.begin(), str.end(), *iter);
@@ -297,7 +291,7 @@ namespace dpl {
 
 		constexpr range(atom_type from_, atom_type to_) : from(from_), to(to_) { }
 
-		template<initer_of_type<atom_type> IterT>
+		template<std::input_iterator IterT>
 		constexpr auto operator()(IterT iter, IterT end) const -> std::optional<decltype(iter)> {
 			if (iter == end) return std::nullopt;
 			else if (from <= *iter && *iter <= to) return iter + 1;
@@ -313,15 +307,15 @@ namespace dpl {
 	static dpl::range upper{ 'A', 'Z' };
 	static dpl::range digit{ '0', '9' };
 
-	static auto hex_digit = dpl::alternatives{
+	[[maybe_unused]] static auto hex_digit = dpl::alternatives{
 		dpl::digit,
 		dpl::range{'a', 'f'},
 		dpl::range{'A', 'F'}
 	};
 
-	static auto alpha = dpl::alternatives{ dpl::lower, dpl::upper };
-	static auto alphanum = dpl::alternatives{ dpl::alpha, dpl::digit };
-	static dpl::any_of whitespace{ " \t\n\0" };
+	[[maybe_unused]] static auto alpha = dpl::alternatives{ dpl::lower, dpl::upper };
+	[[maybe_unused]] static auto alphanum = dpl::alternatives{ dpl::alpha, dpl::digit };
+	[[maybe_unused]] static dpl::any_of whitespace{ " \t\n\0" };
 
 	template<typename AtomT>
 	struct regex_wrapper {
@@ -353,7 +347,7 @@ namespace dpl {
 			return (*this);
 		}
 
-		template<initer_of_type<atom_type> IterT>
+		template<std::input_iterator IterT>
 		auto operator()(IterT iter, IterT end) const -> std::optional<decltype(iter)> {
 			return std::visit([&](auto&& r_) { return r_(iter, end); }, r);
 		}
@@ -368,12 +362,7 @@ namespace dpl {
 	template<>
 	constexpr int from_string(dpl::span_dict<char> str) {
 		int result = 0;
-		int i = 1;
-		int factor;
-
-		if (str[0] == '+') factor = 1;
-		else if (str[0] == '-') factor = -1;
-		else i = 0;
+		unsigned long int i = 0;
 
 		for (; i < str.size(); ++i) {
 			result *= 10;

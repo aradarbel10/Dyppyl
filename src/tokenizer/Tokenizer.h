@@ -45,7 +45,7 @@ namespace dpl {
 
 		Tokenizer(const Lexicon<atom_type, token_type>& g) : lexicon(g) { }
 
-		template<dpl::initer_of_type<atom_type> IterT>
+		template<std::input_iterator IterT>
 		void tokenize(IterT first, IterT last, std::function<void(token_type)> output_func) {
 			offset_in_file = 0;
 
@@ -80,9 +80,9 @@ namespace dpl {
 
 				// throw error if the tokenizer is stuck in the middle of the input
 				if (!longest_name)
-					throw std::exception{ "unable to tokenize file at pos blah blah ..." };
+					throw std::exception{}; // unable to tokenize file at pos blah blah ...
 				else if (longest_iter == iter)
-					throw std::exception{ "lexeme of length zero not allowed" };
+					throw std::exception{}; // lexeme of length zero not allowed
 				else {
 					output_func(lexicon.at(*longest_name).eval(*longest_name, { iter, longest_iter }));
 					iter = longest_iter;
@@ -93,7 +93,7 @@ namespace dpl {
 			output_func(token_type{ token_type::Type::eof });
 		}
 
-		template<dpl::initer_of_type<atom_type> IterT>
+		template<std::input_iterator IterT>
 		auto tokenize(IterT first, IterT last) {
 			std::vector<token_type> output;
 

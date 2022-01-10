@@ -7,8 +7,6 @@
 #include <set>
 
 #include "tokenizer/Token.h"
-#include "ConstexprUtils.h"
-#include "hybrid/hybrid.hpp"
 #include "Lexical.h"
 
 namespace dpl {
@@ -152,8 +150,8 @@ namespace dpl {
 		using ntrule_type = NonterminalRules<nonterminal_type>;
 		using grammar_type = Grammar<token_type, nonterminal_type, TerminalNameT>;
 
-		using firsts_type = std::map<nonterminal_type, hybrid::set<std::variant<epsilon_type, terminal_type>>>;
-		using follows_type = std::map<nonterminal_type, hybrid::set<terminal_type>>;
+		using firsts_type = std::map<nonterminal_type, std::set<std::variant<epsilon_type, terminal_type>>>;
+		using follows_type = std::map<nonterminal_type, std::set<terminal_type>>;
 
 	private:
 
@@ -237,6 +235,11 @@ namespace dpl {
 		[[nodiscard]] constexpr auto rbegin() { return ntrules.rbegin(); }
 		[[nodiscard]] constexpr auto rend() { return ntrules.rend(); }
 
+		[[nodiscard]] constexpr auto begin() const { return ntrules.begin(); }
+		[[nodiscard]] constexpr auto end() const { return ntrules.end(); }
+		[[nodiscard]] constexpr auto rbegin() const { return ntrules.rbegin(); }
+		[[nodiscard]] constexpr auto rend() const { return ntrules.rend(); }
+
 		[[nodiscard]] constexpr bool contains(const nonterminal_type& index) const { return ntrules.contains(index); }
 
 		constexpr const auto& get_start_symbol() const { return start_symbol; }
@@ -255,7 +258,7 @@ namespace dpl {
 		}
 
 		constexpr const auto& augment_start_symbol() {
-			if constexpr (!std::is_same_v<nonterminal_type, std::string_view>) throw std::exception{"cannot augment non-string_view nonterminals"};
+			if constexpr (!std::is_same_v<nonterminal_type, std::string_view>) throw std::exception{}; // cannot augment non-string_view nonterminals
 			else if (!contains("S")) {
 				ntrules.insert({ "S", {"S", {{ start_symbol }}} });
 				start_symbol = "S";
@@ -370,7 +373,7 @@ namespace dpl {
 	public:
 
 		// #TASK: require constant iterators
-		constexpr hybrid::set<std::variant<epsilon_type, terminal_type>> first_star(const prod_type& rule) const {
+		constexpr std::set<std::variant<epsilon_type, terminal_type>> first_star(const prod_type& rule) const {
 			// first* of an epsilon-production is epsilon
 			if (rule.isEpsilonProd()) {
 				return { epsilon_type{} };
@@ -429,7 +432,6 @@ namespace dpl {
 		friend bool operator==(const RuleRef& lhs, const RuleRef& rhs) { return (lhs.name == rhs.name) && (lhs.prod == rhs.prod); }
 		operator nonterminal_type() const { return name; }
 
-		template<typename GrammarT>
 		friend inline bool operator<(const RuleRef<GrammarT>& lhs, const RuleRef<GrammarT>& rhs) {
 			return std::tie(lhs.grammar, lhs.name, lhs.prod) < std::tie(rhs.grammar, rhs.name, rhs.prod);
 		}
@@ -460,18 +462,18 @@ namespace dpl {
 		// add all explicitly-defined lexemes
 		for (const auto& lexeme : lit.lexemes) {
 			if (lexeme.discard) {
-				if (lexicon.discard_regex) throw std::exception{ "discard redefinition" };
+				if (lexicon.discard_regex) throw std::exception{}; // discard redefinition
 				lexicon.discard_regex = lexeme.lex.regex;
 				continue;
 			}
 
-			if (lexicon.contains(lexeme.name)) throw std::exception{ "terminal redefinition" };
+			if (lexicon.contains(lexeme.name)) throw std::exception{}; // terminal redefinition
 			lexicon.insert({ lexeme.name, lexeme.lex });
 		}
 
 		// add all grammar rules
 		for (const auto& ntrule : lit.rules) {
-			if (grammar.contains(ntrule.name)) throw std::exception{ "nonterminal redefinition" };
+			if (grammar.contains(ntrule.name)) throw std::exception{}; // nonterminal redefinition
 
 			if (grammar.ntrules.empty()) grammar.start_symbol = ntrule.name;
 			grammar.ntrules.insert({ ntrule.name, typename grammar_type::ntrule_type{ ntrule.name } });

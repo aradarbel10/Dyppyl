@@ -87,12 +87,12 @@ namespace dpl {
 	}
 
 	// production modifiers
-	constexpr auto operator&(ProdLit&& rule, Assoc assoc) {
+	auto operator&(ProdLit&& rule, Assoc assoc) {
 		rule.assoc = assoc;
 		return rule;
 	}
 
-	constexpr auto operator&(ProdLit&& rule, Prec prec) {
+	auto operator&(ProdLit&& rule, Prec prec) {
 		rule.prec = prec;
 		return rule;
 	}
@@ -121,16 +121,16 @@ namespace dpl {
 		|| std::is_same_v<T, NonterminalLit>;
 
 	// productions list to nonterminal
-	constexpr auto operator|=(const NonterminalLit& name, NtRulesLit&& nt) {
+	auto operator|=(const NonterminalLit& name, NtRulesLit&& nt) {
 		nt.name = name;
 		return nt;
 	}
 
-	constexpr auto operator|=(const NonterminalLit& name, ProdLit&& prod) {
+	auto operator|=(const NonterminalLit& name, ProdLit&& prod) {
 		return NtRulesLit{ .name = name, .prods = {prod} };
 	}
 
-	constexpr auto operator|=(const NonterminalLit& name, ProdLitSymbol auto&& sym) {
+	auto operator|=(const NonterminalLit& name, ProdLitSymbol auto&& sym) {
 		NtRulesLit rules { .name = name };
 		ProdLit prod{};
 		prod.sentence.push_back(sym);
@@ -148,7 +148,7 @@ namespace dpl {
 		return LexLit<TokenT>{.discard = true, .lex = lex};
 	}
 
-	constexpr auto operator|(const ProdLit& lhs, const ProdLit& rhs) {
+	auto operator|(const ProdLit& lhs, const ProdLit& rhs) {
 		NtRulesLit result;
 		result.prods.push_back(lhs);
 		result.prods.push_back(rhs);
@@ -176,7 +176,7 @@ namespace dpl {
 		return result;
 	}
 
-	constexpr auto operator|(NtRulesLit&& lhs, const ProdLit& rhs) {
+	auto operator|(NtRulesLit&& lhs, const ProdLit& rhs) {
 		lhs.prods.push_back(rhs);
 		return lhs;
 	}
@@ -187,7 +187,7 @@ namespace dpl {
 	}
 
 	// nonterminals list to grammar
-	constexpr auto operator,(const NtRulesLit& lhs, const NtRulesLit& rhs) {
+	auto operator,(const NtRulesLit& lhs, const NtRulesLit& rhs) {
 		return GrammarLit<void_token_t>{ .rules = { lhs, rhs } };
 	}
 

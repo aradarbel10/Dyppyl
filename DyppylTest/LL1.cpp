@@ -1,3 +1,4 @@
+#define CATCH_CONFIG_MAIN
 #include "catch2/catch.hpp"
 
 #include "../src/Grammar.h"
@@ -30,7 +31,11 @@ TEST_CASE("SimpleGrammar", "[LL1Tests]") {
 		"Term"nt		|= "id"t | "num"t
 	);
 
-	dpl::LL1 parser{ grammar, lexicon };
+	dpl::LL1 parser{ grammar, lexicon, {
+		.log_tokenizer = true,
+		.log_grammar = true,
+		.log_grammar_info = true
+	}};
 
 	// LL(1) Grammar Epsilon-less First Set
 	grammar.initialize();

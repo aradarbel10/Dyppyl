@@ -1,7 +1,5 @@
 #pragma once
 
-#include <windows.h>
-
 #undef max
 #undef min
 
@@ -10,6 +8,8 @@
 #include <vector>
 #include <chrono>
 #include <cmath>
+#include <sstream>
+#include <optional>
 
 namespace dpl {
 	using file_pos_t = size_t;
@@ -26,16 +26,41 @@ namespace dpl {
 		int color = 0x07;
 
 		friend const color_cout& operator<<(const color_cout& os, const auto& other) {
-			SetConsoleTextAttribute(hConsole, os.color);
+			//SetConsoleTextAttribute(hConsole, os.color);
 			std::cout << other;
-			SetConsoleTextAttribute(hConsole, 0x07);
+			//SetConsoleTextAttribute(hConsole, 0x07);
 
 			return os;
 		}
 
 	private:
-		inline static HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+		//inline static HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 	};
+
+	// #TASK : support colored printing on non-windows systems
+	template <typename T>
+		requires requires (std::ostream& os, const T& t) { os << t; }
+	inline void colored_stream(std::ostream& os, int color, const T& str) {
+		//static HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+
+		//SetConsoleTextAttribute(hConsole, color);
+		os << str;
+		//SetConsoleTextAttribute(hConsole, 0x07);
+	}
+
+	template<typename T>
+		requires requires (std::ostream& os, const T& t) { os << t; }
+	inline std::ostream& operator<<(std::ostream& os, streamer<T> strm) {
+		if (strm.color != 0x07) colored_stream(os, strm.color, strm.val);
+		else os << strm.val;
+
+		return os;
+	}
+
+	inline std::ostream& operator<<(std::ostream& os, streamer<std::string_view> str) {
+		os << str.val;
+		return os;
+	}
 
 	template<typename... Ts>
 	inline std::ostream& operator<<(std::ostream& os, streamer<std::variant<Ts...>> vnt) {
@@ -74,26 +99,6 @@ namespace dpl {
 		for (auto iter = std::next(cont.val.begin()); iter != cont.val.end(); ++iter) {
 			os << streamer{ ", ", cont.color } << streamer{ *iter, cont.color };
 		}
-		return os;
-	}
-
-	// #TASK : support colored printing on non-windows systems
-	template <typename T>
-		requires requires (std::ostream& os, const T& t) { os << t; }
-	inline void colored_stream(std::ostream& os, int color, const T& str) {
-		static HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-
-		SetConsoleTextAttribute(hConsole, color);
-		os << str;
-		SetConsoleTextAttribute(hConsole, 0x07);
-	}
-
-	template<typename T>
-		requires requires (std::ostream& os, const T& t) { os << t; }
-	inline std::ostream& operator<<(std::ostream& os, streamer<T> strm) {
-		if (strm.color != 0x07) colored_stream(os, strm.color, strm.val);
-		else os << strm.val;
-
 		return os;
 	}
 
