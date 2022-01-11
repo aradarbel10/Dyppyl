@@ -4,15 +4,15 @@ int main() {
 	using namespace dpl::literals;
 
 	auto [grammar, lexicon] = ( // context free grammar
-		dpl::discard |= dpl::Lexeme{ dpl::kleene{dpl::whitespace} },
+		dpl::discard |= dpl::kleene{dpl::whitespace},
 
 		"num"t  |= dpl::Lexeme{ dpl::some{dpl::digit}, [](std::string_view str) -> long double {
 			return dpl::from_string<int>(str);
 		}},
 
-		"E"nt	|= ("("t, "E"nt, "Op"nt, "E"nt, ")"t)
-				|  ("num"t),
-		"Op"nt	|= "+"t | "*"t
+		"E"nt	|= (~"("t, "E"nt, !"Op"nt, "E"nt, ~")"t)
+				|  (!"num"t),
+		"Op"nt	|= !"+"t | !"*"t
 	);
 
 	dpl::LR0 parser{ grammar, lexicon, {
@@ -41,18 +41,6 @@ int main() {
 
 			continue;
 		}
-		
-		std::cout << "\n\nParse Tree:\n" << tree << "\n\n";
-
-		tree.replace_with(
-			dpl::ParseTree<>{ dpl::RuleRef{"E", 1} },
-			[](const auto& cs) { return dpl::ParseTree<>{ cs[0].value }; }
-		);
-
-		tree.replace_with(
-			dpl::ParseTree<>{ dpl::RuleRef{"E", 0} },
-			[](const auto& cs) { return dpl::ParseTree<>{ cs[2][0].value, { cs[1], cs[3] }}; }
-		);
 
 		std::cout << "\n\nAST:\n" << tree << "\n\n";
 

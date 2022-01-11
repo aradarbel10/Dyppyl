@@ -148,6 +148,14 @@ namespace dpl {
 		return LexLit<TokenT>{.discard = true, .lex = lex};
 	}
 
+	constexpr auto operator|=(const TerminalLit& name, const dpl::regex auto& re) {
+		return LexLit<dpl::Token<>>{.name = name, .lex = dpl::Lexeme{ re }};
+	}
+
+	constexpr auto operator|=(discard_type disc, const dpl::regex auto& re) {
+		return LexLit<dpl::Token<>>{.discard = true, .lex = dpl::Lexeme{ re }};
+	}
+
 	auto operator|(const ProdLit& lhs, const ProdLit& rhs) {
 		NtRulesLit result;
 		result.prods.push_back(lhs);

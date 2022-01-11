@@ -171,8 +171,6 @@ namespace dpl {
 
 	template<typename GrammarT = dpl::Grammar<>>
 	using ParseTree = dpl::Tree<std::variant<
-		std::monostate,
-		typename GrammarT::nonterminal_type,
 		typename GrammarT::token_type,
 		RuleRef<GrammarT>
 	>>;

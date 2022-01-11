@@ -10,7 +10,7 @@ NOTE: Dyppyl is under constant developments, so some examples might not match th
 auto [grammar, lexicon] = (
 	dpl::discard |= dpl::kleene{dpl::whitespace},
 
-	"num"t	|= dpl::Lexeme{ dpl::some{dpl::digit}, [](std::string_view str) -> double { return dpl::stod(str); } },
+	"num"t	|= dpl::Lexeme{ dpl::some{dpl::digit}, [](std::string_view str) -> int { return dpl::from_string<int>(str); } },
 
 	"E"nt	|= ("E"nt, !"+"t, "E"nt) & dpl::Assoc::Left, dpl::Prec{5}
 			|  ("E"nt, !"*"t, "E"nt) & dpl::Assoc::Left, dpl::Prec{10}
