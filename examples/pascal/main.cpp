@@ -31,20 +31,20 @@ int main() {
 	using namespace dpl::literals;
 
 	auto [grammar, lexicon] = (
-		dpl::discard	|= dpl::Lexeme{dpl::kleene{dpl::whitespace}},
+		dpl::discard	|= dpl::kleene{dpl::whitespace},
 
-		"name"t			|= dpl::Lexeme{dpl::some{dpl::alpha}},
-		"num"t			|= dpl::Lexeme{dpl::some{dpl::digit}},
-		"add_op"t		|= dpl::Lexeme{dpl::any_of{"+-"}},
-		"mul_op"t		|= dpl::Lexeme{dpl::any_of{"*/"}},
-		"comp"t			|= dpl::Lexeme{dpl::alternatives{
+		"name"t			|= dpl::some{dpl::alpha},
+		"num"t			|= dpl::some{dpl::digit},
+		"add_op"t		|= dpl::any_of{"+-"},
+		"mul_op"t		|= dpl::any_of{"*/"},
+		"comp"t			|= dpl::alternatives{
 											dpl::match{"<>"},
 											dpl::match{">="},
 											dpl::match{"<="},
 											dpl::match{"<"},
 											dpl::match{"="},
 											dpl::match{">"}
-										}},
+										},
 
 
 		"program"nt		|= (!"block"nt, ~"."t),

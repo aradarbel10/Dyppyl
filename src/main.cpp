@@ -6,7 +6,6 @@
 #include <unordered_map>
 #include <charconv>
 
-#define DPL_LOG
 
 //#include "dyppyl.h"
 
@@ -28,168 +27,23 @@
 
 int main() {
 
-	//using namespace dpl::literals;
+	using namespace dpl::literals;
 	using namespace std::string_view_literals;
 
-	//#define X(name, symbol) name,
-	//#define Y(name) name,
-	//enum Symbols { SYMBOLS_MACRO };
-	//enum Keywords { KEYWORDS_MACRO };
-	//#undef X
-	//#undef Y
 
-	//#define X(name, symbol) {symbol, Symbols:: name},
-	//const std::map<std::string_view, size_t> symbols{ SYMBOLS_MACRO };
-	//#undef X
-	//
-	//#define X(name, str) {str, Keywords:: name},
-	//#define Y(name) {#name, Keywords:: name},
-	//const std::map<std::string_view, size_t> keywords{ KEYWORDS_MACRO };
-	//#undef X
-	//#undef Y
+	auto [grammar, lexicon] = (
+		dpl::discard	|= dpl::Lexeme{ dpl::kleene{dpl::whitespace} },
+		"E"nt			|= (!"int"t)
+						|  (!"func"t, ~"("t, *"Es"nt, ~")"t)
+						|  (~"("t, "E"nt, !"Op"nt, "E"nt, ~")"t),
+		"Es"nt			|= ("E"nt, *"Es"nt) | dpl::epsilon,
+		"Op"nt			|= !"+"t | !"*"t
+	);
 
-
-
-
-	//dpl::LR1 parser{ grammar, lexicon, {
-	//	.log_step_by_step		= true,
-	//	.log_parse_tree			= true,
-	//	.log_errors				= true,
-	//	.log_tokenizer			= true,
-
-	//	.log_grammar			= true,
-	//	.log_grammar_info		= true,
-	//	.log_automaton			= true,
-
-	//	.log_to_file			= false,
-	//}};
-
-	//auto [tree, errors] = parser.parse(text);
-
-	//dpl::Grammar grammar {
-	//	"Stmts"nt	|= ("Stmt"nt, "Stmts"nt)
-	//				| dpl::ProductionRule{},
-
-	//	"Stmt"nt	|= ("{"t, "Stmts"nt, "}"t)
-	//				| ("if"t, "Expr"nt, "then"t, "Stmt"nt)
-	//				| ("while"t, "Expr"nt, "do"t, "Stmt"nt)
-	//				| ("assign"t, dpl::Token::Type::Identifier, "="t, "Expr"nt),
-
-	//	"Expr"nt	|= dpl::ProductionRule{ "Term"nt }
-	//				| ("zero?"t, "Expr"nt)
-	//				| ("not"t, "Expr"nt)
-	//				| ("++"t, dpl::Token::Type::Identifier)
-	//				| ("--"t, dpl::Token::Type::Identifier)
-	//				| ("Expr"nt, "BinOp"nt, "Expr"nt) & dpl::Assoc::Left
-	//				| ("("t, "Expr"nt, ")"t),
-
-	//	"Term"nt	|= (dpl::Token::Type::Identifier)
-	//				| (dpl::Token::Type::Number),
-
-	//	"BinOp"nt	|= "+"t | "-"t | "*"t | "/"t | "%"t
-	//};
-
-	//dpl::LR1 parser{ grammar, {
-	//	.log_step_by_step		= true,
-	//	.log_parse_tree			= true,
-	//	.log_tokenizer			= true,
-
-	//	.log_grammar			= true,
-	//	.log_grammar_info		= true,
-
-	//	.log_to_file			= false,
-	//}};
-
-	//dpl::StringStream src{
-	//	"if not zero? (id1 % id2) then"
-	//	"    assign id = constant"
-	//	//"while --something do {"
-	//	//"    if id then one = two"
-	//	//"    if zero? id then tree = four"
-	//	//"}"
-	//};
-	//auto [tree, errors] = parser.parse(src);
-
-	//if (!errors.empty()) std::cout << tree;
-
-	//tree.replace_with(
-	//	dpl::ParseTree{ dpl::RuleRef{"E", 0} },
-	//	[](const dpl::ParseTree& cs) {
-	//		return dpl::ParseTree{ cs[2][0].value, {
-	//			(cs[1].match({"E"}) ? cs[1][0].value : cs[1]),
-	//			(cs[3].match({"E"}) ? cs[3][0].value : cs[3])
-	//		}};
-	//	},
-	//	dpl::TraverseOrder::BottomUp
-	//);
-
-	//std::cout << "\n\nAST:\n" << tree << "\n\n";
-
-	//dpl::tree_visit(tree, [](dpl::ParseTree& tree) {
-	//	if (tree.children.size() == 2) {
-	//		long double lhs = std::get<long double>(tree[0].get<dpl::Token>().value);
-	//		long double rhs = std::get<long double>(tree[1].get<dpl::Token>().value);
-
-	//		if (tree.match({"+"_sym}))
-	//			tree = dpl::ParseTree{{ dpl::Token{dpl::Token::Type::Number, lhs + rhs }}};
-	//		else if (tree.match({"*"_sym }))
-	//			tree = dpl::ParseTree{{ dpl::Token{dpl::Token::Type::Number, lhs * rhs }}};
-	//	}
-	//});
-	//
-	//std::cout << "Input String: " << src.getString() << "\n";
-	//std::cout << "Result: " << std::get<long double>(tree.get<dpl::Token>().value);
-	//std::cout << "\n\n\n";
+	dpl::LL1 parser{ grammar, lexicon };
+	auto [tree, errors] = parser.parse("(func((int+(int*int)) int func((int * int))) + int)");
 	
-
-
-
-
-	//auto [grammar, lexicon] = (
-	//	dpl::discard |= dpl::Lexeme{ dpl::kleene{dpl::whitespace}},
-
-	//	"E"nt	|= ("a"t, "g"t, "d"t)
-	//			|  ("a"t, "A"nt,"c"t)
-	//			|  ("b"t, "A"nt,"d"t)
-	//			|  ("b"t, "g"t, "e"t),
-	//	"A"nt	|= ("B"nt),
-	//	"B"nt	|= ("g"t)
-	//);
-
-	//dpl::LALR lalr_parser{ grammar, lexicon };
-
-
-
-
-
-
-	//dpl::LR1 parser{ grammar, lexicon, {
-	//	.log_step_by_step	= true,
-	//	.log_errors			= true,
-	//	.log_automaton		= true
-	//} };
-	//auto [tree, errors] = parser.parse("1 + 2 * (3 + 4) * 5");
-
-	//tree.replace_with(
-	//	dpl::ParseTree<>{ "E"sv, { {"("tkn}, {}, {")"tkn} }},
-	//	[](const dpl::ParseTree<>& cs) { return cs[1]; }
-	//);
-
-	//tree.replace_with(
-	//	dpl::ParseTree<>{ "E", { {}, {}, {} } },
-	//	[](const dpl::ParseTree<>& cs) {
-	//		return dpl::ParseTree<>{ cs[1].value, {
-	//			(cs[0].match({"E"}) ? cs[0][0].value : cs[0]),
-	//			(cs[2].match({"E"}) ? cs[2][0].value : cs[2])
-	//		}};
-	//	}
-	//);
-
-	//std::cout << "\n\nAST:\n" << tree;
-	
+	std::cout << tree;
 
 	return 0;
 }
-
-#undef SYMBOLS_MACRO
-#undef KEYWORDS_MACRO

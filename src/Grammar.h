@@ -65,8 +65,8 @@ namespace dpl {
 		[[nodiscard]] constexpr auto rbegin() const { return sentence.rbegin(); }
 		[[nodiscard]] constexpr auto rend() const { return sentence.rend(); }
 
-		constexpr void push_back(auto&& elem) { sentence.push_back(elem); }
-		constexpr void push_front(auto&& elem) { sentence.insert(sentence.begin(), elem); }
+		void push_back(auto&& elem) { sentence.push_back(elem); }
+		void push_front(auto&& elem) { sentence.insert(sentence.begin(), elem); }
 
 		friend std::ostream& operator<<(std::ostream& os, const ProductionRule<nonterminal_type>& rule) {
 			if (rule.empty()) os << "epsilon";
@@ -262,8 +262,8 @@ namespace dpl {
 			else if (!contains("S")) {
 				ntrules.insert({ "S", {"S", {{ start_symbol }}} });
 				start_symbol = "S";
-				return start_symbol;
 			}
+			return start_symbol;
 		}
 
 

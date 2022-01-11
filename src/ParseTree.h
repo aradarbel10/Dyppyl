@@ -297,6 +297,34 @@ namespace dpl {
 			
 			std::stack<tree_type*>{}.swap(last_inserted);
 		}
+
+		void ascend() {
+			last_inserted.pop();
+		}
+
+		void descend() {
+			if (last_inserted.empty()) last_inserted.push(&inner_tree);
+			else {
+				last_inserted.top()->children.push_back({});
+				last_inserted.push(&last_inserted.top()->children.back());
+			}
+		}
+
+		void place(typename tree_type::node_type node) {
+			if (last_inserted.top() == nullptr) {
+				last_inserted.pop();
+				last_inserted.top()->children.push_back(node);
+				last_inserted.push(&last_inserted.top()->children.back());
+			} else {
+				last_inserted.top()->value = node;
+			}
+		}
+
+		void push(typename tree_type::node_type node) {
+			if (last_inserted.top() != nullptr) {
+				last_inserted.top()->children.push_back(node);
+			} else throw std::runtime_error{"invalid tree builder instruction"};
+		}
 	};
 
 }

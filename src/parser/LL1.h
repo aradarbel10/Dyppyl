@@ -109,6 +109,17 @@ namespace dpl{
 
 	template<typename GrammarT = dpl::Grammar<>, typename LexiconT = dpl::Lexicon<>>
 	class LL1 : public Parser<GrammarT, LexiconT> {
+	private:
+		enum class stack_marker { none, ascend, hide, stay, adopt };
+		friend auto& operator<<(std::ostream& os, stack_marker m) {
+			if (m == stack_marker::none) std::cout << "marker::none";
+			else if (m == stack_marker::ascend) std::cout << "marker::ascend";
+			else if (m == stack_marker::hide) std::cout << "marker::hide";
+			else if (m == stack_marker::stay) std::cout << "marker::stay";
+			else if (m == stack_marker::adopt) std::cout << "marker::adopt";
+			else return os;
+		}
+
 	public:
 		using grammar_type = GrammarT;
 		using lexicon_type = LexiconT;
@@ -119,7 +130,7 @@ namespace dpl{
 		using nonterminal_type = grammar_type::nonterminal_type;
 
 		using out_type = std::variant<token_type, RuleRef<grammar_type>>;
-		using symbol_type = std::variant<terminal_type, nonterminal_type>;
+		using symbol_type = std::variant<terminal_type, nonterminal_type, stack_marker>;
 		using table_type = std::map<terminal_type, std::map<nonterminal_type, int>>;
 
 	private:
@@ -130,7 +141,51 @@ namespace dpl{
 
 		LLTable<grammar_type> table;
 
-		std::deque<symbol_type> parse_stack;
+		class ParseStack {
+		private:
+			std::vector<symbol_type> inner;
+
+		public:
+			const auto& top() const {
+				return inner.back();
+			}
+
+			void push(const symbol_type& sym) {
+				inner.push_back(sym);
+			}
+
+			auto pop() {
+				auto t = inner.back();
+				inner.pop_back();
+				return t;
+			}
+
+			std::pair<symbol_type, stack_marker> pop_pair() {
+				if (inner.empty()) throw std::out_of_range{"popping from empty stack"};
+				auto t = inner.back();
+				inner.pop_back();
+
+				if (!inner.empty() &&
+					(!std::holds_alternative<stack_marker>(t) || std::get<stack_marker>(t) == stack_marker::ascend) &&
+					(std::holds_alternative<stack_marker>(inner.back()) && std::get<stack_marker>(inner.back()) != stack_marker::ascend)) {
+
+					auto s = inner.back();
+					inner.pop_back();
+					return {t, std::get<stack_marker>(s)};
+				} else {
+					return {t, stack_marker::none};
+				}
+			}
+
+			bool empty() const { return inner.empty(); }
+			void clear() { inner.clear(); }
+
+			auto rbegin() const { return inner.rbegin(); }
+			auto rend() const { return inner.rend(); }
+			
+		};
+
+		ParseStack parse_stack;
 
 	public:
 		LL1(grammar_type& g, lexicon_type& l, const typename Parser<grammar_type, lexicon_type>::Options& ops = {})
@@ -148,7 +203,7 @@ namespace dpl{
 
 			if (this->options.error_mode == ErrorMode::Panic && !this->fixed_last_error) {
 				if (sync_set().contains(t)) {
-					parse_stack.pop_back();
+					parse_stack.pop();
 					this->fixed_last_error = true;
 				} else {
 					return;
@@ -162,8 +217,8 @@ namespace dpl{
 					return;
 				}
 
-				if (std::holds_alternative<nonterminal_type>(parse_stack.back())) {
-					const auto nontr = std::get<nonterminal_type>(parse_stack.back());
+				if (std::holds_alternative<nonterminal_type>(parse_stack.top())) {
+					const auto nontr = std::get<nonterminal_type>(parse_stack.top());
 					if (table.contains({ t, nontr })) {
 
 						auto& rule = this->grammar[nontr][table[{t, nontr}]];
@@ -171,55 +226,100 @@ namespace dpl{
 						if (this->options.log_step_by_step)
 							this->options.logprintln("Parser Trace", "Production out: (", nontr, ", ", table[{t, nontr}], ")");
 
-						tree_builder.pushNode(RuleRef{ this->grammar, nontr, table[{t, nontr}] });
-						parse_stack.pop_back();
-						
-						std::for_each(rule.rbegin(), rule.rend(), [&](const auto& e) {
-							if (const auto* v = std::get_if<terminal_type>(&e)) {
-								parse_stack.push_back(*v);
-							} else if (const auto* v = std::get_if<nonterminal_type>(&e)) {
-								parse_stack.push_back(*v);
+						// rewrite stack
+						auto [top, mark] = parse_stack.pop_pair();
+						if (!rule.isEpsilonProd() && mark != stack_marker::stay && mark != stack_marker::adopt) {
+							parse_stack.push(stack_marker::ascend);
+							tree_builder.descend();
+						}
+
+						// copy sentential form
+						bool any_lift = false;
+						for (int i = rule.size() - 1; i >= 0; i--) {
+							if (const auto* v = std::get_if<terminal_type>(&rule[i])) {
+								// look for terminal modifiers
+								stack_marker modifier = stack_marker::none;
+								if (rule.tree_modifiers[i] == dpl::TreeModifier::Hide) {
+									modifier = stack_marker::hide;
+								} else if (rule.tree_modifiers[i] == dpl::TreeModifier::Lift) {
+									modifier = stack_marker::stay;
+									any_lift = true;
+								}
+
+								if (modifier != stack_marker::none) parse_stack.push(modifier);
+								parse_stack.push(*v);
+							} else if (const auto* v = std::get_if<nonterminal_type>(&rule[i])) {
+								// look for nonterminal modifiers
+								stack_marker modifier = stack_marker::none;
+								if (rule.tree_modifiers[i] == dpl::TreeModifier::Adopt) {
+									modifier = stack_marker::adopt;
+								} else if (rule.tree_modifiers[i] == dpl::TreeModifier::Lift) {
+									modifier = stack_marker::stay;
+									any_lift = true;
+								}
+
+								if (modifier != stack_marker::none) parse_stack.push(modifier);
+								parse_stack.push(*v);
 							}
-						});
+						}
 
-					} else {
-						this->err_unexpected_token(t_);
-						return;
-					}
-				}
-
-				if (const auto* tr = std::get_if<terminal_type>(&parse_stack.back())) {
-					if (*tr == t) {
-						terminal_eliminated = true;
-						parse_stack.back();
-
-						if (tr->type == terminal_type::Type::eof) {
-							if (this->options.log_step_by_step)
-								this->options.logprintln("Parser Trace", "end of parsing");
-
-							tree_builder.pushNode(*tr);
-							tree_builder.assignToTree(this->out_tree);
-
-							return;
-						} else {
-							if (this->options.log_step_by_step)
-								this->options.logprintln("Parser Trace", "Token out: ", t.stringify());
-
-							tree_builder.pushNode(t_);
+						if (mark != stack_marker::adopt) {
+							if (!any_lift)
+								tree_builder.place(RuleRef{ this->grammar, nontr, table[{t, nontr}] });
+							else if (rule.isEpsilonProd())
+								tree_builder.push(RuleRef{ this->grammar, nontr, table[{t, nontr}] });
 						}
 					} else {
 						this->err_unexpected_token(t_);
 						return;
 					}
 				}
+
+				if (const auto* tr = std::get_if<terminal_type>(&parse_stack.top())) {
+					if (*tr == t) {
+						terminal_eliminated = true;
+						auto [top, mark] = parse_stack.pop_pair();
+
+						if (tr->type == terminal_type::Type::eof) {
+							if (this->options.log_step_by_step)
+								this->options.logprintln("Parser Trace", "end of parsing");
+
+							tree_builder.assignToTree(this->out_tree);
+							return;
+						} else {
+							if (this->options.log_step_by_step)
+								this->options.logprintln("Parser Trace", "Token out: ", t.stringify());
+
+							if (mark == stack_marker::stay) tree_builder.place(t_);
+							else if (mark != stack_marker::hide) tree_builder.push(t_);
+
+							auto* next_mark = std::get_if<stack_marker>(&parse_stack.top());
+							if (next_mark && *next_mark == stack_marker::ascend) {
+								parse_stack.pop();
+								tree_builder.ascend();
+							}
+						}
+					} else {
+						this->err_unexpected_token(t_);
+						return;
+					}
+				}
+
+				if (auto* mark = std::get_if<stack_marker>(&parse_stack.top())) {
+					if (*mark != stack_marker::ascend) throw std::runtime_error{"invalid stack state"};
+					else {
+						parse_stack.pop();
+						tree_builder.ascend();
+					}
+				}
 			} while (!terminal_eliminated);
 		}
 
 		void parse_init() override {
-			decltype(parse_stack){}.swap(parse_stack); // clear stack
+			parse_stack.clear(); // clear stack
 
-			parse_stack.push_back(terminal_type::Type::eof);
-			parse_stack.push_back(this->grammar.get_start_symbol());
+			parse_stack.push(terminal_type::Type::eof);
+			parse_stack.push(this->grammar.get_start_symbol());
 		}
 		
 		std::set<terminal_type> currently_expected_terminals() const {
@@ -227,19 +327,20 @@ namespace dpl{
 				return { {terminal_type::Type::eof} };
 			}
 
-			if (const auto* terminal = std::get_if<terminal_type>(&parse_stack.back())) {
+			if (const auto* terminal = std::get_if<terminal_type>(&parse_stack.top())) {
 				return { *terminal };
 			} else {
-				const auto& nonterminal = std::get<nonterminal_type>(parse_stack.back());
+				const auto& nonterminal = std::get<nonterminal_type>(parse_stack.top());
 				std::set<terminal_type> result;
 
 				typename grammar_type::prod_type stack_beg;
 
 				auto iter = parse_stack.rbegin();
 				do {
-					stack_beg.push_back(*iter);
+					if (auto* iter_ = std::get_if<nonterminal_type>(&*iter))
+						stack_beg.push_back(*iter_);
 					iter++;
-				} while (iter != parse_stack.rend() && !std::holds_alternative<terminal_type>(*std::prev(iter)));
+				} while (iter != parse_stack.rend() && std::holds_alternative<nonterminal_type>(*std::prev(iter)));
 
 				for (const auto& terminal : this->grammar.first_star(stack_beg)) {
 					result.insert(std::get<terminal_type>(terminal));
@@ -250,14 +351,14 @@ namespace dpl{
 		}
 
 		std::set<terminal_type> sync_set() const {
-			if (const auto* nonterminal = std::get_if<nonterminal_type>(&parse_stack.back())) {
+			if (const auto* nonterminal = std::get_if<nonterminal_type>(&parse_stack.top())) {
 				std::set<terminal_type> result;
 				for (const auto& symbol : this->grammar.get_follows().at(*nonterminal)) {
 					result.insert(symbol);
 				}
 				return result;
 			} else {
-				return { std::get<terminal_type>(parse_stack.back()) };
+				return { std::get<terminal_type>(parse_stack.top()) };
 			}
 		}
 	};
