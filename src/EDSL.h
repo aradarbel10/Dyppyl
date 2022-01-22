@@ -11,6 +11,8 @@ namespace dpl {
 	template<typename TokenT, typename NonterminalT, typename TerminalNameT>
 	class Grammar;
 
+	enum class TreeModifier;
+
 	struct NonterminalLit : public std::string_view {
 		TreeModifier modifier{ TreeModifier::None };
 	};
@@ -71,7 +73,7 @@ namespace dpl {
 		|| std::is_same_v<T, NonterminalLit>;
 
 	// symbol modifiers
-	constexpr auto operator~(ProdLitSymbol auto&& symbol) {
+	constexpr auto operator~(TerminalLit&& symbol) {
 		symbol.modifier = TreeModifier::Hide;
 		return symbol;
 	}
@@ -81,7 +83,7 @@ namespace dpl {
 		return symbol;
 	}
 
-	constexpr auto operator*(ProdLitSymbol auto&& symbol) {
+	constexpr auto operator*(NonterminalLit&& symbol) {
 		symbol.modifier = TreeModifier::Adopt;
 		return symbol;
 	}

@@ -618,7 +618,7 @@ namespace dpl {
 		using parent = LR<LR0Automaton<State<Configuration<GrammarT>>>, GrammarT, LexiconT>;
 	public:
 		using parent::LR;
-		constexpr LR0(GrammarT& g, LexiconT& l, Parser<GrammarT, LexiconT>::Options ops = {})
+		constexpr LR0(GrammarT& g, LexiconT& l, typename Parser<GrammarT, LexiconT>::Options ops = {})
 			: parent(g, l, ops) {}
 	};
 }

@@ -1,4 +1,4 @@
-#include "../src/dyppyl.h"
+#include <dyppyl.h>
 
 int main() {
 	using namespace dpl::literals;

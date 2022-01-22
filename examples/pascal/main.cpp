@@ -2,31 +2,6 @@
 
 #include "treewalk.h"
 
-// soem helper functions to use when transforming the parse tree
-bool is_punctuation(const dpl::Token<>& tkn, const dpl::Lexicon<>& lexicon) {
-	// a token is considered punctuation if it doesn't hold any semantic information (it's value is just it's type without any other parameters)
-	return std::holds_alternative<dpl::match<>>(lexicon.at(tkn.name).regex.get_variant());
-}
-
-std::optional<dpl::Terminal<>> get_first_terminal(const dpl::RuleRef<>& rule, const dpl::Lexicon<>& lexicon) {
-	for (const auto& symbol : rule.getRule()) {
-		auto* terminal = std::get_if<dpl::Terminal<>>(&symbol);
-
-		// if token represents punctuation
-		if (terminal && std::holds_alternative<dpl::match<>>(lexicon.at(terminal->name).regex.get_variant()))
-			return *terminal;
-	}
-	return std::nullopt;
-}
-
-int count_nodes(const dpl::ParseTree<>& tree) {
-	int count = 1;
-	for (const auto& child : tree.children) {
-		count += count_nodes(child);
-	}
-	return count;
-}
-
 int main() {
 	using namespace dpl::literals;
 
@@ -81,6 +56,7 @@ int main() {
 		"stmt"nt		|= ("name"t, !":="t, "expr"nt)
 						|  (!"BEGIN"t, *"stmts_list"nt, ~"END"t)
 						|  (!"IF"t, "expr"nt, ~"THEN"t, "stmt"nt)
+						|  (~"IF"t, "expr"nt, ~"THEN"t, "stmt"nt, ~"ELSE"t, "stmt"nt) & dpl::Prec{1} // avoid dangling else
 						|  (!"WHILE"t, "expr"nt, ~"DO"t, "stmt"nt)
 						|  (!"RETURN"t, "expr"nt)
 						|  (!"WRITE"t, "expr"nt),
@@ -94,7 +70,7 @@ int main() {
 		.log_tokenizer = true,
 	}};
 
-	auto [tree, errors] = parser.parse(
+	/*auto [tree, errors] = parser.parse(
 R"s(
 
 
@@ -123,51 +99,30 @@ BEGIN
 END.
 
 
-)s");
+)s");*/
+
+	auto [tree, errors] = parser.parse(R"s(
+		VAR counter, prev, curr, temp;
+
+		BEGIN
+			counter := 0;
+			prev := 0;
+			curr := 1;
+
+			WHILE (counter <= 30) DO BEGIN
+				temp := prev + curr;
+				prev := curr;
+				curr := temp;
+				WRITE prev;
+
+				counter := counter + 1
+			END
+		END.
+	)s");
 
 	if (!errors.empty()) return -1;
 
-
-	//dpl::tree_visit(tree, [&](dpl::ParseTree<>& subtree) {
-	//	// ignore empty
-	//	if (subtree.children.empty()) return;
-
-	//	// traversing bottom-up so all inner nodes should be rule refs
-	//	const auto rule = std::get<dpl::RuleRef<>>(subtree.value);
-
-	//	// rename tree node (!)
-	//	auto first_terminal = get_first_terminal(rule, lexicon);
-	//	if (first_terminal) {
-	//		dpl::Token<> token{ *first_terminal };
-	//		token.value = token.name;
-	//		subtree.value = token;
-	//	} else subtree.value = rule.get_name();
-
-	//	int index_in_prod = -1;
-	//	for (int i = 0; i < subtree.children.size(); i++) {
-	//		// keep track of the actual index in the production
-	//		index_in_prod++;
-
-	//		auto* token = std::get_if<dpl::Token<>>(&subtree[i].value);
-	//		auto* childrule = std::get_if<dpl::RuleRef<>>(&subtree[i].value);
-
-	//		// remove redundant punctuations and epsilon productions
-	//		if (token && is_punctuation(*token, lexicon) && subtree[i].children.empty() || childrule && childrule->getRule().empty()) {
-	//			subtree.children.erase(subtree.children.begin() + i);
-	//			i--;
-	//			continue;
-	//		}
-	//	}
-
-	//	// lift only-child
-	//	if (subtree.children.size() == 1) {
-	//		auto child = subtree[0];
-	//		subtree = child;
-	//	}
-	//});
-
-
-	std::cout << "\n\n\nAST (" << count_nodes(tree) << ")\n" << tree;
+	std::cout << "\n\n\nAST:" << tree;
 
 	TreeWalker interpreter;
 	interpreter.interpret_tree(tree);

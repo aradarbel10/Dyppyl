@@ -31,17 +31,38 @@ int main() {
 	using namespace std::string_view_literals;
 
 
+	/*auto [grammar, lexicon] = (
+		dpl::discard	|= dpl::Lexeme{ dpl::kleene{dpl::whitespace} },
+
+		"S"nt			|= "OS"nt | "CS"nt,
+		"OS"nt			|= ("if"t, "C"nt, "then"t, "SS"nt)
+						|  ("if"t, "C"nt, "then"t, "OS"nt)
+						|  ("if"t, "C"nt, "then"t, "CS"nt, "else"t, "OS"nt),
+		"CS"nt 			|= "SS"nt
+						|  ("if"t, "C"nt, "then"t, "CS"nt, "else"t, "CS"nt),
+		"SS"nt			|= "OS'"nt,
+		"OS'"nt 		|= ";"t,
+		"C"nt 			|= "t"t | "f"t
+	);*/
+
 	auto [grammar, lexicon] = (
 		dpl::discard	|= dpl::Lexeme{ dpl::kleene{dpl::whitespace} },
-		"E"nt			|= (!"int"t)
-						|  (!"func"t, ~"("t, *"Es"nt, ~")"t)
-						|  (~"("t, "E"nt, !"Op"nt, "E"nt, ~")"t),
-		"Es"nt			|= ("E"nt, *"Es"nt) | dpl::epsilon,
-		"Op"nt			|= !"+"t | !"*"t
+
+		"S"nt			|= "OS"nt | "CS"nt,
+
+		"OS"nt			|= ("if"t, "C"nt, "then"t, "S"nt)
+						|  ("if"t, "C"nt, "then"t, "CS"nt, "else"t, "OS"nt),
+
+		"CS"nt 			|= "NON_IF"nt
+						|  ("if"t, "C"nt, "then"t, "CS"nt, "else"t, "CS"nt),
+
+		"NON_IF"nt 		|= ";"t,
+
+		"C"nt 			|= !"t"t | !"f"t
 	);
 
-	dpl::LL1 parser{ grammar, lexicon };
-	auto [tree, errors] = parser.parse("(func((int+(int*int)) int func((int * int))) + int)");
+	dpl::SLR parser{ grammar, lexicon };
+	auto [tree, errors] = parser.parse("if t then if t then ; else ;");
 	
 	std::cout << tree;
 

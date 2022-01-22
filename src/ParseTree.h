@@ -168,6 +168,16 @@ namespace dpl {
 		call_by_traversal_order(apply_root, apply_children, order);
 	}
 
+	template<typename T, typename Func>
+		requires std::invocable<Func, T>
+	Tree<std::remove_cvref_t<std::invoke_result_t<Func, T>>> tree_map(const Tree<T>& tree, Func func) {
+		Tree<std::remove_cvref_t<std::invoke_result_t<Func, T>>> result{ func(tree.value) };
+		for (const auto& child : tree.children) {
+			result.children.push_back(tree_map(child, func));
+		}
+		return result;
+	}
+
 
 	template<typename GrammarT = dpl::Grammar<>>
 	using ParseTree = dpl::Tree<std::variant<

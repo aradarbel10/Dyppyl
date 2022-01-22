@@ -18,7 +18,8 @@ test_files = [
     'NonLR0.cpp',
     'Production.cpp',
     'Regex.cpp',
-    'SmallLL1.cpp'
+    'SmallLL1.cpp',
+    'TopDownBuilder.cpp'
 ]
 
 foreach t : test_files
