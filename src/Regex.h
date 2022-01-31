@@ -200,8 +200,7 @@ namespace dpl {
 	template<typename AtomT = char>
 	struct at_least : public between<AtomT> {
 		using atom_type = between<AtomT>::atom_type;
-		constexpr at_least(size_t L, const dpl::regex auto& inner_) : between<atom_type>(L, std::numeric_limits<size_t>::max(), inner_) {}
-		constexpr ~at_least() {}
+		at_least(size_t L, const dpl::regex auto& inner_) : between<atom_type>(L, std::numeric_limits<size_t>::max(), inner_) {}
 	private:
 		using between<atom_type>::between;
 	};
@@ -209,8 +208,7 @@ namespace dpl {
 	template<typename AtomT = char>
 	struct at_most : public between<AtomT> {
 		using atom_type = between<AtomT>::atom_type;
-		constexpr at_most(size_t M, const dpl::regex auto& inner_) : between<atom_type>(0, M, inner_) {}
-		constexpr ~at_most() {}
+		at_most(size_t M, const dpl::regex auto& inner_) : between<atom_type>(0, M, inner_) {}
 	private:
 		using between<AtomT>::between;
 	};
@@ -218,8 +216,7 @@ namespace dpl {
 	template<typename AtomT = char>
 	struct exactly : public between<AtomT> {
 		using atom_type = between<AtomT>::atom_type;
-		constexpr exactly(size_t N, const dpl::regex auto& inner_) : between<atom_type>(N, N, inner_) {}
-		constexpr ~exactly() {}
+		exactly(size_t N, const dpl::regex auto& inner_) : between<atom_type>(N, N, inner_) {}
 	private:
 		using between<AtomT>::between;
 	};
@@ -227,8 +224,7 @@ namespace dpl {
 	template<typename AtomT = char>
 	struct some : public between<AtomT> {
 		using atom_type = between<AtomT>::atom_type;
-		constexpr some(const dpl::regex auto& inner_) : between<atom_type>(1, std::numeric_limits<size_t>::max(), inner_) {}
-		constexpr ~some() {}
+		some(const dpl::regex auto& inner_) : between<atom_type>(1, std::numeric_limits<size_t>::max(), inner_) {}
 	private:
 		using between<AtomT>::between;
 	};
@@ -236,8 +232,7 @@ namespace dpl {
 	template<typename AtomT = char>
 	struct kleene : public between<AtomT> {
 		using atom_type = between<AtomT>::atom_type;
-		constexpr kleene(const dpl::regex auto& inner_) : between<atom_type>(0, std::numeric_limits<size_t>::max(), inner_) {}
-		constexpr ~kleene() {}
+		kleene(const dpl::regex auto& inner_) : between<atom_type>(0, std::numeric_limits<size_t>::max(), inner_) {}
 	private:
 		using between<AtomT>::between;
 	};
@@ -363,13 +358,22 @@ namespace dpl {
 	constexpr int from_string(dpl::span_dict<char> str) {
 		int result = 0;
 		unsigned long int i = 0;
+		int sgn = 1;
+
+		if (str[i] == '+') ++i;
+		else if (str[i] == '-') { sgn = -1; ++i; }
 
 		for (; i < str.size(); ++i) {
 			result *= 10;
-			result += str[i] & 0b00001111;
+			result += sgn * (str[i] & 0b00001111);
 		}
 
 		return result;
+	}
+
+	template<>
+	double from_string(dpl::span_dict<char> str) {
+		return std::atof(str.data());
 	}
 
 }
