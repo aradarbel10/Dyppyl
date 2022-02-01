@@ -2,8 +2,6 @@
 #include "catch2/catch.hpp"
 
 #include "../src/Grammar.h"
-#include "../src/TextStream.h"
-
 #include "../src/parser/LL1.h"
 
 #include <string_view>

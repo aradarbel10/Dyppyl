@@ -3,7 +3,6 @@
 
 #include "../src/Grammar.h"
 #include "../src/parser/LL1.h"
-#include "../src/TextStream.h"
 #include "../src/tokenizer/Tokenizer.h"
 
 

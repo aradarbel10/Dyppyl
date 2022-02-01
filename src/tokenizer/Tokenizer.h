@@ -1,8 +1,6 @@
 #pragma once
 
-#include "Automata.h"
 #include "Token.h"
-#include "../TextStream.h"
 #include "../Lexical.h"
 
 #include <utility>
