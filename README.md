@@ -25,9 +25,7 @@ dpl::ParseTree tree = parser2.parse("1 + 2 * (3 + 4) * 5");
 
 ## What is Dyppyl?
 
-Dyppyl is a compiler-generator library written with modern C++20 features.
-Usually you'd hear about parser generators, so what's a *compiler* generator?
-It is mostly just a *parser generator*, but also includes a suite of tools dedicated specifically for *compiler construction*.
+Dyppyl is a parser-generator library written with modern C++20 features.
 
 It's meant to be better than other parser generators by being more readable and much easier to learn & use.
 Additionally, with Dyppyl being a library, the grammar description happens directly inside your C++ source, so it's very convenient to integrate to your projects. In the future it is planned to support *compile-time parser construction* as to avoid the (usually small) runtime overhead imposed by the library.
@@ -42,25 +40,12 @@ Here's the roadmap for Dyppyl's development (keep in mind it's always changing a
 	- [x] LR(1)
 	- [x] SLR(1)
 	- [x] LALR(1)
-	- [ ] LL(k)
-	- [ ] GLR
 - [x] embedded grammar specification language
 - [ ] compile-time parser generation
-- [ ] tree handling library
+- [ ] Parse Tree / AST handling library
 	- [x] tree pattern matching
 	- [x] tree traversals and visiting
-	- [ ] parse tree to AST conversion
-	- [ ] tree scanning, folding, transformation
-- [ ] semantic analysis
-	- [ ] type checking and elaboration passes
-	- [ ] scope analysis
-- [ ] code generation utilities
-	- [ ] intermediate representation
-	- [ ] register allocators
-	- [ ] optimization passes
-
-For detailed progress plans see this very half-assed [Trello board](https://trello.com/b/u2pzCbZc/dyppyl#).
-(cards are roughly ordered left-to-right top-to-bottom from highest priority to lowest).
+	- [x] parse tree to AST conversion
 
 ## How does it work?
 
